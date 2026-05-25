@@ -53,6 +53,46 @@ const events = [
     vibe: "Festive • Colors • Celebration",
     bgAccent: "from-pink-500/20 to-rose-500/20",
     borderAccent: "group-hover:border-pink-500/40"
+  },
+  {
+    id: "sankranti",
+    title: "Sankranti Celebration",
+    description: "Celebrate the harvest season with kites flying high, traditional festive delicacies, and a warm community sharing the joy of new beginnings.",
+    media: "/assets/Sankranti_Meetup.MOV",
+    isVideo: true,
+    vibe: "Culture • Festival • Joy",
+    bgAccent: "from-yellow-500/20 to-amber-500/20",
+    borderAccent: "group-hover:border-yellow-500/40"
+  },
+  {
+    id: "cafes",
+    title: "Cafe Explorations",
+    description: "Unwind at the city's finest aesthetic cafes. Perfect for sharing book recommendations, trying artisanal coffees, and relaxed talks.",
+    media: "/assets/Cafe_exploring.MOV",
+    isVideo: true,
+    vibe: "Cozy • Coffee • Conversations",
+    bgAccent: "from-orange-600/20 to-amber-700/20",
+    borderAccent: "group-hover:border-orange-600/40"
+  },
+  {
+    id: "rooftops",
+    title: "Rooftop Socials",
+    description: "Enjoy sunset views, premium light displays, and ambient acoustics with friends old and new at handpicked rooftop spots.",
+    media: "/assets/IMG_5839.MOV",
+    isVideo: true,
+    vibe: "Skyline • Music • Vibe",
+    bgAccent: "from-purple-500/20 to-fuchsia-500/20",
+    borderAccent: "group-hover:border-purple-500/40"
+  },
+  {
+    id: "creative",
+    title: "Creative Workshops",
+    description: "Hands-on collaborative sessions from pottery making to coffee tasting. Discover new skills and share ideas with curious peers.",
+    media: "/assets/IMG_5822.MOV",
+    isVideo: true,
+    vibe: "Artistic • Hands-On • Curious",
+    bgAccent: "from-cyan-500/20 to-teal-500/20",
+    borderAccent: "group-hover:border-cyan-500/40"
   }
 ];
 
