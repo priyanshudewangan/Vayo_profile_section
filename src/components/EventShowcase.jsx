@@ -75,8 +75,8 @@ const events = [
     borderAccent: "group-hover:border-orange-600/40"
   },
   {
-    id: "rooftops",
-    title: "Rooftop Socials",
+    id: "Social",
+    title: "Socials",
     description: "Enjoy sunset views, premium light displays, and ambient acoustics with friends old and new at handpicked rooftop spots.",
     media: "/assets/IMG_5839.MOV",
     isVideo: true,
@@ -189,7 +189,7 @@ export default function EventShowcase() {
                     loading="lazy"
                   />
                 )}
-                
+
                 {/* Vibe Tag overlay */}
                 <div className="absolute bottom-3 left-4 z-20">
                   <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-black/60 backdrop-blur-md border border-white/10 text-violet-300">
@@ -208,7 +208,7 @@ export default function EventShowcase() {
                     {event.description}
                   </p>
                 </div>
-                
+
                 {/* Micro CTA inside card */}
                 <div className="pt-4 flex items-center gap-1.5 text-xs font-semibold text-white/40 group-hover:text-indigo-400 transition-colors duration-300">
                   <span>Explore this community Vibe</span>

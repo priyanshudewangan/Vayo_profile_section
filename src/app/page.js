@@ -4,6 +4,7 @@ import Link from "next/link";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import EventShowcase from "@/components/EventShowcase";
+import WaveBackground from "@/components/WaveBackground";
 
 export default function Home() {
   const [email, setEmail] = useState("");
@@ -153,139 +154,127 @@ export default function Home() {
         <EventShowcase />
       </section>
 
-      {/* Bottom CTA Block */}
-      <section className="relative z-10 px-6 py-24 md:py-36 max-w-4xl mx-auto text-center">
-        {/* Visual Mesh Glow */}
-        <div className="absolute inset-0 filter blur-[80px] bg-[radial-gradient(ellipse_at_center,rgba(56,189,248,0.12)_0%,rgba(99,102,241,0.08)_50%,transparent_70%)] pointer-events-none"></div>
+      {/* Bottom Section with Image Background (Hides body video bg for only CTA & Footer) */}
+      <div className="relative w-full overflow-hidden bg-[#050508]">
+        {/* Static Background Image (Dimmed for quality mask, with a smooth blend gradient at the top edge) */}
+        <div className="absolute inset-0 z-0 pointer-events-none bg-[#050508]">
+          <img
+            src="/assets/bg-footer.png"
+            alt="Footer Background"
+            className="w-full h-full object-cover opacity-[.72]"
+          />
+          {/* Top blend overlay to smooth the transition from the showcase background to the footer landscape */}
+          <div className="absolute top-0 inset-x-0 h-32 md:h-48 bg-gradient-to-b from-[#050508] via-[#050508]/80 to-transparent"></div>
+        </div>
 
-        <div className="relative bg-gradient-to-b from-white/[0.03] to-white/[0.01] border border-white/[0.08] backdrop-blur-[30px] rounded-[3rem] p-8 md:p-16 shadow-[0_24px_50px_rgba(0,0,0,0.5)] overflow-hidden group">
+        {/* Bottom CTA Block */}
+        <section className="relative z-20 px-6 py-24 md:py-86 max-w-4xl mx-auto text-center">
+          <span className="relative z-10 inline-block px-4 py-1.5 rounded-full text-[10px] font-bold tracking-[2px] uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 mb-6">
+            LAUNCH BENEFITS INCLUDED
+          </span>
+
+          <h2 className="relative z-10 text-3xl md:text-5xl font-semibold tracking-tight text-white mb-4 leading-tight">
+            Ready to Stop Searching?
+          </h2>
+          <p className="relative z-10 text-sm md:text-base text-white/60 mb-10 max-w-lg mx-auto leading-relaxed">
+            Secure early access to VAYO Commune today. Connect with verified people who actually match your offline vibe.
+          </p>
+
+          <form onSubmit={handleBottomEmailSubmit} className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full max-w-[480px] mx-auto bg-white/5 backdrop-blur-3xl border border-white/10 rounded-2xl sm:rounded-full p-2 sm:p-1 pl-4 sm:pl-5 shadow-[0_16px_40px_rgba(0,0,0,0.4)] transition-all duration-300 focus-within:border-indigo-500/40 focus-within:shadow-[0_16px_40px_rgba(0,0,0,0.4),0_0_20px_rgba(99,102,241,0.15)]">
+            <input
+              type="email"
+              placeholder="Enter your email address"
+              className="flex-1 bg-transparent border-0 outline-0 text-sm font-normal text-white py-2.5 sm:py-2 w-full placeholder:text-violet-200/40"
+              value={bottomEmail}
+              onChange={(e) => setBottomEmail(e.target.value)}
+              required
+            />
+            <button type="submit" className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap">
+              Join waitlist &rarr;
+            </button>
+          </form>
+        </section>
+
+        {/* Footer */}
+        <footer className="relative bottom-4 right-0 z-20 left-3 md:left-6 w-[calc(100%-24px)] md:w-[calc(100%-32px)] backdrop-blur-3xl border border-white/[0.08] rounded-[2rem] p-8 md:p-16 pb-0 overflow-hidden bg-black/40" id="footer">
           {/* Subtle top shine */}
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-sky-400/20 to-transparent"></div>
 
-          {/* Dot Grid Background */}
-          <div className="absolute inset-0 bg-dot-grid opacity-30 pointer-events-none z-0"></div>
-
-          {/* Noise Background */}
-          <div className="absolute inset-0 bg-noise opacity-[0.02] mix-blend-overlay pointer-events-none z-0"></div>
-
-          {/* Ambient Glowing Blobs */}
-          <div className="absolute -top-[20%] -left-[20%] w-[60%] h-[60%] rounded-full bg-sky-400/10 blur-[80px] pointer-events-none z-0 animate-float-slow-1"></div>
-          <div className="absolute -bottom-[20%] -right-[20%] w-[60%] h-[60%] rounded-full bg-violet-500/10 blur-[80px] pointer-events-none z-0 animate-float-slow-2"></div>
+          {/* Ambient Glowing Blobs inside footer */}
+          <div className="absolute -top-[30%] -right-[20%] w-[50%] h-[50%] rounded-full bg-sky-500/5 blur-[80px] pointer-events-none z-0 animate-float-slow-1"></div>
+          <div className="absolute -bottom-[30%] -left-[20%] w-[50%] h-[50%] rounded-full bg-violet-500/5 blur-[80px] pointer-events-none z-0 animate-float-slow-2"></div>
 
           <div className="relative z-10">
-            <span className="inline-block px-4 py-1.5 rounded-full text-[10px] font-bold tracking-[2px] uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 mb-6">
-              LAUNCH BENEFITS INCLUDED
-            </span>
+            <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-10 md:gap-40 w-full pb-12">
+              {/* Left: Logo + Description */}
+              <div className="max-w-[360px] mx-auto md:mx-0 text-center md:text-left">
+                <Link href="/" className="inline-block mb-5 hover:-translate-y-0.5 hover:brightness-110 transition-all duration-300">
+                  <img src="/assets/vayo-logo.png" alt="VAYO Logo" className="h-12 w-auto filter drop-shadow-[0_0_20px_rgba(99,102,241,0.25)] mx-auto md:mx-0" />
+                </Link>
+                <p className="text-xs md:text-sm leading-relaxed text-violet-200/45 font-normal tracking-wide">
+                  Vayo Commune is a community-driven social platform and offline community that helps people meet others through real-life activities, hobbies, and shared experiences rather than just online chatting.
+                </p>
+              </div>
 
-            <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-white mb-4 leading-tight">
-              Ready to Stop Searching?
-            </h2>
-            <p className="text-sm md:text-base text-white/60 mb-10 max-w-lg mx-auto leading-relaxed">
-              Secure early access to VAYO Commune today. Connect with verified people who actually match your offline vibe.
-            </p>
+              {/* Right: Contact Details */}
+              <div className="pt-1 text-left">
+                <h3 className="text-xs font-bold text-violet-200/85 tracking-[3px] uppercase mb-6 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-7 after:h-0.5 after:bg-indigo-500 after:rounded-full">
+                  CONTACT
+                </h3>
 
-            <form onSubmit={handleBottomEmailSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full max-w-[480px] mx-auto bg-white/5 backdrop-blur-3xl border border-white/10 rounded-2xl sm:rounded-full p-2 sm:p-1 pl-4 sm:pl-5 shadow-[0_16px_40px_rgba(0,0,0,0.4)] transition-all duration-300 focus-within:border-indigo-500/40 focus-within:shadow-[0_16px_40px_rgba(0,0,0,0.4),0_0_20px_rgba(99,102,241,0.15)]">
-              <input
-                type="email"
-                placeholder="Enter your email address"
-                className="flex-1 bg-transparent border-0 outline-0 text-sm font-normal text-white py-2.5 sm:py-2 w-full placeholder:text-violet-200/40"
-                value={bottomEmail}
-                onChange={(e) => setBottomEmail(e.target.value)}
-                required
-              />
-              <button type="submit" className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap">
-                Join waitlist &rarr;
-              </button>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="relative bottom-4 right-0 z-10 left-3 md:left-6 w-[calc(100%-24px)] md:w-[calc(100%-32px)] backdrop-blur-3xl border border-white/[0.08] rounded-[2rem] p-8 md:p-16 pb-0 overflow-hidden bg-gradient-to-b from-white/[0.03] to-white/[0.01]" id="footer">
-        {/* Subtle top shine */}
-        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-sky-400/20 to-transparent"></div>
-
-        {/* Dot Grid Background */}
-        <div className="absolute inset-0 bg-dot-grid opacity-20 pointer-events-none z-0"></div>
-
-        {/* Noise Background */}
-        <div className="absolute inset-0 bg-noise opacity-[0.02] mix-blend-overlay pointer-events-none z-0"></div>
-
-        {/* Ambient Glowing Blobs */}
-        <div className="absolute -top-[30%] -right-[20%] w-[50%] h-[50%] rounded-full bg-sky-500/5 blur-[80px] pointer-events-none z-0 animate-float-slow-1"></div>
-        <div className="absolute -bottom-[30%] -left-[20%] w-[50%] h-[50%] rounded-full bg-violet-500/5 blur-[80px] pointer-events-none z-0 animate-float-slow-2"></div>
-
-        <div className="relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-10 md:gap-40 w-full pb-12">
-            {/* Left: Logo + Description */}
-            <div className="max-w-[360px] mx-auto md:mx-0 text-center md:text-left">
-              <Link href="/" className="inline-block mb-5 hover:-translate-y-0.5 hover:brightness-110 transition-all duration-300">
-                <img src="/assets/vayo-logo.png" alt="VAYO Logo" className="h-12 w-auto filter drop-shadow-[0_0_20px_rgba(99,102,241,0.25)] mx-auto md:mx-0" />
-              </Link>
-              <p className="text-xs md:text-sm leading-relaxed text-violet-200/45 font-normal tracking-wide">
-                Vayo Commune is a community-driven social platform and offline community that helps people meet others through real-life activities, hobbies, and shared experiences rather than just online chatting.
-              </p>
-            </div>
-
-            {/* Right: Contact Details */}
-            <div className="pt-1 text-left">
-              <h3 className="text-xs font-bold text-violet-200/85 tracking-[3px] uppercase mb-6 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-7 after:h-0.5 after:bg-indigo-500 after:rounded-full">
-                CONTACT
-              </h3>
-
-              <div className="flex items-start gap-3.5 mb-5">
-                <svg className="w-[18px] h-[18px] shrink-0 mt-0.5 text-indigo-500/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="M22 4l-10 8L2 4" />
-                </svg>
-                <div>
-                  <p className="text-xs md:text-sm leading-relaxed text-violet-200/40 font-normal">
-                    <a href="mailto:vayocommune@gmail.com" className="text-violet-200/40 hover:text-indigo-500 transition-colors duration-300">
-                      vayocommune@gmail.com
-                    </a>
-                  </p>
+                <div className="flex items-start gap-3.5 mb-5">
+                  <svg className="w-[18px] h-[18px] shrink-0 mt-0.5 text-indigo-500/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="M22 4l-10 8L2 4" />
+                  </svg>
+                  <div>
+                    <p className="text-xs md:text-sm leading-relaxed text-violet-200/40 font-normal">
+                      <a href="mailto:vayocommune@gmail.com" className="text-violet-200/40 hover:text-indigo-500 transition-colors duration-300">
+                        vayocommune@gmail.com
+                      </a>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Bottom Bar */}
-          <div className="h-[1px] w-full bg-[linear-gradient(90deg,transparent_0%,rgba(99,102,241,0.18)_20%,rgba(99,102,241,0.18)_80%,transparent_100%)]"></div>
-          <div className="w-full flex flex-col items-center justify-center py-6 gap-5 text-center flex-wrap">
-            <div className="flex items-center gap-2">
-              <a href="https://www.youtube.com/@vayobangalore" className="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-violet-200/40 hover:bg-indigo-500/15 hover:border-indigo-500/40 hover:text-violet-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(99,102,241,0.2)] transition-all duration-300" aria-label="Youtube" target="_blank" rel="noopener noreferrer">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
-                  <path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33 2.78 2.78 0 001.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.41z" />
-                  <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" stroke="none" />
-                </svg>
-              </a>
-              <a href="https://www.instagram.com/vayo.bangalore/" className="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-violet-200/40 hover:bg-indigo-500/15 hover:border-indigo-500/40 hover:text-violet-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(99,102,241,0.2)] transition-all duration-300" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
-                  <rect x="2" y="2" width="20" height="20" rx="5" />
-                  <circle cx="12" cy="12" r="5" />
-                  <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
-                </svg>
-              </a>
-              <a href="https://www.linkedin.com/company/vayo-commune/" className="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-violet-200/40 hover:bg-indigo-500/15 hover:border-indigo-500/40 hover:text-violet-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(99,102,241,0.2)] transition-all duration-300" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
-                  <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6z" />
-                  <rect x="2" y="9" width="4" height="12" />
-                  <circle cx="4" cy="4" r="2" />
-                </svg>
-              </a>
+            {/* Bottom Bar */}
+            <div className="h-[1px] w-full bg-[linear-gradient(90deg,transparent_0%,rgba(99,102,241,0.18)_20%,rgba(99,102,241,0.18)_80%,transparent_100%)]"></div>
+            <div className="w-full flex flex-col items-center justify-center py-6 gap-5 text-center flex-wrap">
+              <div className="flex items-center gap-2">
+                <a href="https://www.youtube.com/@vayobangalore" className="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-violet-200/40 hover:bg-indigo-500/15 hover:border-indigo-500/40 hover:text-violet-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(99,102,241,0.2)] transition-all duration-300" aria-label="Youtube" target="_blank" rel="noopener noreferrer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4 text-violet-200/40 hover:text-violet-300">
+                    <path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33 2.78 2.78 0 001.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.41z" />
+                    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" stroke="none" />
+                  </svg>
+                </a>
+                <a href="https://www.instagram.com/vayo.bangalore/" className="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-violet-200/40 hover:bg-indigo-500/15 hover:border-indigo-500/40 hover:text-violet-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(99,102,241,0.2)] transition-all duration-300" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
+                    <rect x="2" y="2" width="20" height="20" rx="5" />
+                    <circle cx="12" cy="12" r="5" />
+                    <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+                  </svg>
+                </a>
+                <a href="https://www.linkedin.com/company/vayo-commune/" className="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-violet-200/40 hover:bg-indigo-500/15 hover:border-indigo-500/40 hover:text-violet-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(99,102,241,0.2)] transition-all duration-300" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
+                    <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6z" />
+                    <rect x="2" y="9" width="4" height="12" />
+                    <circle cx="4" cy="4" r="2" />
+                  </svg>
+                </a>
+              </div>
+              <p className="text-[10px] md:text-xs text-violet-200/30 tracking-wider leading-relaxed font-normal text-center">
+                &copy; 2026 VAYO Powered by{" "}
+                <a href="https://www.laneway.in" className="text-violet-200/40 hover:text-indigo-500 transition-colors duration-300" target="_blank" rel="noopener noreferrer">
+                  Laneway
+                </a>
+                . <br />
+                All rights reserved.
+              </p>
             </div>
-            <p className="text-[10px] md:text-xs text-violet-200/30 tracking-wider leading-relaxed font-normal text-center">
-              &copy; 2026 VAYO Powered by{" "}
-              <a href="https://www.laneway.in" className="text-violet-200/40 hover:text-indigo-500 transition-colors duration-300" target="_blank" rel="noopener noreferrer">
-                Laneway
-              </a>
-              . <br />
-              All rights reserved.
-            </p>
           </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </>
   );
 }
