@@ -44,7 +44,7 @@ export default function Home() {
           }, 300); // hold briefly at 100%
           return 100;
         }
-        
+
         // Fast at start, slows down as it approaches 100
         const remaining = 100 - prev;
         const step = Math.max(1, Math.min(10, Math.floor(remaining * 0.12 + Math.random() * 4)));
@@ -106,9 +106,8 @@ export default function Home() {
     <>
       {loading && (
         <div
-          className={`fixed inset-0 bg-[#050508] z-[9999] flex flex-col items-center justify-center transition-all duration-700 ease-in-out ${
-            fadeOut ? "opacity-0 pointer-events-none scale-105" : "opacity-100"
-          }`}
+          className={`fixed inset-0 bg-[#050508] z-[9999] flex flex-col items-center justify-center transition-all duration-700 ease-in-out ${fadeOut ? "opacity-0 pointer-events-none scale-105" : "opacity-100"
+            }`}
         >
           <div className="flex flex-col items-center max-w-[280px] w-full">
             {/* Logo with pulse */}
@@ -124,8 +123,8 @@ export default function Home() {
             </div>
 
             {/* Glowing Progress bar using shadcn component */}
-            <Progress 
-              value={progress} 
+            <Progress
+              value={progress}
               className="w-full h-[3px] bg-white/10 shadow-[0_0_15px_rgba(99,102,241,0.1)]"
             />
 
@@ -183,7 +182,7 @@ export default function Home() {
               required
             />
             <button type="submit" className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap">
-              Join waitlist &rarr;
+              Join Our Community &rarr;
             </button>
           </form>
         </div>
@@ -306,7 +305,7 @@ export default function Home() {
               required
             />
             <button type="submit" className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap">
-              Join waitlist &rarr;
+              Join Our Community &rarr;
             </button>
           </form>
         </section>

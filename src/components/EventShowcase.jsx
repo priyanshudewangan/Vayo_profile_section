@@ -245,9 +245,8 @@ export default function EventShowcase() {
     <div className="w-full relative py-12 overflow-hidden">
       {/* Dark backdrop overlay when a card is active/lifted */}
       <div
-        className={`absolute inset-0 bg-black/60 z-30 transition-all duration-500 ${
-          activeCardId ? "opacity-100 pointer-events-auto backdrop-blur-[2px]" : "opacity-0 pointer-events-none backdrop-blur-0"
-        }`}
+        className={`absolute inset-0 bg-black/60 z-30 transition-all duration-500 ${activeCardId ? "opacity-100 pointer-events-auto backdrop-blur-[2px]" : "opacity-0 pointer-events-none backdrop-blur-0"
+          }`}
         onClick={() => setActiveCardId(null)}
       ></div>
 
@@ -431,7 +430,7 @@ export default function EventShowcase() {
                         href={`/join?interest=${encodeURIComponent(event.title)}`}
                         className="flex-2 py-2 px-3 rounded-xl bg-white text-slate-950 hover:bg-slate-100 active:scale-95 text-xs font-bold transition-all text-center decoration-none"
                       >
-                        Join waitlist
+                        Join Our Community
                       </Link>
                     </div>
                   </div>
