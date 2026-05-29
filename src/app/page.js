@@ -241,17 +241,17 @@ export default function Home() {
             <div className="h-[1px] w-full bg-[linear-gradient(90deg,transparent_0%,rgba(99,102,241,0.18)_20%,rgba(99,102,241,0.18)_80%,transparent_100%)]"></div>
             <div className="w-full flex flex-col items-center justify-center py-6 gap-5 text-center flex-wrap">
               <div className="flex items-center gap-2">
-                <a href="https://www.youtube.com/@vayobangalore" className="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-violet-200/40 hover:bg-indigo-500/15 hover:border-indigo-500/40 hover:text-violet-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(99,102,241,0.2)] transition-all duration-300" aria-label="Youtube" target="_blank" rel="noopener noreferrer">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4 text-violet-200/40 hover:text-violet-300">
-                    <path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33 2.78 2.78 0 001.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.41z" />
-                    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" stroke="none" />
-                  </svg>
-                </a>
                 <a href="https://www.instagram.com/vayo.bangalore/" className="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-violet-200/40 hover:bg-indigo-500/15 hover:border-indigo-500/40 hover:text-violet-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(99,102,241,0.2)] transition-all duration-300" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                     <rect x="2" y="2" width="20" height="20" rx="5" />
                     <circle cx="12" cy="12" r="5" />
                     <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+                  </svg>
+                </a>
+                <a href="https://www.youtube.com/@vayobangalore" className="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-violet-200/40 hover:bg-indigo-500/15 hover:border-indigo-500/40 hover:text-violet-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(99,102,241,0.2)] transition-all duration-300" aria-label="Youtube" target="_blank" rel="noopener noreferrer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4 text-violet-200/40 hover:text-violet-300">
+                    <path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33 2.78 2.78 0 001.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.41z" />
+                    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" stroke="none" />
                   </svg>
                 </a>
                 <a href="https://www.linkedin.com/company/vayo-commune/" className="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-violet-200/40 hover:bg-indigo-500/15 hover:border-indigo-500/40 hover:text-violet-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(99,102,241,0.2)] transition-all duration-300" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer">
