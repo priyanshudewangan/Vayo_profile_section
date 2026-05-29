@@ -66,7 +66,7 @@ function JoinFormContent() {
               Join Our Community
             </h2>
             <p className="text-sm md:text-base text-white/60 mb-8 leading-relaxed font-medium text-center px-4">
-              Be the first to experience something extraordinary. Get exclusive early access and special launch benefits.
+              Meet new people, join experiences, and be part of a growing community built around real connections.
             </p>
 
             {/* Embedded Tally Form */}
