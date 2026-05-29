@@ -5,6 +5,7 @@ import Image from "next/image";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import EventShowcase from "@/components/EventShowcase";
+import { Progress } from "@/components/ui/progress";
 
 export default function Home() {
   const [email, setEmail] = useState("");
@@ -122,13 +123,11 @@ export default function Home() {
               />
             </div>
 
-            {/* Glowing Progress bar container */}
-            <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden relative shadow-[0_0_15px_rgba(99,102,241,0.1)]">
-              <div
-                className="h-full bg-gradient-to-r from-violet-500 via-indigo-500 to-sky-400 rounded-full transition-all duration-300 ease-out shadow-[0_0_8px_rgba(99,102,241,0.5)]"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
+            {/* Glowing Progress bar using shadcn component */}
+            <Progress 
+              value={progress} 
+              className="w-full h-[3px] bg-white/10 shadow-[0_0_15px_rgba(99,102,241,0.1)]"
+            />
 
             {/* Monospace progress text */}
             <div className="mt-4 flex items-center justify-between w-full px-1">

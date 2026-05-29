@@ -38,9 +38,8 @@ function JoinFormContent() {
 
   // Build the Tally source URL with standard embed options and optional email/interest pre-filling.
   // Note: Tally maps URL query parameters to form fields (e.g. Email -> email).
-  const tallyUrl = `https://tally.so/embed/m6gM9k?alignLeft=1&hideTitle=1&transparentBackground=1&dynamicHeight=1${
-    email ? `&Email=${encodeURIComponent(email)}` : ""
-  }${interest ? `&Interest=${encodeURIComponent(interest)}` : ""}`;
+  const tallyUrl = `https://tally.so/embed/m6gM9k?alignLeft=1&hideTitle=1&transparentBackground=1&dynamicHeight=1${email ? `&Email=${encodeURIComponent(email)}` : ""
+    }${interest ? `&Interest=${encodeURIComponent(interest)}` : ""}`;
 
   return (
     <>
@@ -48,7 +47,7 @@ function JoinFormContent() {
       <div className="fixed inset-0 bg-[#050508]/60 backdrop-blur-[8px] z-0 pointer-events-none"></div>
 
       <section className="flex items-start md:items-center justify-center min-h-screen relative z-10 px-4 py-24 md:py-10">
-        
+
         {/* Animated Background Orbs */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
           <div className="absolute w-[600px] h-[600px] bg-indigo-500/15 rounded-full blur-[120px] animate-pulse mix-blend-screen translate-x-[-20%] translate-y-[-20%]"></div>
@@ -57,14 +56,14 @@ function JoinFormContent() {
 
         {/* Premium Glassmorphism Card */}
         <div className="w-full max-w-xl mx-auto relative z-10 bg-white/[0.03] backdrop-blur-[40px] border border-white/[0.08] rounded-[2.5rem] p-7 md:p-12 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.6)] overflow-hidden">
-          
+
           {/* Subtle Shine Effect */}
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
           <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-b from-white/[0.04] to-transparent pointer-events-none"></div>
 
           <div className="relative z-10">
             <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4 text-center">
-              Join the Waitlist
+              Join the Community
             </h2>
             <p className="text-sm md:text-base text-white/60 mb-8 leading-relaxed font-medium text-center px-4">
               Be the first to experience something extraordinary. Get exclusive early access and special launch benefits.
@@ -112,7 +111,7 @@ export default function JoinPage() {
           </Link>
         </div>
       </nav>
-      
+
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
         <JoinFormContent />
       </Suspense>
