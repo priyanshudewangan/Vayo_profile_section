@@ -148,7 +148,7 @@ export default function Home() {
         </Link>
         <div className="flex items-center">
           <Link href="/join" className="flex items-center justify-center decoration-none px-4 md:px-5 py-2 md:py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/8 shadow-lg text-white text-xs md:text-sm font-semibold hover:bg-white/10 hover:border-white/20 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition-all duration-300 whitespace-nowrap">
-            Get In Touch ↗
+            Join Our Community ↗
           </Link>
         </div>
       </nav>
@@ -182,7 +182,7 @@ export default function Home() {
               required
             />
             <button type="submit" className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap">
-              Join Our Community &rarr;
+              Join waitlist &rarr;
             </button>
           </form>
         </div>
@@ -305,7 +305,7 @@ export default function Home() {
               required
             />
             <button type="submit" className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap">
-              Join Our Community &rarr;
+              Join waitlist &rarr;
             </button>
           </form>
         </section>
