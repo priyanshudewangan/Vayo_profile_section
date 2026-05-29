@@ -63,7 +63,7 @@ function JoinFormContent() {
 
           <div className="relative z-10">
             <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4 text-center">
-              Join the Community
+              Join Our Community
             </h2>
             <p className="text-sm md:text-base text-white/60 mb-8 leading-relaxed font-medium text-center px-4">
               Be the first to experience something extraordinary. Get exclusive early access and special launch benefits.
