@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import EventShowcase from "@/components/EventShowcase";
 
@@ -10,6 +10,80 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [bottomEmail, setBottomEmail] = useState("");
   const router = useRouter();
+
+  // Preloader states
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [fadeOut, setFadeOut] = useState(false);
+
+  // Lock scrolling while preloading
+  useEffect(() => {
+    if (loading) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [loading]);
+
+  // Simulate smooth loading bar progress
+  useEffect(() => {
+    let timer;
+    const updateProgress = () => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(timer);
+          setTimeout(() => {
+            setFadeOut(true);
+            setTimeout(() => {
+              setLoading(false);
+            }, 800); // fade out transition duration
+          }, 300); // hold briefly at 100%
+          return 100;
+        }
+        
+        // Fast at start, slows down as it approaches 100
+        const remaining = 100 - prev;
+        const step = Math.max(1, Math.min(10, Math.floor(remaining * 0.12 + Math.random() * 4)));
+        return prev + step;
+      });
+    };
+
+    timer = setInterval(updateProgress, 120);
+
+    // Fast-forward to 100 once page assets are fully parsed/loaded
+    const handleLoad = () => {
+      clearInterval(timer);
+      const fastTimer = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(fastTimer);
+            setTimeout(() => {
+              setFadeOut(true);
+              setTimeout(() => {
+                setLoading(false);
+              }, 800);
+            }, 300);
+            return 100;
+          }
+          return prev + 8;
+        });
+      }, 30);
+    };
+
+    if (document.readyState === "complete") {
+      handleLoad();
+    } else {
+      window.addEventListener("load", handleLoad);
+    }
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("load", handleLoad);
+    };
+  }, []);
 
   const handleEmailSubmit = (e) => {
     e.preventDefault();
@@ -29,6 +103,46 @@ export default function Home() {
 
   return (
     <>
+      {loading && (
+        <div
+          className={`fixed inset-0 bg-[#050508] z-[9999] flex flex-col items-center justify-center transition-all duration-700 ease-in-out ${
+            fadeOut ? "opacity-0 pointer-events-none scale-105" : "opacity-100"
+          }`}
+        >
+          <div className="flex flex-col items-center max-w-[280px] w-full">
+            {/* Logo with pulse */}
+            <div className="relative mb-8 w-[160px] h-[50px] flex items-center justify-center animate-pulse">
+              <Image
+                src="/assets/vayo-logo.png"
+                alt="VAYO Logo"
+                width={150}
+                height={40}
+                className="h-9 w-auto filter drop-shadow-[0_0_20px_rgba(99,102,241,0.4)]"
+                priority
+              />
+            </div>
+
+            {/* Glowing Progress bar container */}
+            <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden relative shadow-[0_0_15px_rgba(99,102,241,0.1)]">
+              <div
+                className="h-full bg-gradient-to-r from-violet-500 via-indigo-500 to-sky-400 rounded-full transition-all duration-300 ease-out shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+
+            {/* Monospace progress text */}
+            <div className="mt-4 flex items-center justify-between w-full px-1">
+              <span className="text-[10px] font-bold text-violet-200/30 tracking-[3px] uppercase">
+                COMMUNING...
+              </span>
+              <span className="text-xs font-mono font-bold text-indigo-400 tracking-wider">
+                {progress}%
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-12 h-16 md:h-20 bg-black/10 backdrop-blur-md md:bg-transparent border-b border-white/5 md:border-b-0 transition-all duration-300">
         <Link href="/" className="flex items-center decoration-none px-3.5 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/8 shadow-lg hover:bg-white/10 hover:border-white/20 transition-all duration-300 group">
