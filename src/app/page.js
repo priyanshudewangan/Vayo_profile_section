@@ -2,100 +2,39 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import EventShowcase from "@/components/EventShowcase";
-import { Progress } from "@/components/ui/progress";
 
 export default function Home() {
   const [email, setEmail] = useState("");
   const [bottomEmail, setBottomEmail] = useState("");
   const router = useRouter();
 
-  // Preloader states
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const [fadeOut, setFadeOut] = useState(false);
+  // Navigation loading feedback state
+  const [isNavigating, setIsNavigating] = useState(false);
 
-  // Lock scrolling while preloading
-  useEffect(() => {
-    if (loading) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [loading]);
-
-  // Simulate smooth loading bar progress
-  useEffect(() => {
-    let timer;
-    const updateProgress = () => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(timer);
-          setTimeout(() => {
-            setFadeOut(true);
-            setTimeout(() => {
-              setLoading(false);
-            }, 800); // fade out transition duration
-          }, 300); // hold briefly at 100%
-          return 100;
-        }
-
-        // Fast at start, slows down as it approaches 100
-        const remaining = 100 - prev;
-        const step = Math.max(1, Math.min(10, Math.floor(remaining * 0.12 + Math.random() * 4)));
-        return prev + step;
-      });
-    };
-
-    timer = setInterval(updateProgress, 120);
-
-    // Fast-forward to 100 once page assets are fully parsed/loaded
-    const handleLoad = () => {
-      clearInterval(timer);
-      const fastTimer = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(fastTimer);
-            setTimeout(() => {
-              setFadeOut(true);
-              setTimeout(() => {
-                setLoading(false);
-              }, 800);
-            }, 300);
-            return 100;
-          }
-          return prev + 8;
-        });
-      }, 30);
-    };
-
-    if (document.readyState === "complete") {
-      handleLoad();
-    } else {
-      window.addEventListener("load", handleLoad);
-    }
-
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("load", handleLoad);
-    };
-  }, []);
+  // Preloader disabled for instant page load
 
   const handleEmailSubmit = (e) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || isNavigating) return;
+    setIsNavigating(true);
     router.push(`/join?email=${encodeURIComponent(email)}`);
   };
 
   const handleBottomEmailSubmit = (e) => {
     e.preventDefault();
-    if (!bottomEmail) return;
+    if (!bottomEmail || isNavigating) return;
+    setIsNavigating(true);
     router.push(`/join?email=${encodeURIComponent(bottomEmail)}`);
+  };
+
+  const handleNavJoinClick = (e) => {
+    e.preventDefault();
+    if (isNavigating) return;
+    setIsNavigating(true);
+    router.push("/join");
   };
 
   const handleScrollToFeatures = () => {
@@ -104,42 +43,7 @@ export default function Home() {
 
   return (
     <>
-      {loading && (
-        <div
-          className={`fixed inset-0 bg-[#050508] z-[9999] flex flex-col items-center justify-center transition-all duration-700 ease-in-out ${fadeOut ? "opacity-0 pointer-events-none scale-105" : "opacity-100"
-            }`}
-        >
-          <div className="flex flex-col items-center max-w-[280px] w-full">
-            {/* Logo with pulse */}
-            <div className="relative mb-8 w-[160px] h-[50px] flex items-center justify-center animate-pulse">
-              <Image
-                src="/assets/vayo-logo.png"
-                alt="VAYO Logo"
-                width={150}
-                height={40}
-                className="h-9 w-auto filter drop-shadow-[0_0_20px_rgba(99,102,241,0.4)]"
-                priority
-              />
-            </div>
 
-            {/* Glowing Progress bar using shadcn component */}
-            <Progress
-              value={progress}
-              className="w-full h-[3px] bg-white/10 shadow-[0_0_15px_rgba(99,102,241,0.1)]"
-            />
-
-            {/* Monospace progress text */}
-            <div className="mt-4 flex items-center justify-between w-full px-1">
-              <span className="text-[10px] font-bold text-violet-200/30 tracking-[3px] uppercase">
-                COMMUNING...
-              </span>
-              <span className="text-xs font-mono font-bold text-indigo-400 tracking-wider">
-                {progress}%
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-12 h-16 md:h-20 bg-black/10 backdrop-blur-md md:bg-transparent border-b border-white/5 md:border-b-0 transition-all duration-300">
@@ -147,9 +51,20 @@ export default function Home() {
           <Image src="/assets/vayo-logo.png" alt="VAYO Logo" width={90} height={24} className="h-5 md:h-6 w-auto group-hover:scale-105 group-hover:brightness-110 transition-all duration-300" priority />
         </Link>
         <div className="flex items-center">
-          <Link href="/join" className="flex items-center justify-center decoration-none px-4 md:px-5 py-2 md:py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/8 shadow-lg text-white text-xs md:text-sm font-semibold hover:bg-white/10 hover:border-white/20 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition-all duration-300 whitespace-nowrap">
-            Join Our Community ↗
-          </Link>
+          <button
+            onClick={handleNavJoinClick}
+            disabled={isNavigating}
+            className="flex items-center justify-center decoration-none px-4 md:px-5 py-2 md:py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/8 shadow-lg text-white text-xs md:text-sm font-semibold hover:bg-white/10 hover:border-white/20 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition-all duration-300 whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {isNavigating ? (
+              <span className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                Loading...
+              </span>
+            ) : (
+              "Join Our Community ↗"
+            )}
+          </button>
         </div>
       </nav>
 
@@ -181,8 +96,19 @@ export default function Home() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <button type="submit" className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap">
-              Join waitlist &rarr;
+            <button
+              type="submit"
+              disabled={isNavigating}
+              className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed"
+            >
+              {isNavigating ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
+                  Processing...
+                </>
+              ) : (
+                "Join waitlist \u2192"
+              )}
             </button>
           </form>
         </div>
@@ -304,8 +230,19 @@ export default function Home() {
               onChange={(e) => setBottomEmail(e.target.value)}
               required
             />
-            <button type="submit" className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap">
-              Join waitlist &rarr;
+            <button
+              type="submit"
+              disabled={isNavigating}
+              className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed"
+            >
+              {isNavigating ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
+                  Processing...
+                </>
+              ) : (
+                "Join waitlist \u2192"
+              )}
             </button>
           </form>
         </section>

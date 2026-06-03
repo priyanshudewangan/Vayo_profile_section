@@ -9,6 +9,7 @@ function JoinFormContent() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState(() => searchParams.get("email") || "");
   const [interest, setInterest] = useState(() => searchParams.get("interest") || "");
+  const [iframeLoading, setIframeLoading] = useState(true);
 
   useEffect(() => {
     const scriptId = "tally-js";
@@ -70,10 +71,18 @@ function JoinFormContent() {
             </p>
 
             {/* Embedded Tally Form */}
-            <div className="w-full min-h-[450px]">
+            <div className="w-full min-h-[450px] relative">
+              {iframeLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-transparent z-20">
+                  <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
+                  <span className="text-xs text-white/50 tracking-wider font-medium animate-pulse">Loading secure form...</span>
+                </div>
+              )}
               <iframe
                 key={tallyUrl} // Triggers iframe reload if the email prefill state changes
+                src={tallyUrl}
                 data-tally-src={tallyUrl}
+                onLoad={() => setIframeLoading(false)}
                 loading="lazy"
                 width="100%"
                 height="450"
@@ -81,7 +90,7 @@ function JoinFormContent() {
                 marginHeight="0"
                 marginWidth="0"
                 title="VAYO - Let's Do It 💙"
-                className="w-full border-0"
+                className={`w-full border-0 transition-opacity duration-500 ${iframeLoading ? "opacity-0" : "opacity-100"}`}
               ></iframe>
               <div className="text-center mt-4">
                 <a

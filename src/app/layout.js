@@ -25,6 +25,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link rel="preconnect" href="https://tally.so" />
+        <link rel="dns-prefetch" href="https://tally.so" />
+      </head>
       <body className={`${inter.className} bg-[#050508] text-[#F0F0FF] overflow-x-hidden min-h-screen relative`}>
         <BackgroundVideo />
         {children}
