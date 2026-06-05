@@ -1,8 +1,8 @@
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import BackgroundVideo from "@/components/BackgroundVideo";
 
-const inter = Inter({ subsets: ["latin"] });
+const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
 export const metadata = {
   title: "VAYO - Let's do it",
@@ -29,7 +29,7 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://tally.so" />
         <link rel="dns-prefetch" href="https://tally.so" />
       </head>
-      <body className={`${inter.className} bg-[#050508] text-[#F0F0FF] overflow-x-hidden min-h-screen relative`}>
+      <body className={`${plusJakartaSans.className} bg-[#050508] text-[#F0F0FF] overflow-x-hidden min-h-screen relative`}>
         <BackgroundVideo />
         {children}
       </body>

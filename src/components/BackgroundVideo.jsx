@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 export default function BackgroundVideo() {
   const pathname = usePathname();
 
-  // Do not render the background video on the /join page to prevent heavy memory/GPU usage
-  // which causes mobile browsers to kill/refresh the tab, losing user inputs in the iframe.
-  if (pathname === "/join") {
+  // Do not render the background video on the /join or /askvayo/vayo pages to prevent heavy memory/GPU usage
+  // and to allow clean layouts.
+  if (pathname === "/join" || pathname === "/askvayo/vayo") {
     return null;
   }
 

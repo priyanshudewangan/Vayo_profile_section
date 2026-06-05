@@ -166,6 +166,11 @@
   background-size: 20px 20px;
 }
 
+@utility bg-dot-grid-light {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
 @keyframes float-slow-1 {
   0%, 100% { transform: translate(0px, 0px) scale(1); }
   50% { transform: translate(25px, -25px) scale(1.1); }

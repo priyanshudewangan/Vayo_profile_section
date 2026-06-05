@@ -13,21 +13,134 @@ export default function Home() {
 
   // Navigation loading feedback state
   const [isNavigating, setIsNavigating] = useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
 
-  // Preloader disabled for instant page load
+  // Password collection states
+  const [showCreatePasswordModal, setShowCreatePasswordModal] = useState(false);
+  const [showEnterPasswordModal, setShowEnterPasswordModal] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+
+  const checkWaitlistStatus = async (targetEmail) => {
+    if (!targetEmail) return;
+    if (!targetEmail.includes("@")) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+    setIsNavigating(true);
+    setPasswordError("");
+    setPasswordInput("");
+    setConfirmPasswordInput("");
+    try {
+      const response = await fetch(`/api/check-status?email=${encodeURIComponent(targetEmail)}`);
+      if (!response.ok) {
+        throw new Error("Failed to check status");
+      }
+      const data = await response.json();
+      if (data.status === "approved") {
+        setPendingEmail(targetEmail);
+        setIsNavigating(false);
+        if (data.hasPassword) {
+          setShowEnterPasswordModal(true);
+        } else {
+          setShowCreatePasswordModal(true);
+        }
+      } else if (data.status === "pending") {
+        setPendingEmail(targetEmail);
+        setShowPendingModal(true);
+        setIsNavigating(false);
+      } else {
+        // Unregistered, redirect to join
+        router.push(`/join?email=${encodeURIComponent(targetEmail)}`);
+      }
+    } catch (error) {
+      console.error("Error checking waitlist status:", error);
+      alert("Something went wrong checking status. Please try again.");
+      setIsNavigating(false);
+    }
+  };
+
+  const handleCreatePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!passwordInput || !confirmPasswordInput) {
+      setPasswordError("Both password fields are required.");
+      return;
+    }
+    if (passwordInput.length < 6) {
+      setPasswordError("Password must be at least 6 characters long.");
+      return;
+    }
+    if (passwordInput !== confirmPasswordInput) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+    setPasswordError("");
+    try {
+      const response = await fetch("/api/set-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: pendingEmail, password: passwordInput })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem("vayo_user_email", pendingEmail);
+        setShowCreatePasswordModal(false);
+        router.push(`/profile?email=${encodeURIComponent(pendingEmail)}`);
+      } else {
+        setPasswordError(data.error || "Failed to set password.");
+      }
+    } catch (err) {
+      console.error("Network error setting password:", err);
+      setPasswordError("Network error setting password.");
+    } finally {
+      setIsSubmittingPassword(false);
+    }
+  };
+
+  const handleVerifyPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!passwordInput) {
+      setPasswordError("Password is required.");
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+    setPasswordError("");
+    try {
+      const response = await fetch("/api/verify-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: pendingEmail, password: passwordInput })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem("vayo_user_email", pendingEmail);
+        setShowEnterPasswordModal(false);
+        router.push(`/profile?email=${encodeURIComponent(pendingEmail)}`);
+      } else {
+        setPasswordError(data.error || "Incorrect password.");
+      }
+    } catch (err) {
+      console.error("Network error verifying password:", err);
+      setPasswordError("Network error verifying password.");
+    } finally {
+      setIsSubmittingPassword(false);
+    }
+  };
 
   const handleEmailSubmit = (e) => {
     e.preventDefault();
-    if (!email || isNavigating) return;
-    setIsNavigating(true);
-    router.push(`/join?email=${encodeURIComponent(email)}`);
+    checkWaitlistStatus(email);
   };
 
   const handleBottomEmailSubmit = (e) => {
     e.preventDefault();
-    if (!bottomEmail || isNavigating) return;
-    setIsNavigating(true);
-    router.push(`/join?email=${encodeURIComponent(bottomEmail)}`);
+    checkWaitlistStatus(bottomEmail);
   };
 
   const handleNavJoinClick = (e) => {
@@ -107,7 +220,7 @@ export default function Home() {
                   Processing...
                 </>
               ) : (
-                "Join waitlist \u2192"
+                "Join VAYO \u2192"
               )}
             </button>
           </form>
@@ -241,7 +354,7 @@ export default function Home() {
                   Processing...
                 </>
               ) : (
-                "Join waitlist \u2192"
+                "Join VAYO \u2192"
               )}
             </button>
           </form>
@@ -327,6 +440,306 @@ export default function Home() {
           </div>
         </footer>
       </div>
+
+      {/* Pending Approval Modal */}
+      {showPendingModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300 animate-in fade-in duration-300">
+          <div className="relative bg-[#09090b]/95 border border-white/10 rounded-3xl p-7 max-w-md w-full shadow-[0_24px_64px_rgba(0,0,0,0.8)] text-left text-white overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Glowing Accent Blobs */}
+            <div className="absolute -top-20 -left-20 w-44 h-44 bg-sky-500/10 rounded-full blur-[60px] pointer-events-none z-0" />
+            <div className="absolute -bottom-20 -right-20 w-44 h-44 bg-sky-500/5 rounded-full blur-[60px] pointer-events-none z-0" />
+
+            <div className="relative z-10">
+              {/* Header: Logo and Live Status Pill */}
+              <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5">
+                <Image src="/assets/vayo-logo.png" alt="VAYO" width={90} height={24} className="h-5 w-auto" />
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold tracking-wider bg-sky-500/10 border border-sky-500/20 text-sky-400">
+                  <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse" />
+                  Reviewing Application
+                </span>
+              </div>
+
+              {/* Title & Description */}
+              <h3 className="text-base font-bold tracking-tight text-white mb-2">
+                Verification in progress
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed font-normal mb-5">
+                VAYO is a vetted community. Our curators manually verify profiles and selfie uploads to ensure a high-trust, authentic social experience for all members.
+              </p>
+
+              {/* Application Lifecycle Checklist */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6 space-y-3.5">
+                {/* Step 1: Completed */}
+                <div className="flex items-start gap-3">
+                  <div className="w-4.5 h-4.5 rounded-full bg-sky-500/10 border border-sky-400/30 flex items-center justify-center text-sky-400 text-[9px] font-bold shrink-0 mt-0.5">
+                    ✓
+                  </div>
+                  <div className="leading-tight">
+                    <span className="text-[11px] font-bold text-slate-200 block">Request Received</span>
+                    <span className="text-[9.5px] text-slate-500 font-mono block mt-0.5 select-all">{pendingEmail}</span>
+                  </div>
+                </div>
+
+                {/* Step 2: In Progress */}
+                <div className="flex items-start gap-3">
+                  <div className="w-4.5 h-4.5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse" />
+                  </div>
+                  <div className="leading-tight">
+                    <span className="text-[11px] font-bold text-slate-200">Selfie & Authenticity Audit</span>
+                    <span className="text-[9.5px] text-sky-400/80 font-bold block mt-0.5">In manual curator queue</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowPendingModal(false)}
+                className="w-full bg-white hover:bg-neutral-100 text-slate-950 font-bold text-xs py-2.5 px-4 rounded-xl shadow-sm transition-all duration-200 cursor-pointer text-center"
+              >
+                Return to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Password Modal */}
+      {showCreatePasswordModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300 animate-in fade-in duration-300">
+          <div className="relative bg-[#09090b]/95 border border-white/10 rounded-3xl p-7 max-w-md w-full shadow-[0_24px_64px_rgba(0,0,0,0.8)] text-left text-white overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Glowing Accent Blobs */}
+            <div className="absolute -top-20 -left-20 w-44 h-44 bg-sky-500/10 rounded-full blur-[60px] pointer-events-none z-0" />
+            <div className="absolute -bottom-20 -right-20 w-44 h-44 bg-sky-500/5 rounded-full blur-[60px] pointer-events-none z-0" />
+
+            <div className="relative z-10">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5">
+                <Image src="/assets/vayo-logo.png" alt="VAYO" width={90} height={24} className="h-5 w-auto" />
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold tracking-wider bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                  Approved Access
+                </span>
+              </div>
+
+              {/* Title & Description */}
+              <h3 className="text-base font-bold tracking-tight text-white mb-2">
+                Secure your profile
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed font-normal mb-5">
+                Your waitlist registration is approved! Please set a password below to secure your VAYO early access account.
+              </p>
+
+              {/* Form */}
+              <form onSubmit={handleCreatePasswordSubmit} className="space-y-4">
+                {/* Inputs Grouped inside a unified card */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Create Password</label>
+                    <input
+                      type="password"
+                      placeholder="Min. 6 characters"
+                      required
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-sky-500/50 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Confirm Password</label>
+                    <input
+                      type="password"
+                      placeholder="Repeat your password"
+                      required
+                      value={confirmPasswordInput}
+                      onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                      className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-sky-500/50 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Interactive Security Checklist */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-5 space-y-3.5">
+                  {/* Step 1: Identity Approved */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-4.5 h-4.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 text-[9px] font-bold shrink-0 mt-0.5">
+                      ✓
+                    </div>
+                    <div className="leading-tight">
+                      <span className="text-[11px] font-bold text-slate-200 block">Identity Approved</span>
+                      <span className="text-[9.5px] text-slate-500 font-mono block mt-0.5 select-all">{pendingEmail}</span>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Password Length Check */}
+                  <div className="flex items-start gap-3">
+                    {passwordInput.length >= 6 ? (
+                      <div className="w-4.5 h-4.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 text-[9px] font-bold shrink-0 mt-0.5 transition-all">
+                        ✓
+                      </div>
+                    ) : (
+                      <div className="w-4.5 h-4.5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5 transition-all">
+                        <span className="w-1.5 h-1.5 bg-slate-500 rounded-full" />
+                      </div>
+                    )}
+                    <div className="leading-tight">
+                      <span className={`text-[11px] font-bold block transition-colors ${passwordInput.length >= 6 ? 'text-slate-200' : 'text-slate-400'}`}>Security Threshold</span>
+                      <span className="text-[9.5px] text-slate-500 block mt-0.5">Password must be at least 6 characters</span>
+                    </div>
+                  </div>
+
+                  {/* Step 3: Match Check */}
+                  <div className="flex items-start gap-3">
+                    {(passwordInput === confirmPasswordInput && passwordInput.length > 0) ? (
+                      <div className="w-4.5 h-4.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 text-[9px] font-bold shrink-0 mt-0.5 transition-all">
+                        ✓
+                      </div>
+                    ) : (
+                      <div className="w-4.5 h-4.5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5 transition-all">
+                        <span className="w-1.5 h-1.5 bg-slate-500 rounded-full" />
+                      </div>
+                    )}
+                    <div className="leading-tight">
+                      <span className={`text-[11px] font-bold block transition-colors ${(passwordInput === confirmPasswordInput && passwordInput.length > 0) ? 'text-slate-200' : 'text-slate-400'}`}>Identity Confirmation</span>
+                      <span className="text-[9.5px] text-slate-500 block mt-0.5">Both passwords must match exactly</span>
+                    </div>
+                  </div>
+                </div>
+
+                {passwordError && (
+                  <p className="text-[10.5px] font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5 text-center">
+                    {passwordError}
+                  </p>
+                )}
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatePasswordModal(false)}
+                    className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingPassword || passwordInput.length < 6 || passwordInput !== confirmPasswordInput}
+                    className="flex-1 bg-white hover:bg-neutral-100 text-slate-950 font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {isSubmittingPassword ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      "Set Password & Enter"
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enter Password Modal */}
+      {showEnterPasswordModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300 animate-in fade-in duration-300">
+          <div className="relative bg-[#09090b]/95 border border-white/10 rounded-3xl p-7 max-w-md w-full shadow-[0_24px_64px_rgba(0,0,0,0.8)] text-left text-white overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Glowing Accent Blobs */}
+            <div className="absolute -top-20 -left-20 w-44 h-44 bg-sky-500/10 rounded-full blur-[60px] pointer-events-none z-0" />
+            <div className="absolute -bottom-20 -right-20 w-44 h-44 bg-sky-500/5 rounded-full blur-[60px] pointer-events-none z-0" />
+
+            <div className="relative z-10">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5">
+                <Image src="/assets/vayo-logo.png" alt="VAYO" width={90} height={24} className="h-5 w-auto" />
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold tracking-wider bg-sky-500/10 border border-sky-500/20 text-sky-400">
+                  <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse" />
+                  Approved Access
+                </span>
+              </div>
+
+              {/* Title & Description */}
+              <h3 className="text-base font-bold tracking-tight text-white mb-2">
+                Verify credentials
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed font-normal mb-5">
+                Please authenticate with your VAYO profile password to retrieve your mixer tickets and connection lists.
+              </p>
+
+              {/* Form */}
+              <form onSubmit={handleVerifyPasswordSubmit} className="space-y-4">
+                {/* Input inside card */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-1">
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Password</label>
+                  <input
+                    type="password"
+                    placeholder="Enter your password"
+                    required
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-sky-500/50 transition-all"
+                  />
+                </div>
+
+                {/* Verification Progress Checklist */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-5 space-y-3.5">
+                  {/* Step 1: Registered Member */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-4.5 h-4.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 text-[9px] font-bold shrink-0 mt-0.5">
+                      ✓
+                    </div>
+                    <div className="leading-tight">
+                      <span className="text-[11px] font-bold text-slate-200 block">Registered Member</span>
+                      <span className="text-[9.5px] text-slate-500 font-mono block mt-0.5 select-all">{pendingEmail}</span>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Verification */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-4.5 h-4.5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse" />
+                    </div>
+                    <div className="leading-tight">
+                      <span className="text-[11px] font-bold text-slate-200">Security Credentials</span>
+                      <span className="text-[9.5px] text-sky-400/80 font-bold block mt-0.5">Waiting for authentication</span>
+                    </div>
+                  </div>
+                </div>
+
+                {passwordError && (
+                  <p className="text-[10.5px] font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5 text-center">
+                    {passwordError}
+                  </p>
+                )}
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowEnterPasswordModal(false)}
+                    className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingPassword || !passwordInput}
+                    className="flex-1 bg-white hover:bg-neutral-100 text-slate-950 font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {isSubmittingPassword ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      "Confirm & Log In"
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
