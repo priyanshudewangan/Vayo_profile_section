@@ -774,7 +774,7 @@ function ProfileContent() {
       )}
 
       <div className="max-w-[1140px] mx-auto relative z-10">
-        
+
         {/* Banner for Demo Mode or loading */}
         {isLoadingUser && (
           <div className="bg-white/40 backdrop-blur-md border border-white/50 rounded-2xl p-4 mb-6 text-center text-xs font-bold flex items-center justify-center gap-2.5">
@@ -855,32 +855,6 @@ function ProfileContent() {
               </button>
             </div>
 
-            {/* Persona Switchers */}
-            <div className="flex items-center gap-1.5 border-l border-white/30 pl-3">
-              {personas.map((p, idx) => {
-                const isActive = idx === activeIdx;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      setActiveIdx(idx);
-                      triggerToast(`Switched profile to ${p.name}!`);
-                    }}
-                    className={`relative w-8 h-8 rounded-full overflow-hidden transition-all duration-300 border bg-neutral-900 cursor-pointer ${isActive
-                      ? 'border-[#0ea5e9] ring-2 ring-[#0ea5e9]/20 scale-105 shadow-sm'
-                      : 'border-white/30 hover:border-white/60 opacity-60 hover:opacity-100'
-                      }`}
-                    title={p.name}
-                  >
-                    <img
-                      src={p.image}
-                      alt={p.name}
-                      className={`w-full h-full object-cover ${!isActive && 'grayscale brightness-90'}`}
-                    />
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </header>
 
@@ -955,7 +929,7 @@ function ProfileContent() {
                     }`}
                 >
                   <Calendar className={`w-4 h-4 ${activeSidebarTab === 'mixers' ? theme.textAccent : 'text-neutral-400'}`} />
-                  <span>Mixer Center</span>
+                  <span>Events</span>
                 </button>
 
                 {/* Menu: Captured Moments */}
@@ -1116,8 +1090,8 @@ function ProfileContent() {
                                 }
                               }}
                               className={`p-3.5 rounded-2xl border transition-all duration-300 flex items-center gap-3.5 cursor-pointer hover:-translate-y-0.5 select-none ${isUnlocked
-                                  ? 'bg-neutral-50/70 border-neutral-200/60 hover:bg-neutral-50 hover:border-neutral-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.02)]'
-                                  : 'bg-neutral-50/30 border-neutral-100/50 opacity-40 hover:opacity-50'
+                                ? 'bg-neutral-50/70 border-neutral-200/60 hover:bg-neutral-50 hover:border-neutral-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.02)]'
+                                : 'bg-neutral-50/30 border-neutral-100/50 opacity-40 hover:opacity-50'
                                 }`}
                             >
                               <div className="w-11 h-11 rounded-full bg-white border border-neutral-100 flex items-center justify-center text-xl shadow-sm shrink-0">
