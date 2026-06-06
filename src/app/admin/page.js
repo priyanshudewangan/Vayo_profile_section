@@ -700,19 +700,19 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="overflow-x-auto scrollbar-hide">
-              <table className="w-full text-left border-collapse min-w-[1000px]">
-                <thead>
-                  <tr className="border-b border-slate-200 text-[10px] text-slate-400 uppercase font-extrabold tracking-wider">
-                    <th className="pb-4 pl-4">Applicant Profile</th>
-                    <th className="pb-4">Details</th>
-                    <th className="pb-4">Selected Vibes</th>
-                    <th className="pb-4">Selfie</th>
-                    <th className="pb-4">Registered Date</th>
-                    <th className="pb-4">Transmission Status</th>
-                    <th className="pb-4 pr-4 text-right">Console Triggers</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
+              <div className="min-w-[1100px] pb-4">
+                {/* Clean Column Headers Bar */}
+                <div className="grid grid-cols-12 gap-4 px-6 mb-4 text-[10px] text-slate-400 uppercase font-extrabold tracking-wider">
+                  <div className="col-span-3">Applicant Profile</div>
+                  <div className="col-span-2">Contact Details</div>
+                  <div className="col-span-2">Selected Vibes</div>
+                  <div className="col-span-1 text-center">Selfie</div>
+                  <div className="col-span-2">Registration</div>
+                  <div className="col-span-2 text-right">Actions</div>
+                </div>
+
+                {/* Cards List */}
+                <div className="space-y-3">
                   {filteredEmails.map((item) => {
                     const isSent = item.status === "Sent";
                     const isSending = sendingEmailMap[item.email] || false;
@@ -733,26 +733,28 @@ export default function AdminDashboard() {
                     const isCurrentCopied = copiedEmail === item.email;
 
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50/40 transition-all duration-300 group">
-                        
-                        {/* Column 1: Profile & Email */}
-                        <td className="py-4 pl-4 flex items-center gap-3">
+                      <div 
+                        key={item.id} 
+                        className="bg-white border border-slate-100 rounded-2xl p-5 hover:border-slate-200 hover:shadow-[0_8px_30px_rgba(15,23,42,0.03)] transition-all duration-300 grid grid-cols-12 items-center gap-4 group"
+                      >
+                        {/* Column 1: Applicant Profile */}
+                        <div className="col-span-3 flex items-center gap-3.5 min-w-0">
                           {/* Circle Avatar with gradients */}
-                          <div className={`w-9 h-9 rounded-full bg-gradient-to-tr ${avatarGrad} flex items-center justify-center text-slate-900 text-xs font-black select-none shadow-[0_2px_8px_rgba(0,0,0,0.08)] shrink-0`}>
+                          <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${avatarGrad} flex items-center justify-center text-slate-900 text-xs font-black select-none shadow-[0_2px_8px_rgba(0,0,0,0.06)] shrink-0`}>
                             {initials}
                           </div>
                           
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-semibold text-slate-900 group-hover:text-sky-600 transition-colors duration-200">
+                          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                            <span className="font-bold text-slate-900 group-hover:text-sky-600 transition-colors duration-200 truncate block text-sm">
                               {item.name || "Anonymous"}
                             </span>
-                            <span className="text-[10px] text-slate-500 font-mono">
+                            <span className="text-[10px] text-slate-400 font-mono truncate block select-all">
                               {item.email}
                             </span>
-                            <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                               <button
                                 onClick={() => handleCopyEmail(item.email)}
-                                className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1 w-max transition-colors cursor-pointer"
+                                className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors cursor-pointer"
                               >
                                 {isCurrentCopied ? (
                                   <>
@@ -768,51 +770,49 @@ export default function AdminDashboard() {
                               </button>
                               {item.instagram && (
                                 <>
-                                  <span className="text-slate-300">•</span>
+                                  <span className="text-slate-300 text-[9px]">•</span>
                                   <a
                                     href={`https://instagram.com/${item.instagram.replace('@', '')}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[10px] text-sky-500 hover:text-sky-600 font-medium flex items-center gap-0.5"
+                                    className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-sky-50 text-[9px] text-sky-600 font-bold hover:bg-sky-100 transition-colors"
                                   >
-                                    <Instagram className="w-3 h-3" />
+                                    <Instagram className="w-2.5 h-2.5" />
                                     <span>{item.instagram}</span>
                                   </a>
                                 </>
                               )}
                             </div>
                           </div>
-                        </td>
+                        </div>
 
-                        {/* Column 2: Phone & Age */}
-                        <td className="py-4 text-slate-600">
-                          <div className="flex flex-col gap-0.5">
-                            {item.phone ? (
-                              <span className="font-medium flex items-center gap-1">
-                                <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                {item.phone}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-slate-400 italic">No phone</span>
-                            )}
-                            {item.birthdate ? (
-                              <span className="text-[10px] text-slate-400 font-medium">
-                                {getAge(item.birthdate)} ({item.birthdate})
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-400 font-medium italic">No DOB</span>
-                            )}
-                          </div>
-                        </td>
+                        {/* Column 2: Contact Details */}
+                        <div className="col-span-2 flex flex-col gap-1 text-slate-600">
+                          {item.phone ? (
+                            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                              <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              {item.phone}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">No phone</span>
+                          )}
+                          {item.birthdate ? (
+                            <span className="text-[10px] text-slate-400 font-semibold pl-5">
+                              {getAge(item.birthdate)} y/o • {item.birthdate}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-semibold pl-5 italic">No DOB</span>
+                          )}
+                        </div>
 
                         {/* Column 3: Vibes / Interests */}
-                        <td className="py-4 max-w-[200px]">
-                          <div className="flex flex-wrap gap-1">
+                        <div className="col-span-2">
+                          <div className="flex flex-wrap gap-1 max-h-[72px] overflow-y-auto pr-1 scrollbar-thin">
                             {item.interests && item.interests.length > 0 ? (
                               item.interests.map((interest) => (
                                 <span
                                   key={interest}
-                                  className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[9px] text-slate-600 font-semibold truncate"
+                                  className="px-2 py-0.5 rounded-full bg-slate-50 border border-slate-100 text-[9px] text-slate-600 font-bold truncate max-w-[120px] select-none hover:bg-slate-100 transition-colors"
                                   title={interest}
                                 >
                                   {interest}
@@ -822,66 +822,60 @@ export default function AdminDashboard() {
                               <span className="text-xs text-slate-400 italic">None</span>
                             )}
                           </div>
-                        </td>
+                        </div>
 
                         {/* Column 4: Selfie preview */}
-                        <td className="py-4">
+                        <div className="col-span-1 flex justify-center">
                           {item.selfie_url ? (
                             <div
                               onClick={() => setZoomedSelfie(item.selfie_url)}
-                              className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 shadow-sm cursor-pointer group/selfie shrink-0"
+                              className="relative w-9 h-9 rounded-xl overflow-hidden border border-slate-200 shadow-sm cursor-pointer group/selfie shrink-0"
                             >
                               <img src={item.selfie_url} alt="Selfie" className="w-full h-full object-cover group-hover/selfie:scale-105 transition-transform duration-300" />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/selfie:opacity-100 flex items-center justify-center transition-opacity duration-300">
-                                <Eye className="w-4 h-4 text-white" />
+                                <Eye className="w-3.5 h-3.5 text-white" />
                               </div>
                             </div>
                           ) : (
                             <span className="text-xs text-slate-400 italic">No selfie</span>
                           )}
-                        </td>
+                        </div>
 
-                        {/* Column 5: Registered Date */}
-                        <td className="py-4 text-slate-500">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-medium">{formattedDate}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              {formattedTime} • {getRelativeTime(item.created_at)}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Column 6: Status Badge */}
-                        <td className="py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${
+                        {/* Column 5: Registration Details */}
+                        <div className="col-span-2 flex flex-col gap-0.5">
+                          <span className="font-bold text-slate-800 text-[11px]">{formattedDate}</span>
+                          <span className="text-[9.5px] text-slate-400 font-medium">
+                            {formattedTime} • {getRelativeTime(item.created_at)}
+                          </span>
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider mt-2 w-max border ${
                             isSent 
-                              ? "bg-emerald-50 border border-emerald-100 text-emerald-600" 
-                              : "bg-amber-50 border border-amber-100 text-amber-600"
+                              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600" 
+                              : "bg-amber-500/10 border-amber-500/20 text-amber-600"
                           }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isSent ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`}></span>
+                            <span className={`w-1 h-1 rounded-full ${isSent ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`}></span>
                             {isSent ? "Sent" : "Pending"}
                           </span>
-                        </td>
+                        </div>
 
-                        {/* Column 7: Action Buttons */}
-                        <td className="py-4 pr-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        {/* Column 6: Action Buttons / Console Triggers */}
+                        <div className="col-span-2 text-right">
+                          <div className="flex flex-col gap-1.5 w-full max-w-[130px] ml-auto">
                             {/* Direct Database Approval Toggle */}
                             <button
                               onClick={() => handleToggleApproval(item.email, isSent ? "Pending" : "Sent")}
                               disabled={togglingStatusMap[item.email]}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all duration-200 cursor-pointer border select-none ${
+                              className={`w-full py-1.5 rounded-xl text-[10px] font-bold transition-all duration-200 cursor-pointer border select-none ${
                                 isSent
                                   ? "bg-rose-500/10 border-rose-500/20 text-rose-500 hover:bg-rose-500/20"
                                   : "bg-emerald-500/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20"
                               } disabled:opacity-50`}
                             >
                               {togglingStatusMap[item.email] ? (
-                                <span className="w-2.5 h-2.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                                <span className="w-2.5 h-2.5 border-2 border-current border-t-transparent rounded-full animate-spin inline-block vertical-middle"></span>
                               ) : isSent ? (
-                                <span>Unapprove</span>
+                                "Unapprove"
                               ) : (
-                                <span>Direct Approve</span>
+                                "Direct Approve"
                               )}
                             </button>
 
@@ -889,10 +883,10 @@ export default function AdminDashboard() {
                             <button
                               onClick={() => handleSendInvite(item.email)}
                               disabled={isSending}
-                              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[10px] font-bold transition-all duration-200 cursor-pointer border select-none ${
+                              className={`w-full py-1.5 rounded-xl text-[10px] font-bold transition-all duration-200 cursor-pointer border select-none flex items-center justify-center gap-1 ${
                                 isSent
-                                  ? "bg-slate-50 border-slate-200 text-slate-550 hover:bg-slate-100 hover:text-slate-700"
-                                  : "bg-sky-500 border-sky-600 text-white hover:bg-sky-600 hover:shadow-[0_4px_12px_rgba(14,165,233,0.15)]"
+                                  ? "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                                  : "bg-sky-500 border-sky-600 text-white hover:bg-sky-600 hover:shadow-sm"
                               } disabled:opacity-50 disabled:cursor-not-allowed`}
                             >
                               {isSending ? (
@@ -902,23 +896,24 @@ export default function AdminDashboard() {
                                 </>
                               ) : isSent ? (
                                 <>
-                                  <RefreshCw className="w-3 h-3" />
-                                  <span>Resend</span>
+                                  <RefreshCw className="w-2.5 h-2.5" />
+                                  <span>Resend Invite</span>
                                 </>
                               ) : (
                                 <>
-                                  <Mail className="w-3 h-3" />
+                                  <Mail className="w-2.5 h-2.5" />
                                   <span>Mail Onboarding</span>
                                 </>
                               )}
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                        </div>
+
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
           )}
         </main>
