@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   ShieldCheck,
@@ -788,9 +789,9 @@ function ProfileContent() {
               <span className="w-2 h-2 bg-sky-500 rounded-full animate-pulse shrink-0" />
               <span>Viewing in **Demo Mode** (Previewing profiles). Connect an approved waitlist email to view your personal dashboard.</span>
             </div>
-            <a href="/" className="px-4 py-1.5 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 font-bold rounded-xl transition-all shadow-sm">
+            <Link href="/" className="px-4 py-1.5 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 font-bold rounded-xl transition-all shadow-sm">
               Sign In / Apply ↗
-            </a>
+            </Link>
           </div>
         )}
 

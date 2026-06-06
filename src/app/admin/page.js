@@ -140,15 +140,6 @@ export default function AdminDashboard() {
     }, 4000);
   };
 
-  // Verify authentication on component load (stored in session storage)
-  useEffect(() => {
-    const cachedPassword = sessionStorage.getItem("vayo_admin_token");
-    if (cachedPassword) {
-      setPassword(cachedPassword);
-      fetchEmails(cachedPassword);
-    }
-  }, []);
-
   const fetchEmails = async (token, isRefresh = false) => {
     setIsLoading(true);
     try {
@@ -180,6 +171,17 @@ export default function AdminDashboard() {
       setIsLoading(false);
     }
   };
+
+  // Verify authentication on component load (stored in session storage)
+  useEffect(() => {
+    const cachedPassword = sessionStorage.getItem("vayo_admin_token");
+    if (cachedPassword) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPassword(cachedPassword);
+      fetchEmails(cachedPassword);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
