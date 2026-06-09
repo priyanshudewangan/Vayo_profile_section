@@ -8,7 +8,7 @@ export const metadata = {
   title: "VAYO - Let's do it",
   description: "VAYO Powered by Laneway. Discover people who match your vibe. No searching.Just belonging.",
   icons: {
-    icon: "/favicon.svg",
+    icon: "/favicon.png",
   },
   openGraph: {
     type: "website",
