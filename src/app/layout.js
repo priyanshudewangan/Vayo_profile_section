@@ -7,6 +7,9 @@ const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 export const metadata = {
   title: "VAYO - Let's do it",
   description: "VAYO Powered by Laneway. Discover people who match your vibe. No searching.Just belonging.",
+  icons: {
+    icon: "/favicon.svg",
+  },
   openGraph: {
     type: "website",
     url: "https://www.askvayo.com/",
