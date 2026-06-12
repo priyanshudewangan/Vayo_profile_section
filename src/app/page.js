@@ -37,7 +37,14 @@ export default function Home() {
     try {
       const response = await fetch(`/api/check-status?email=${encodeURIComponent(targetEmail)}`);
       if (!response.ok) {
-        throw new Error("Failed to check status");
+        let errMsg = "Failed to check status";
+        try {
+          const errData = await response.json();
+          if (errData && errData.error) {
+            errMsg = errData.error;
+          }
+        } catch (_) {}
+        throw new Error(errMsg);
       }
       const data = await response.json();
       if (data.status === "approved") {
@@ -89,6 +96,9 @@ export default function Home() {
       const data = await response.json();
       if (response.ok) {
         localStorage.setItem("vayo_user_email", pendingEmail);
+        if (data.token) {
+          localStorage.setItem("vayo_jwt_token", data.token);
+        }
         setShowCreatePasswordModal(false);
         router.push(`/profile?email=${encodeURIComponent(pendingEmail)}`);
       } else {
@@ -120,6 +130,9 @@ export default function Home() {
       const data = await response.json();
       if (response.ok) {
         localStorage.setItem("vayo_user_email", pendingEmail);
+        if (data.token) {
+          localStorage.setItem("vayo_jwt_token", data.token);
+        }
         setShowEnterPasswordModal(false);
         router.push(`/profile?email=${encodeURIComponent(pendingEmail)}`);
       } else {

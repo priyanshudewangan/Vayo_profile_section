@@ -10,7 +10,7 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized access." }, { status: 401 });
     }
 
-    // Fetch waitlist emails from Supabase ordered by date
+    // Fetch waitlist details directly from Supabase
     const { data, error } = await supabase
       .from("waitlist")
       .select("*")

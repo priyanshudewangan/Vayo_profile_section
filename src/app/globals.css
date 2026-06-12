@@ -205,3 +205,105 @@
 @utility rotate-y-180 {
   transform: rotateY(180deg);
 }
+
+/* Avatar gradient ring with pulsing animation */
+.avatar-ring {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 9999px;
+  background: conic-gradient(var(--color-accent) 0deg, transparent 360deg);
+  animation: rotateRing 8s linear infinite;
+}
+.avatar-ring::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 9999px;
+  background: var(--color-background);
+}
+@keyframes rotateRing {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Pulsing status dot with double-ring ping */
+.status-dot {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  background: var(--color-accent);
+  border-radius: 9999px;
+  box-shadow: 0 0 0 2px var(--color-background);
+  animation: pulseStatus 2s infinite;
+}
+.status-dot::before, .status-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid var(--color-accent);
+  opacity: 0;
+  animation: ping 2s infinite;
+}
+.status-dot::after { animation-delay: 1s; }
+@keyframes pulseStatus {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.9); }
+}
+@keyframes ping {
+  0% { opacity: 0.6; transform: scale(0.6); }
+  70% { opacity: 0; transform: scale(1.4); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+
+/* Tooltip styling */
+.tooltip {
+  position: absolute;
+  z-index: 10;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  font-size: 0.75rem;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.has-tooltip:hover .tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Badge lock overlay with frost effect */
+.badge-locked {
+  filter: grayscale(100%);
+  position: relative;
+  overflow: hidden;
+}
+.badge-locked::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+/* Gradient bounce for upload zone */
+.upload-zone {
+  border: 2px dashed var(--color-accent);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+  transition: background-color 0.3s;
+}
+.upload-zone.drag-active {
+  background: var(--color-accent)/10;
+  animation: bounce 1s infinite alternate;
+}
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4px); }
+}

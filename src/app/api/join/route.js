@@ -14,7 +14,7 @@ export async function POST(request) {
       );
     }
 
-    // Insert waitlist details into Supabase
+    // Insert details into the waitlist table
     const { data, error } = await supabase
       .from("waitlist")
       .insert([
@@ -40,6 +40,23 @@ export async function POST(request) {
         );
       }
       throw error;
+    }
+
+    // Trigger the matching background process on FastAPI backend
+    try {
+      await fetch("http://localhost:8000/api/v1/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: email,
+          bio: `Hey, I'm ${name || 'Vayo Member'}! I'm excited to join the Vayo Commune and meet people who are into ${(interests || []).join(", ")}.`,
+          interest_tags: interests || [],
+          city: "Bengaluru",
+          timezone: "Asia/Kolkata"
+        })
+      });
+    } catch (err) {
+      console.warn("FastAPI backend is offline or unreachable. Match task not registered.", err);
     }
 
     return NextResponse.json({ success: true, data }, { status: 200 });

@@ -97,7 +97,7 @@ export async function POST(request) {
       return NextResponse.json({ error: `Mail delivery failed: ${mailError.message}` }, { status: 500 });
     }
 
-    // Update waitlist email invite status in database to 'Sent'
+    // Update user invite status in database to 'Sent'
     const { error: dbError } = await supabase
       .from("waitlist")
       .update({ status: "Sent" })

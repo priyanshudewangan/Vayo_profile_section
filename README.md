@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# VAYO Commune Portal
 
-## Getting Started
+Welcome to the development repository for the VAYO Commune. VAYO is a high-vibe community platform combining online matchings and offline curated mixers.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🚀 Getting Started
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+If you are a new developer or setting up this project on your computer for the first time, please read our **[Setup &amp; Onboarding Guide](file:///Users/chata/Desktop/Vayo_temp/docs/GETTING_STARTED.md)**.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+It covers:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Git cloning and branching workflows
+- Database schemas for Supabase
+- Storage bucket configurations for selfie verification
+- Step-by-step instructions to run the main portal and the profile sub-app
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 📂 Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This project is divided into two primary workspaces:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 1. Main Portal (Next.js App Router)
 
-## Deploy on Vercel
+* **Path**: Root directory (`/`)
+* **Commands**: `npm run dev` / `npm run build`
+* **Purpose**: Waitlist landing pages, registration forms, admin interfaces, and integration APIs.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 2. Profile Sub-App (Vite + React + TS)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+* **Path**: `Profile_vayo/`
+* **Commands**: `cd Profile_vayo && npm run dev`
+* **Purpose**: Interactive user dashboard showcasing the Karma Points system, dynamic interest badges, tickets, offline circle connections, and event galleries.
+
+---
+
+## 📄 Documentation
+
+Additional guides and roadmaps are available in the `docs/` folder:
+
+* 📘 **[Setup &amp; Onboarding Guide](file:///Users/chata/Desktop/Vayo_temp/docs/GETTING_STARTED.md)** — Core local development guide.
+* 🗺️ **[VAYO Roadmap](file:///Users/chata/Desktop/Vayo_temp/docs/VAYO_ROADMAP.md)** — Interactive features plan and milestone progress.
+* 📦 **[File Structure Guide](file:///Users/chata/Desktop/Vayo_temp/docs/file_structure.md)** — Breakdown of all key folders and source files.
+* ☁️ **[Vercel Collaboration Workaround](file:///Users/chata/Desktop/Vayo_temp/docs/vercel_hobby_deployment_workaround.md)** — How to deploy private repos under Hobby plans without restrictions.
+
+---
+
+## 🛠️ CLI Reference (Root)
+
+Run the following commands in the root directory:
+
+| Command            | Action                                                                   |
+| ------------------ | ------------------------------------------------------------------------ |
+| `npm install`    | Install all dependencies for the Next.js app                             |
+| `npm run dev`    | Run Next.js portal locally on[http://localhost:3000](http://localhost:3000) |
+| `npm run build`  | Compile Next.js production build                                         |
+| `npm run deploy` | Bypass Hobby Plan restrictions and deploy to Vercel                      |
+
+*Note: For the Profile dashboard, run `npm install` and `npm run dev` inside the `Profile_vayo` folder.*
