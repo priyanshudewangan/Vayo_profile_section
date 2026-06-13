@@ -5,22 +5,22 @@ import BackgroundVideo from "@/components/BackgroundVideo";
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "VAYO - Let's do it",
-  description: "VAYO Powered by Laneway. Discover people who match your vibe. No searching.Just belonging.",
+  title: "VAYO - Let’s do it",
+  description: "VAYO Powered by Laneway. Discover people who match your vibe. No searching. Just belonging.",
   icons: {
     icon: "/favicon.png",
   },
   openGraph: {
     type: "website",
     url: "https://www.askvayo.com/",
-    title: "VAYO - Let's do it",
-    description: "Discover people who match your vibe. No searching.Just belonging.",
+    title: "VAYO - Let’s do it",
+    description: "Discover people who match your vibe. No searching. Just belonging.",
     images: [{ url: "https://www.askvayo.com/assets/og-image.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "VAYO - Let's do it",
-    description: "Discover people who match your vibe. No searching.Just belonging.",
+    title: "VAYO - Let’s do it",
+    description: "Discover people who match your vibe. No searching. Just belonging.",
     images: ["https://www.askvayo.com/assets/og-image.png"],
   },
 };
