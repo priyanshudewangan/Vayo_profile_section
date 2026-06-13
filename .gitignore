@@ -43,4 +43,6 @@ next-env.d.ts
 # agent workspace & backup
 .agent/
 Profile_vayo/
+.gemini/
+CLI_CONTINUATION.md
 

@@ -31,7 +31,9 @@ import {
   Trash2,
   CheckCircle2,
   Zap,
-  Check
+  Check,
+  ArrowLeft,
+  ArrowRight
 } from "lucide-react";
 
 const maximPersona = "/assets/maxim_persona.png";
@@ -40,6 +42,30 @@ const danielPersona = "/assets/daniel_persona.png";
 const elenaPersona = "/assets/elena_persona.png";
 const vayoLogo = "/assets/vayo-logo.png";
 const newBg = "/assets/new_bg.jpg";
+
+const staticEvents = [
+  {
+    id: 1,
+    title: '"Siempre Son Flores" Musica Cubana Salsa Jazz',
+    date: '24, Jan - 2024',
+    location: '135 W, 42nd Street, New York',
+    image: '/assets/events/something.jpg'
+  },
+  {
+    id: 2,
+    title: 'Vayo Beats Holi Colors Festival',
+    date: '15, Mar - 2024',
+    location: 'Vayo Offline Hub, Bangalore',
+    image: '/assets/events/holi.jpg'
+  },
+  {
+    id: 3,
+    title: 'Cozy Cafe Board Games Social',
+    date: '02, Apr - 2024',
+    location: 'The Cozy Cafe, Bangalore',
+    image: '/assets/events/cards.jpg'
+  }
+];
 
 const basePersonas = [
   {
@@ -555,7 +581,9 @@ function ProfileContent() {
   const [inboxShield, setInboxShield] = useState(0);
   const [karmaLedger, setKarmaLedger] = useState([]);
   const [karmaData, setKarmaData] = useState(null);
-  const [hoveredBadgeIdx, setHoveredBadgeIdx] = useState(null);
+  const [currentEventIdx, setCurrentEventIdx] = useState(0);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [referralCopied, setReferralCopied] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
@@ -581,7 +609,9 @@ function ProfileContent() {
     ...(_ov.bffBio !== undefined && { bffBio: _ov.bffBio }),
     ...(_ov.bizzBio !== undefined && { bizzBio: _ov.bizzBio }),
     socialLinks: { ...currentPersona.socialLinks, ..._ov.socialLinks },
-    bizzSkills: _ov.bizzSkills ?? currentPersona.bizzSkills
+    bizzSkills: _ov.bizzSkills ?? currentPersona.bizzSkills,
+    activeTickets: _ov.activeTickets ?? currentPersona.activeTickets,
+    pendingApplications: _ov.pendingApplications ?? currentPersona.pendingApplications
   } : currentPersona;
 
   const liveScore = (currentPersona.id === 'user-profile' && karmaData) ? karmaData.karma_score : currentPersona.karmaBalance;
@@ -724,7 +754,7 @@ function ProfileContent() {
       if (!email || !token) return;
       
       try {
-        const res = await fetch(`http://localhost:8000/api/v1/users/${encodeURIComponent(email)}/karma`, {
+        const res = await fetch(`http://127.0.0.1:8000/api/v1/users/${encodeURIComponent(email)}/karma`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -760,7 +790,7 @@ function ProfileContent() {
     setIsCircleLoading(true);
     try {
       // 1. Get connections list
-      const connRes = await fetch(`http://localhost:8000/api/v1/connect/connections/${encodeURIComponent(email)}`, {
+      const connRes = await fetch(`http://127.0.0.1:8000/api/v1/connect/connections/${encodeURIComponent(email)}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       let loadedConns = [];
@@ -769,7 +799,7 @@ function ProfileContent() {
         const rawConns = connData.connections || [];
         const enriched = await Promise.all(rawConns.map(async (c) => {
           try {
-            const pRes = await fetch(`http://localhost:8000/api/v1/connect/profile/${encodeURIComponent(c.connected_user)}?requester_id=${encodeURIComponent(email)}`, {
+            const pRes = await fetch(`http://127.0.0.1:8000/api/v1/connect/profile/${encodeURIComponent(c.connected_user)}?requester_id=${encodeURIComponent(email)}`, {
               headers: { "Authorization": `Bearer ${token}` }
             });
             if (pRes.ok) {
@@ -793,7 +823,7 @@ function ProfileContent() {
       }
 
       // 2. Get pending requests list
-      const reqRes = await fetch(`http://localhost:8000/api/v1/connect/requests/${encodeURIComponent(email)}`, {
+      const reqRes = await fetch(`http://127.0.0.1:8000/api/v1/connect/requests/${encodeURIComponent(email)}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       let loadedRequests = [];
@@ -802,7 +832,7 @@ function ProfileContent() {
         const rawRequests = reqData.requests || [];
         const enrichedReqs = await Promise.all(rawRequests.map(async (r) => {
           try {
-            const pRes = await fetch(`http://localhost:8000/api/v1/connect/profile/${encodeURIComponent(r.sender_id)}?requester_id=${encodeURIComponent(email)}`, {
+            const pRes = await fetch(`http://127.0.0.1:8000/api/v1/connect/profile/${encodeURIComponent(r.sender_id)}?requester_id=${encodeURIComponent(email)}`, {
               headers: { "Authorization": `Bearer ${token}` }
             });
             if (pRes.ok) {
@@ -835,7 +865,7 @@ function ProfileContent() {
 
       const enrichedSuggestions = await Promise.all(suggestedEmails.map(async (sEmail) => {
         try {
-          const pRes = await fetch(`http://localhost:8000/api/v1/connect/profile/${encodeURIComponent(sEmail)}?requester_id=${encodeURIComponent(email)}`, {
+          const pRes = await fetch(`http://127.0.0.1:8000/api/v1/connect/profile/${encodeURIComponent(sEmail)}?requester_id=${encodeURIComponent(email)}`, {
             headers: { "Authorization": `Bearer ${token}` }
           });
           if (pRes.ok) {
@@ -867,7 +897,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!email || !token) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/notifications/${encodeURIComponent(email)}`, {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/notifications/${encodeURIComponent(email)}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -883,7 +913,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/notifications/${encodeURIComponent(notificationId)}/read`, {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/notifications/${encodeURIComponent(notificationId)}/read`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -901,7 +931,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!email || !token) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/notifications/user/${encodeURIComponent(email)}/read-all`, {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/notifications/user/${encodeURIComponent(email)}/read-all`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -920,7 +950,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!email || !token) return;
     try {
-      const res = await fetch("http://localhost:8000/api/v1/connect/request", {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/connect/request", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -945,7 +975,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/connect/request/${encodeURIComponent(requestId)}/accept`, {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/connect/request/${encodeURIComponent(requestId)}/accept`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -965,7 +995,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/connect/request/${encodeURIComponent(requestId)}/decline`, {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/connect/request/${encodeURIComponent(requestId)}/decline`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -987,7 +1017,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!email || !token) return;
     try {
-      const res = await fetch("http://localhost:8000/api/v1/connect/remove", {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/connect/remove", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -1074,7 +1104,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (token) {
       try {
-        await fetch(`http://localhost:8000/api/v1/users/me/bio/${activeMode}`, {
+        await fetch(`http://127.0.0.1:8000/api/v1/users/me/bio/${activeMode}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -1084,7 +1114,7 @@ function ProfileContent() {
         });
 
         if (activeMode === 'bizz') {
-          await fetch(`http://localhost:8000/api/v1/users/me/bizz`, {
+          await fetch(`http://127.0.0.1:8000/api/v1/users/me/bizz`, {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
@@ -1257,7 +1287,7 @@ function ProfileContent() {
             let fastApiProfile = null;
             if (token) {
               try {
-                const fastApiRes = await fetch(`http://localhost:8000/api/v1/users/${encodeURIComponent(data.user.email)}/profile`, {
+                const fastApiRes = await fetch(`http://127.0.0.1:8000/api/v1/users/${encodeURIComponent(data.user.email)}/profile`, {
                   headers: {
                     "Authorization": `Bearer ${token}`
                   }
@@ -1274,9 +1304,6 @@ function ProfileContent() {
             setPersonas([userPersonaObj, ...basePersonas]);
             
             if (fastApiProfile) {
-              if (fastApiProfile.active_mode) {
-                setActiveMode(fastApiProfile.active_mode);
-              }
               setInboxShield(fastApiProfile.inbox_shield_threshold || 0);
             }
 
@@ -1299,6 +1326,100 @@ function ProfileContent() {
 
     fetchUserProfile();
   }, [emailParam]);
+
+  const fetchEvents = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/v1/events?limit=20");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.events && data.events.length > 0) {
+          const formatted = data.events.map((evt) => {
+            let formattedDate = evt.event_date;
+            try {
+              const d = new Date(evt.event_date);
+              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              formattedDate = `${d.getDate()}, ${months[d.getMonth()]} - ${d.getFullYear()}`;
+            } catch (_) {}
+
+            return {
+              id: evt.event_id,
+              title: evt.title,
+              date: formattedDate,
+              location: evt.venue ? `${evt.venue}, ${evt.city}` : evt.city,
+              image: evt.cover_image_url || '/assets/events/something.jpg',
+              min_karma_required: evt.min_karma_required || 0,
+              entry_fee: evt.entry_fee || 0,
+              category: evt.category || 'social',
+              max_participants: evt.max_participants || 0
+            };
+          });
+          setUpcomingEvents(formatted);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch events from backend. Falling back to static events.", err);
+    }
+    setUpcomingEvents(staticEvents);
+  };
+
+  const fetchUserRSVPs = async (userId, personaId) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/v1/events/user/${encodeURIComponent(userId)}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.events) {
+          const tickets = data.events.map(evt => {
+            let formattedDate = evt.event_date;
+            try {
+              const d = new Date(evt.event_date);
+              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              formattedDate = `${d.getDate()}, ${months[d.getMonth()]} - ${d.getFullYear()}`;
+            } catch (_) {}
+
+            return {
+              id: evt.event_id,
+              name: evt.title,
+              date: formattedDate,
+              countdown: "Active Ticket",
+              locationPin: evt.venue ? `${evt.venue}, ${evt.city}` : evt.city,
+              organizer: "Vayo Host",
+              qrCode: `VAYO-TKT-${evt.title.slice(0, 3).toUpperCase()}99`
+            };
+          });
+          
+          setPersonaOverrides(prev => ({
+            ...prev,
+            [personaId]: {
+              ...(prev[personaId] || {}),
+              activeTickets: tickets
+            }
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch RSVPs for user:", userId, err);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  useEffect(() => {
+    if (currentPersona) {
+      const user_id = currentPersona.id === 'user-profile'
+        ? (localStorage.getItem("vayo_user_email") || 'tester@vayo.com')
+        : (currentPersona.id === 'maxim'
+          ? 'alex@vayo.com'
+          : (currentPersona.id === 'daniel'
+            ? 'david@vayo.com'
+            : `${currentPersona.id}@vayo.com`
+          )
+        );
+      fetchUserRSVPs(user_id, currentPersona.id);
+    }
+  }, [activeIdx, isUserLoaded]);
 
   const theme = modeColors[activeMode] || modeColors.social;
 
@@ -1365,12 +1486,18 @@ function ProfileContent() {
       )}
 
       {/* ── Toast ── */}
-      {showToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#18181b]/95 backdrop-blur-md text-white text-xs font-bold px-4 py-3 rounded-2xl border border-white/10 shadow-2xl flex items-center gap-2 animate-in slide-in-from-bottom-5">
-          <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-          <span>{showToast}</span>
-        </div>
-      )}
+      {showToast && (() => {
+        const isError = showToast.toLowerCase().includes('fail') || 
+                        showToast.toLowerCase().includes('error') || 
+                        showToast.toLowerCase().includes('not enough') || 
+                        showToast.toLowerCase().includes('already');
+        return (
+          <div className="fixed bottom-6 right-6 z-50 bg-[#18181b]/95 backdrop-blur-md text-white text-xs font-bold px-4 py-3 rounded-2xl border border-white/10 shadow-2xl flex items-center gap-2 animate-in slide-in-from-bottom-5">
+            <div className={`w-1.5 h-1.5 ${isError ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'} rounded-full`} />
+            <span>{showToast}</span>
+          </div>
+        );
+      })()}
 
       {/* ── Share Profile Card ── */}
       {showShareCard && (
@@ -1466,7 +1593,7 @@ function ProfileContent() {
           </div>
 
           <div className="flex bg-white/25 backdrop-blur-sm p-1 rounded-full border border-white/30 shadow-sm gap-1 self-center">
-            {['social', 'bff', 'bizz'].map(mode => {
+            {['social'].map(mode => {
               const isActive = activeMode === mode;
               const modeTheme = modeColors[mode];
               return (
@@ -1486,7 +1613,7 @@ function ProfileContent() {
                   const token = localStorage.getItem("vayo_jwt_token");
                   if (token) {
                     try {
-                      await fetch("http://localhost:8000/api/v1/users/me/mode", {
+                      await fetch("http://127.0.0.1:8000/api/v1/users/me/mode", {
                         method: "PATCH",
                         headers: {
                           "Content-Type": "application/json",
@@ -1605,21 +1732,16 @@ function ProfileContent() {
             <aside className="w-full min-w-0 overflow-hidden md:space-y-2">
               <div className="bg-white/40 backdrop-blur-sm rounded-2xl border border-white/40 p-2 md:p-3 shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-1.5 md:gap-1 scrollbar-none whitespace-nowrap w-full">
                 {[
-                  { key: 'profile', labels: { social: 'Vibe Profile', bff: 'Personal Profile', bizz: 'Professional Profile' }, icon: <User className="w-4 h-4" />, modes: ['social', 'bff', 'bizz'] },
-                  { key: 'karma', labels: { social: 'Karma & Rewards', bff: 'Karma & Rewards', bizz: 'Karma & Rewards' }, icon: <Award className="w-4 h-4" />, modes: ['social'] },
-                  { key: 'circle', labels: { social: 'My Circle', bff: 'BFF Crew Hub', bizz: 'Work Connections' }, icon: <Users className="w-4 h-4" />, modes: ['social', 'bff', 'bizz'] },
-                  { key: 'mixers', labels: { social: 'Event Stage', bff: 'Event Stage', bizz: 'Event Stage' }, icon: <Calendar className="w-4 h-4" />, modes: ['social'] },
-                  { key: 'moments', labels: { social: 'Gallery', bff: 'Memories', bizz: 'Memories' }, icon: <Sparkles className="w-4 h-4" />, modes: ['social', 'bff'] },
-                  { key: 'security', labels: { social: 'Account & Security', bff: 'Account & Security', bizz: 'Account & Security' }, icon: <Lock className="w-4 h-4" />, modes: ['social', 'bff', 'bizz'] },
-                ]
-                  .filter(item => item.modes.includes(activeMode))
-                  .map(item => {
+                  { key: 'profile', label: 'Vibe Profile', icon: <User className="w-4 h-4" /> },
+                  { key: 'mixers', label: 'Event Stage', icon: <Calendar className="w-4 h-4" /> },
+                  { key: 'security', label: 'Account & Security', icon: <Lock className="w-4 h-4" /> },
+                ].map(item => {
                     const isActive = activeSidebarTab === item.key;
                     return (
                       <button key={item.key} onClick={() => setActiveSidebarTab(item.key)}
                         className={`flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shrink-0 w-auto md:w-full ${isActive ? 'bg-white/80 text-neutral-800 shadow-sm border border-neutral-100/50' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white/25'}`}>
                         <span className={isActive ? theme.textAccent : 'text-neutral-400'}>{item.icon}</span>
-                        <span>{item.labels[activeMode]}</span>
+                        <span>{item.label}</span>
                       </button>
                     )
                   })}
@@ -1640,18 +1762,12 @@ function ProfileContent() {
                 <div className="flex items-center gap-2.5">
                   <div className="p-1.5 bg-neutral-100 rounded-lg text-neutral-600">
                     {activeSidebarTab === 'profile' && <User className="w-4 h-4" />}
-                    {activeSidebarTab === 'karma' && <Award className="w-4 h-4" />}
-                    {activeSidebarTab === 'circle' && <Users className="w-4 h-4" />}
                     {activeSidebarTab === 'mixers' && <Calendar className="w-4 h-4" />}
-                    {activeSidebarTab === 'moments' && <Sparkles className="w-4 h-4" />}
                     {activeSidebarTab === 'security' && <Lock className="w-4 h-4" />}
                   </div>
                   <h3 className="text-sm font-extrabold text-neutral-800 tracking-tight font-sans">
-                    {activeSidebarTab === 'profile' && (activeMode === 'bizz' ? 'Professional Profile' : activeMode === 'bff' ? 'Personal Profile' : 'Profile Details')}
-                    {activeSidebarTab === 'karma' && 'Karma & Rewards Progression'}
-                    {activeSidebarTab === 'circle' && (activeMode === 'bizz' ? 'Work Connections' : activeMode === 'bff' ? 'BFF Crew Hub' : 'My Circle Connections')}
+                    {activeSidebarTab === 'profile' && 'Profile Details'}
                     {activeSidebarTab === 'mixers' && 'Event Stage'}
-                    {activeSidebarTab === 'moments' && (activeMode === 'bff' ? 'Memory Gallery' : 'Photo Gallery')}
                     {activeSidebarTab === 'security' && 'Account & Security'}
                   </h3>
                 </div>
@@ -1660,13 +1776,13 @@ function ProfileContent() {
                     <button onClick={() => setIsEditing(false)} className="text-[11px] font-bold px-3 py-1.5 rounded-xl border border-neutral-200 text-neutral-500 hover:bg-neutral-50 cursor-pointer transition-colors">Cancel</button>
                     <button onClick={saveEdit} className="text-[11px] font-bold px-3 py-1.5 rounded-xl text-white cursor-pointer transition-opacity hover:opacity-90" style={{ background: theme.accent }}>Save</button>
                   </div>
-                ) : (
-                  <button onClick={() => activeSidebarTab === 'profile' ? startEdit() : triggerToast('Switch to Profile tab to edit')}
+                ) : activeSidebarTab === 'profile' ? (
+                  <button onClick={startEdit}
                     className="flex items-center gap-1.5 bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition-all hover:bg-neutral-50 cursor-pointer">
                     <svg className="w-3.5 h-3.5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z" /></svg>
                     <span>Edit</span>
                   </button>
-                )}
+                ) : null}
               </div>
 
               {/* Panel Body */}
@@ -1865,49 +1981,114 @@ function ProfileContent() {
 
                     <hr className="border-neutral-100" />
 
-                    {/* Community Badges Grid */}
-                    <div>
-                      <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest mb-4">Community Badges & Milestones</h5>
-                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
-                        {getBadgesForPersona(currentPersona.id).map((badge, idx) => {
-                          const isUnlocked = badge.status === 'unlocked'
-                          const lockProgress = getBadgeLockProgress(currentPersona.id, badge.name)
-                          const isHovered = hoveredBadgeIdx === idx
-                          return (
-                            <div key={idx}
-                              onMouseEnter={() => setHoveredBadgeIdx(idx)}
-                              onMouseLeave={() => setHoveredBadgeIdx(null)}
-                              onClick={() => {
-                                if (isUnlocked) triggerToast(`Badge Unlocked: ${badge.name}! "${badge.desc}"`);
-                                else triggerToast(`Badge Locked: Complete requirements (${lockProgress}% progress)`);
-                              }}
-                              className={`p-2.5 sm:p-3.5 rounded-2xl border transition-all duration-300 flex items-center gap-2 sm:gap-3.5 cursor-pointer hover:-translate-y-0.5 select-none relative ${isUnlocked ? 'bg-neutral-50/70 border-neutral-200/60 hover:bg-neutral-50 hover:border-neutral-300 hover:shadow-sm' : 'bg-neutral-50/30 border-neutral-100/50 opacity-40 hover:opacity-50'}`}>
-                              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white border border-neutral-100 flex items-center justify-center text-lg sm:text-xl shadow-sm shrink-0">
-                                {badge.icon}
-                              </div>
-                              <div className="leading-tight flex-1 min-w-0">
-                                <div className="text-[10.5px] sm:text-xs font-bold text-neutral-800 flex items-center gap-1 sm:gap-1.5">
-                                  <span className="truncate">{badge.name}</span>
-                                  {isUnlocked ? (
-                                    <span className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-[7.5px] sm:text-[8px] font-extrabold border border-emerald-500/20 shrink-0">✓</span>
-                                  ) : (
-                                    <Lock className="w-3 h-3 text-neutral-400 shrink-0" />
-                                  )}
-                                </div>
-                                <p className="text-[9px] sm:text-[10px] text-neutral-400 font-medium mt-0.5 leading-normal truncate">{badge.desc}</p>
-                              </div>
-
-                              {/* Hover lock progress bar */}
-                              {!isUnlocked && isHovered && (
-                                <div className="absolute inset-x-0 bottom-0 bg-neutral-100 h-1.5 rounded-b-2xl overflow-hidden flex">
-                                  <div className={`h-full ${theme.bgAccent}`} style={{ width: `${lockProgress}%` }} />
-                                </div>
-                              )}
+                    {/* Upcoming Events Carousel */}
+                    {(() => {
+                      const event = upcomingEvents[currentEventIdx];
+                      
+                      if (!event) {
+                        return (
+                          <div className="space-y-4">
+                            <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Upcoming Events</h5>
+                            <div className="relative w-full h-[220px] sm:h-[280px] rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-lg border border-neutral-100 bg-neutral-900 flex flex-col items-center justify-center gap-3">
+                              <span className="w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+                              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider animate-pulse">Syncing mixers…</span>
                             </div>
-                          )
-                        })}
-                      </div>
-                    </div>
+                          </div>
+                        );
+                      }
+
+                      const handlePrev = () => {
+                        setCurrentEventIdx(prev => (prev - 1 + upcomingEvents.length) % upcomingEvents.length);
+                      };
+                      const handleNext = () => {
+                        setCurrentEventIdx(prev => (prev + 1) % upcomingEvents.length);
+                      };
+                      return (
+                        <div className="space-y-4">
+                          <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Upcoming Events</h5>
+                          <div className="relative w-full h-[220px] sm:h-[280px] rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-lg border border-neutral-100 bg-neutral-900 group">
+                            {/* Interactive clickable overlay */}
+                            <div 
+                              onClick={() => {
+                                setSelectedEvent(event);
+                                setActiveSidebarTab('mixers');
+                                triggerToast(`Opening registration for: ${event.title}`);
+                              }}
+                              className="absolute inset-0 w-full h-full cursor-pointer z-10"
+                            >
+                              {/* Slide image */}
+                              <div className="absolute inset-0 w-full h-full">
+                                <img
+                                  src={event.image}
+                                  alt={event.title}
+                                  className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                                />
+                              </div>
+                              
+                              {/* Dark gradient overlay */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
+
+                              {/* "Upcoming Event" Badge */}
+                              <span className="absolute top-4 left-4 z-20 bg-blue-600 text-white text-[9px] sm:text-[10px] font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
+                                Upcoming Event
+                              </span>
+
+                              {/* Event details container */}
+                              <div className="absolute bottom-6 left-5 right-5 z-20 flex flex-col gap-2.5 text-left max-w-[calc(100%-40px)] md:max-w-[70%]">
+                                {/* Date pill */}
+                                <div className="flex items-center gap-1.5 bg-black/45 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] text-white font-bold tracking-wide w-fit">
+                                  <Calendar className="w-3.5 h-3.5 text-white" />
+                                  <span>{event.date}</span>
+                                </div>
+
+                                {/* Title */}
+                                <h4 className="text-sm sm:text-base md:text-lg font-bold text-white leading-snug tracking-tight drop-shadow-md">
+                                  {event.title}
+                                </h4>
+
+                                {/* Location */}
+                                <div className="flex items-center gap-1 text-[10px] text-neutral-300">
+                                  <MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                                  <span className="truncate">{event.location}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Notch with Arrow Buttons */}
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-44 h-12 z-20 flex items-center justify-center">
+                              <svg className="absolute inset-0 w-full h-full drop-shadow-[0_-2px_4px_rgba(0,0,0,0.06)]" viewBox="0 0 176 48" fill="none" preserveAspectRatio="none">
+                                <path
+                                  d="M 0 48 C 20 48, 20 0, 40 0 L 136 0 C 156 0, 156 48, 176 48 Z"
+                                  fill="#ffffff"
+                                />
+                                <path
+                                  d="M 0 48 C 20 48, 20 0, 40 0 L 136 0 C 156 0, 156 48, 176 48"
+                                  stroke="rgba(228, 228, 231, 0.8)"
+                                  strokeWidth="1"
+                                />
+                              </svg>
+
+                              <div className="relative z-10 flex gap-4 items-center justify-center pb-1">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                                  className="w-8 h-8 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-all duration-200 cursor-pointer"
+                                  aria-label="Previous event"
+                                >
+                                  <ArrowLeft className="w-3.5 h-3.5 text-neutral-600" />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                                  className="w-8 h-8 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-all duration-200 cursor-pointer"
+                                  aria-label="Next event"
+                                >
+                                  <ArrowRight className="w-3.5 h-3.5 text-neutral-600" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <hr className="border-neutral-100" />
 
@@ -1963,439 +2144,146 @@ function ProfileContent() {
                   </div>
                 )}
 
-                {/* ════════════════════ KARMA TAB ════════════════════ */}
-                {activeSidebarTab === 'karma' && (
-                  <div className="space-y-6 animate-fade-in">
-
-                    {/* Tier Hero Card */}
-                    {(() => {
-                      const lb = liveScore >= 600 ? { rank: 'Top 5%', cls: 'text-amber-600 bg-amber-50 border-amber-200' }
-                        : liveScore >= 400 ? { rank: 'Top 15%', cls: 'text-blue-600 bg-blue-50 border-blue-100' }
-                          : liveScore >= 250 ? { rank: 'Top 35%', cls: 'text-violet-600 bg-violet-50 border-violet-100' }
-                            : { rank: 'Top 60%', cls: 'text-neutral-500 bg-neutral-50 border-neutral-200' };
-                      return (
-                        <div className="flex flex-col sm:flex-row items-center gap-5 p-5 rounded-2xl bg-gradient-to-r from-neutral-50 to-neutral-100/60 border border-neutral-100">
-                          <span className="text-5xl">{getTierIcon(liveTier)}</span>
-                          <div className="flex-1 text-center sm:text-left">
-                            <div className="text-[9.5px] text-neutral-400 font-bold uppercase tracking-widest mb-0.5">Current Tier</div>
-                            <div className="text-2xl font-extrabold text-neutral-800">{liveTier}</div>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap justify-center sm:justify-start">
-                              <span className="text-xs text-neutral-400 font-medium">Vayo Community Member</span>
-                              <span className={`flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full border ${lb.cls}`}>
-                                🏆 {lb.rank} in {currentPersona.location.split(',')[0]}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-center sm:text-right">
-                            <div className="text-[9.5px] text-neutral-400 font-bold uppercase tracking-widest mb-0.5">Total XP</div>
-                            <div className={`text-4xl font-extrabold tabular-nums ${theme.textAccent}`}>{animatedXP}</div>
-                          </div>
-                        </div>
-                      )
-                    })()}
-
-                    <hr className="border-neutral-100" />
-
-                    {/* Tier progression with milestones */}
-                    <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-1 font-sans">Tier Progression</h5>
-                      <SegmentedProgress percentage={livePercentage} color={theme.progressColor} showMilestones={true} />
-                      <p className="text-xs text-neutral-500 leading-relaxed font-normal mt-3 max-w-xl">
-                        {liveTier === 'Explorer' && 'Explorer Tier: Unlocks basic direct messaging, group chat RSVP capabilities, and offline community entry.'}
-                        {liveTier === 'Pathfinder' && 'Pathfinder Tier: Unlocks 24-hour priority ticket booking window for hot mixers, special venue perks, and host support badge status.'}
-                        {liveTier === 'Voyager' && 'Voyager Tier: Unlocks invite-only premium VIP mixers, private dining access, voting rights on community mixers, and VIP support.'}
-                      </p>
-                    </div>
-
-                    <hr className="border-neutral-100" />
-
-                    {/* Activity Breakdown — 2×2 grid */}
-                    <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 font-sans">Karma Activity Breakdown</h5>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { label: 'Attended Events', hint: '+10 XP', value: liveBreakdown.attendedMixers, icon: '🎉' },
-                          { label: 'Moment Contributor', hint: '+15 XP', value: liveBreakdown.momentContributor, icon: '📸' },
-                          { label: 'Vibe Leader', hint: '+20 XP', value: liveBreakdown.vibeLeader, icon: '⚡' },
-                          { label: 'Host Support', hint: '+50 XP', value: liveBreakdown.hostSupport, icon: '🙌' },
-                        ].map((item, i) => {
-                          const maxVal = Math.max(liveBreakdown.attendedMixers, liveBreakdown.momentContributor, liveBreakdown.vibeLeader, liveBreakdown.hostSupport);
-                          const pct = maxVal > 0 ? (item.value / maxVal) * 100 : 0;
-                          return (
-                            <div key={i} className="p-3 rounded-xl bg-neutral-50/60 border border-neutral-100 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-base leading-none">{item.icon}</span>
-                                <span className="text-[10px] font-extrabold" style={{ color: theme.accent }}>+{item.value} XP</span>
-                              </div>
-                              <div>
-                                <div className="text-[9.5px] font-bold text-neutral-700 leading-tight">{item.label}</div>
-                                <div className="text-[8.5px] text-neutral-400 font-medium">{item.hint}</div>
-                              </div>
-                              <div className="w-full h-1 bg-neutral-200 rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full ${theme.bgAccent} transition-all duration-700`} style={{ width: `${pct}%` }} />
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-
-                    <hr className="border-neutral-100" />
-
-                    {/* XP Ledger History Timeline */}
-                    <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 font-sans">XP Ledger History</h5>
-                      {karmaLedger.length === 0 ? (
-                        <div className="text-center py-6 text-[10.5px] text-neutral-400 font-semibold border-2 border-dashed border-neutral-100 rounded-2xl bg-neutral-50/20">
-                          🌱 No reputation transactions logged yet. Complete tasks to earn XP!
-                        </div>
-                      ) : (
-                        <div className="max-h-60 overflow-y-auto pr-1 border border-neutral-100 rounded-2xl divide-y divide-neutral-50 bg-white shadow-sm custom-scrollbar">
-                          {karmaLedger.map((item, idx) => {
-                            const isPenalty = item.point_delta < 0;
-                            return (
-                              <div key={item.id || idx} className="flex items-center justify-between px-4 py-3 hover:bg-neutral-50/50 transition-colors">
-                                <div className="space-y-0.5">
-                                  <div className="text-[11px] font-bold text-neutral-700">
-                                    {item.action_type.replace(/_/g, ' ')}
-                                  </div>
-                                  <div className="text-[8.5px] text-neutral-400 font-medium">
-                                    {new Date(item.created_at).toLocaleDateString(undefined, {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                  </div>
-                                </div>
-                                <span className={`text-[11px] font-extrabold ${isPenalty ? 'text-red-500' : 'text-emerald-500'}`}>
-                                  {isPenalty ? '' : '+'}{item.point_delta} XP
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    <hr className="border-neutral-100" />
-
-                    {/* Next Tier Preview Card */}
-                    {(() => {
-                      const next = getNextTierInfo(liveTier, liveScore);
-                      return (
-                        <div className={`p-4 rounded-2xl border ${theme.badgeBg}`}>
-                          <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
-                            <div>
-                              <div className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1">Next Milestone</div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-2xl">{next.icon}</span>
-                                <span className={`text-base font-extrabold ${theme.textAccent}`}>{next.nextTier}</span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1">XP Needed</div>
-                              <div className={`text-2xl font-extrabold ${theme.textAccent}`}>+{next.needed}</div>
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-2">Unlocks</div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {next.perks.map((perk, i) => (
-                                <span key={i} className="text-[9.5px] font-bold px-2.5 py-1 rounded-full bg-white/60 border border-white/80">✦ {perk}</span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })()}
-
-                    <hr className="border-neutral-100" />
-
-                    {/* Refer & Earn */}
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest font-sans">Refer &amp; Earn</h5>
-                        <span className={`text-[9.5px] font-extrabold px-2.5 py-1 rounded-full border ${theme.badgeBg}`}>+50 XP per friend</span>
-                      </div>
-                      <div className={`rounded-2xl border ${theme.cardBorder} ${theme.cardBg} overflow-hidden`}>
-                        {/* Stats strip */}
-                        <div className="px-4 py-3 border-b border-neutral-100/80 flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Friends Joined</div>
-                            <div className="flex items-baseline gap-1.5">
-                              <span className={`text-2xl font-extrabold ${theme.textAccent}`}>{currentPersona.referral.referredCount}</span>
-                              <span className="text-[10px] text-neutral-400 font-medium">of {currentPersona.referral.milestone} for next reward</span>
-                            </div>
-                          </div>
-                          <div className="text-right space-y-0.5">
-                            <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">XP Earned</div>
-                            <div className={`text-lg font-extrabold ${theme.textAccent}`}>+{currentPersona.referral.xpEarned}</div>
-                          </div>
-                        </div>
-                        {/* Milestone bar */}
-                        <div className="px-4 py-2.5 border-b border-neutral-100/80">
-                          <div className="flex items-center justify-between text-[9px] text-neutral-400 font-medium mb-1.5">
-                            <span>{currentPersona.referral.referredCount} joined</span>
-                            <span>{currentPersona.referral.milestone} milestone</span>
-                          </div>
-                          <div className="w-full bg-neutral-200/60 rounded-full h-1.5 overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-700"
-                              style={{ width: `${Math.min((currentPersona.referral.referredCount / currentPersona.referral.milestone) * 100, 100)}%`, background: theme.accent }} />
-                          </div>
-                        </div>
-                        {/* Code + share */}
-                        <div className="p-4 space-y-3">
-                          <div>
-                            <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mb-1.5">Your Referral Code</div>
-                            <div className="flex items-center gap-2 bg-white border border-neutral-200 rounded-xl px-3 py-2.5">
-                              <span className="flex-1 text-sm font-extrabold text-neutral-800 tracking-widest">{currentPersona.referral.code}</span>
-                              <button
-                                onClick={() => { navigator.clipboard.writeText(currentPersona.referral.code); setReferralCopied(true); setTimeout(() => setReferralCopied(false), 2000) }}
-                                className={`text-[9.5px] font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer ${referralCopied ? 'bg-emerald-500 text-white' : `${theme.badgeBg} border`}`}>
-                                {referralCopied ? '✓ Copied' : 'Copy'}
-                              </button>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => triggerToast(`Referral link copied! Share vayo.community/join?ref=${currentPersona.referral.code}`)}
-                            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white ${theme.bgAccent} hover:opacity-90 transition-opacity cursor-pointer`}>
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />
-                            </svg>
-                            Share Invite Link
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-                )}
-
-                {/* ════════════════════ MY CIRCLE TAB ════════════════════ */}
-                {activeSidebarTab === 'circle' && (
-                  <div className="space-y-6 animate-fade-in">
-
-                    {/* Stats bar */}
-                    <div className="grid grid-cols-3 gap-3">
-                      {(activeMode === 'bizz' ? [
-                        { label: 'Connections', value: liveConnections ? liveConnections.length : 0, icon: '🤝' },
-                        { label: 'Work Squads', value: currentPersona.bffCrew ? currentPersona.bffCrew.length : 0, icon: '💼' },
-                        { label: 'Mutual Events', value: liveConnections ? liveConnections.reduce((s, c) => s + c.mutualFriends, 0) : 0, icon: '📅' },
-                      ] : activeMode === 'bff' ? [
-                        { label: 'Close Friends', value: liveConnections ? liveConnections.length : 0, icon: '💚' },
-                        { label: 'Crews', value: currentPersona.bffCrew ? currentPersona.bffCrew.length : 0, icon: '👥' },
-                        { label: 'Squad Members', value: currentPersona.bffCrew ? currentPersona.bffCrew.reduce((s, c) => s + c.members, 0) : 0, icon: '🏘️' },
-                      ] : [
-                        { label: 'People Met', value: liveConnections ? liveConnections.length : 0, icon: '👋' },
-                        { label: 'Squads', value: currentPersona.bffCrew ? currentPersona.bffCrew.length : 0, icon: '👥' },
-                        { label: 'Mutual Friends', value: liveConnections ? liveConnections.reduce((s, c) => s + c.mutualFriends, 0) : 0, icon: '🔗' },
-                      ]).map((s, i) => (
-                        <div key={i} className={`rounded-2xl border ${theme.cardBorder} ${theme.cardBg} p-3 text-center`}>
-                          <div className="text-xl mb-1">{s.icon}</div>
-                          <div className={`text-lg font-extrabold ${theme.textAccent}`}>{s.value}</div>
-                          <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider leading-tight mt-0.5">{s.label}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Tab toggle */}
-                    <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-                      <h5 className={`text-[11px] font-bold uppercase tracking-widest ${theme.textAccent} font-sans`}>
-                        {activeMode === 'bff' ? 'BFF Crew Hub' : activeMode === 'bizz' ? 'Work Connections' : 'My Circle Hub'}
-                      </h5>
-                      {activeMode !== 'bizz' && (
-                        <div className="flex bg-neutral-100 p-0.5 rounded-lg text-[10.5px] font-bold border border-neutral-200">
-                          <button onClick={() => setActiveTabCircle('squads')} className={`px-3 py-1 rounded-md cursor-pointer transition-all ${activeTabCircle === 'squads' ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
-                            {activeMode === 'bff' ? 'Crews' : 'Squads'}
-                          </button>
-                          <button onClick={() => setActiveTabCircle('connections')} className={`px-3 py-1 rounded-md cursor-pointer transition-all ${activeTabCircle === 'connections' ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
-                            {activeMode === 'bff' ? 'Friends Met' : 'Offline Met'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {activeMode !== 'bizz' && activeTabCircle === 'squads' ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {(currentPersona.bffCrew || []).map((squad, i) => {
-                          const avatarColors = ['bg-blue-400', 'bg-emerald-400', 'bg-violet-400', 'bg-amber-400', 'bg-rose-400']
-                          return (
-                            <div key={i} className="rounded-2xl border border-neutral-100 bg-white shadow-sm overflow-hidden hover:shadow-md transition-all">
-                              {/* Card header strip */}
-                              <div className={`px-4 pt-4 pb-3 flex items-start justify-between bg-gradient-to-br ${theme.gradient} bg-opacity-10`} style={{ background: `linear-gradient(135deg, ${theme.accent}18, ${theme.accent}08)` }}>
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-10 h-10 rounded-xl bg-white/70 backdrop-blur-sm flex items-center justify-center text-xl shadow-sm border border-white/60">
-                                    {squad.emoji || '🌐'}
-                                  </div>
-                                  <div>
-                                    <div className="text-[12px] font-extrabold text-neutral-800 leading-tight">{squad.name}</div>
-                                    <div className="text-[9px] font-bold uppercase tracking-wider mt-0.5" style={{ color: theme.accent }}>{squad.type}</div>
-                                  </div>
-                                </div>
-                                <span className="text-[10px] font-bold text-neutral-600 bg-white border border-neutral-200 px-2.5 py-1 rounded-full shadow-sm shrink-0">{squad.members} members</span>
-                              </div>
-
-                              <div className="px-4 py-3 space-y-3">
-                                {/* Avatar stack */}
-                                <div className="flex -space-x-1.5">
-                                  {Array.from({ length: Math.min(5, squad.members) }).map((_, j) => (
-                                    <div key={j} className={`w-7 h-7 rounded-full ${avatarColors[(i * 5 + j) % avatarColors.length]} border-2 border-white flex items-center justify-center text-[8px] font-extrabold text-white shadow-sm`}>
-                                      {String.fromCharCode(65 + (i * 7 + j * 3) % 26)}
-                                    </div>
-                                  ))}
-                                  {squad.members > 5 && (
-                                    <div className="w-7 h-7 rounded-full bg-neutral-100 border-2 border-white flex items-center justify-center text-[8px] font-bold text-neutral-500 shadow-sm">+{squad.members - 5}</div>
-                                  )}
-                                </div>
-
-                                {/* Activity & next event */}
-                                <div className="flex items-center justify-between text-[9.5px]">
-                                  <span className="text-neutral-400 font-medium flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block" />
-                                    Active {squad.lastActive}
-                                  </span>
-                                  {squad.nextEvent && (
-                                    <span className="font-bold px-2 py-0.5 rounded-full animate-pulse" style={{ color: theme.accent, background: `${theme.accent}15` }}>
-                                      📅 {squad.nextEvent}
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex gap-2 pt-0.5">
-                                  <button onClick={() => triggerToast(`Viewing ${squad.name}…`)}
-                                    className="flex-1 py-1.5 rounded-xl border border-neutral-200 text-[10px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors cursor-pointer">
-                                    View Squad
-                                  </button>
-                                  <button onClick={() => triggerToast(`Invite sent to join ${squad.name}!`)}
-                                    className="flex-1 py-1.5 rounded-xl text-[10px] font-bold text-white cursor-pointer transition-opacity hover:opacity-90 flex items-center justify-center gap-1"
-                                    style={{ background: theme.accent }}>
-                                    <UserPlus className="w-3 h-3" /> Invite
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })}
-
-                        {/* Create squad CTA */}
-                        <button onClick={() => triggerToast('Squad creation coming soon!')}
-                          className="rounded-2xl border-2 border-dashed border-neutral-200 hover:border-neutral-300 bg-neutral-50/40 hover:bg-neutral-50 transition-all p-4 flex flex-col items-center justify-center gap-2 cursor-pointer min-h-[160px]">
-                          <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-xl">➕</div>
-                          <div className="text-[11px] font-bold text-neutral-500">Create a Squad</div>
-                          <div className="text-[9.5px] text-neutral-400 text-center">Start a group around a shared interest</div>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {/* Pending Connect Requests */}
-                        {currentPersona.id === 'user-profile' && pendingRequests && pendingRequests.length > 0 && (
-                          <div className="space-y-2 mb-5">
-                            <div className="text-[10px] font-extrabold text-neutral-450 uppercase tracking-wider">Incoming Connect Requests</div>
-                            {pendingRequests.map((req) => (
-                              <div key={req.request_id} className="flex items-center justify-between p-3.5 rounded-2xl bg-blue-50/25 border border-blue-100/60 hover:border-blue-200 transition-all shadow-sm">
-                                <div className="flex items-center gap-3">
-                                  <img src={req.avatar} alt={req.name} className="w-11 h-11 rounded-full object-cover border border-neutral-200 shadow-sm" />
-                                  <div className="leading-tight space-y-0.5">
-                                    <div className="text-xs font-bold text-neutral-800">{req.name}</div>
-                                    <div className="text-[9.5px] text-neutral-450 font-medium">{req.role}</div>
-                                  </div>
-                                </div>
-                                <div className="flex gap-2 shrink-0">
-                                  <button onClick={() => acceptRequest(req.request_id, req.name)} className="text-[10px] font-extrabold px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer shadow-sm">Accept</button>
-                                  <button onClick={() => declineRequest(req.request_id, req.name)} className="text-[10px] font-extrabold px-3.5 py-1.5 rounded-xl bg-neutral-150 text-neutral-650 hover:bg-neutral-200 transition-colors cursor-pointer border border-neutral-200/50 shadow-sm">Ignore</button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Connections Met List */}
-                        {liveConnections && liveConnections.length > 0 && (
-                          <div className="space-y-2.5">
-                            {liveConnections.map((conn, i) => (
-                              <div key={conn.user_id || i} className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-neutral-100 hover:border-neutral-200 hover:shadow-sm transition-all shadow-sm">
-                                <div className="flex items-center gap-3">
-                                  <div className="relative shrink-0">
-                                    <img src={conn.avatar} alt={conn.name} className="w-11 h-11 rounded-full object-cover border border-neutral-200 shadow-sm" />
-                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
-                                  </div>
-                                  <div className="leading-tight space-y-0.5">
-                                    <div className="text-xs font-bold text-neutral-800">{conn.name}</div>
-                                    <div className="text-[9.5px] text-neutral-400 font-medium">{conn.role}</div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-[9px] font-bold text-neutral-400 flex items-center gap-0.5">
-                                        <MapPin className="w-2.5 h-2.5" />Met at <span className="font-extrabold" style={{ color: theme.accent }}>{conn.metAt || 'Vayo Hub'}</span>
-                                      </span>
-                                      <span className="text-[9px] text-blue-600 font-bold flex items-center gap-0.5">
-                                        <Users className="w-2.5 h-2.5" />{conn.mutualFriends} mutual
-                                      </span>
-                                      {activeMode === 'bizz' && currentPersona.bizzSkills && (
-                                        <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                                          {currentPersona.bizzSkills.slice(0, 2).join(' · ')}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <button onClick={() => triggerToast(`Opened DM with ${conn.name}!`)} className="p-2 rounded-xl border border-neutral-200 text-neutral-500 bg-white hover:text-neutral-800 hover:bg-neutral-50 cursor-pointer shadow-sm transition-colors" title="Message">
-                                    <MessageSquare className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button onClick={() => triggerToast(`Meetup request sent to ${conn.name}!`)} className={`p-2 rounded-xl border cursor-pointer shadow-sm transition-colors ${theme.badgeBg}`} title="Plan a Meetup">
-                                    <CalendarPlus className="w-3.5 h-3.5" />
-                                  </button>
-                                  {currentPersona.id === 'user-profile' && (
-                                    <button onClick={() => removeConnection(conn.user_id, conn.name)} className="p-2 rounded-xl border border-red-100 text-red-500 bg-white hover:bg-red-50 cursor-pointer shadow-sm transition-colors" title="Remove Connection">
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {liveConnections.length === 0 && (
-                          <div className="text-center py-8 text-[11px] text-neutral-400 font-semibold border-2 border-dashed border-neutral-100 rounded-2xl bg-neutral-50/20">
-                            ✨ No connections made yet. Add some people below to start your circle!
-                          </div>
-                        )}
-
-                        {/* Suggested connections */}
-                        {liveSuggestions && liveSuggestions.length > 0 && (
-                          <div className="pt-3">
-                            <div className="text-[10px] font-extrabold text-neutral-450 uppercase tracking-wider mb-3">People you may know</div>
-                            <div className="space-y-2 max-w-xl">
-                              {liveSuggestions.map((s, i) => (
-                                <div key={s.user_id || i} className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-neutral-50/60 border border-neutral-100 shadow-sm hover:border-neutral-200 transition-colors">
-                                  <div className="flex items-center gap-2.5">
-                                    <img src={s.avatar} alt={s.name} className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
-                                    <div>
-                                      <div className="text-[11px] font-bold text-neutral-700">{s.name}</div>
-                                      <div className="text-[9px] text-neutral-400 font-medium">{s.role} · {s.reason}</div>
-                                    </div>
-                                  </div>
-                                  <button onClick={() => currentPersona.id === 'user-profile' ? connectRequest(s.user_id, s.name) : triggerToast(`Connection request sent to ${s.name}!`)}
-                                    className="text-[9.5px] font-bold px-3.5 py-1.5 rounded-full border cursor-pointer transition-colors hover:opacity-85 shadow-sm"
-                                    style={{ color: theme.accent, borderColor: theme.accent, background: `${theme.accent}08` }}>
-                                    + Connect
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                  </div>
-                )}
-
                 {/* ════════════════════ EVENT STAGE TAB ════════════════════ */}
                 {activeSidebarTab === 'mixers' && (
                   <div className="space-y-6 animate-fade-in">
+
+                    {/* Event Registration Panel */}
+                    {selectedEvent && (
+                      <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4 shadow-sm space-y-4 relative animate-fade-in">
+                        <button 
+                          onClick={() => setSelectedEvent(null)}
+                          className="absolute top-3 right-3 text-neutral-400 hover:text-neutral-600 cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                        
+                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                          {/* Image Thumbnail */}
+                          <div className="w-24 h-16 rounded-xl overflow-hidden shrink-0 shadow-sm border border-white/20">
+                            <img src={selectedEvent.image} alt={selectedEvent.title} className="w-full h-full object-cover" />
+                          </div>
+                          
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-blue-600">Apply for RSVP</span>
+                            <h4 className="text-sm font-extrabold text-neutral-800 leading-snug truncate">{selectedEvent.title}</h4>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-neutral-500 font-medium">
+                              <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-neutral-400" />{selectedEvent.date}</span>
+                              <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-neutral-400" />{selectedEvent.location}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* CTA button or state */}
+                        {(() => {
+                          const isAlreadyApplied = (displayPersona.pendingApplications || []).some(
+                            app => app.name === selectedEvent.title
+                          ) || (displayPersona.activeTickets || []).some(
+                            tkt => tkt.name === selectedEvent.title
+                          );
+
+                          if (isAlreadyApplied) {
+                            return (
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-center gap-2 py-2 w-full rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 text-xs font-bold">
+                                  <Check className="w-4 h-4" />
+                                  <span>Applied / Ticket Approved ✓</span>
+                                </div>
+                                <button
+                                  onClick={async () => {
+                                    const user_id = currentPersona.id === 'user-profile'
+                                      ? (localStorage.getItem("vayo_user_email") || 'tester@vayo.com')
+                                      : (currentPersona.id === 'maxim'
+                                        ? 'alex@vayo.com'
+                                        : (currentPersona.id === 'daniel'
+                                          ? 'david@vayo.com'
+                                          : `${currentPersona.id}@vayo.com`
+                                        )
+                                      );
+
+                                    const token = localStorage.getItem("vayo_jwt_token");
+                                    try {
+                                      const response = await fetch(`http://127.0.0.1:8000/api/v1/events/${encodeURIComponent(selectedEvent.id)}/rsvp?user_id=${encodeURIComponent(user_id)}`, {
+                                        method: 'DELETE',
+                                        headers: {
+                                          ...(token && { 'Authorization': `Bearer ${token}` })
+                                        }
+                                      });
+
+                                      if (response.ok) {
+                                        triggerToast("RSVP cancelled successfully.");
+                                        fetchUserRSVPs(user_id, currentPersona.id);
+                                      } else {
+                                        const errData = await response.json();
+                                        triggerToast(errData.detail || "Failed to cancel RSVP.");
+                                      }
+                                    } catch (err) {
+                                      console.error("Error cancelling RSVP:", err);
+                                      triggerToast("Failed to reach server.");
+                                    }
+                                  }}
+                                  className="w-full py-2 rounded-xl text-[10px] font-bold text-rose-600 border border-rose-100 bg-rose-50/50 hover:bg-rose-50 cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Cancel My RSVP</span>
+                                </button>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <button
+                              onClick={async () => {
+                                const user_id = currentPersona.id === 'user-profile'
+                                  ? (localStorage.getItem("vayo_user_email") || 'tester@vayo.com')
+                                  : (currentPersona.id === 'maxim'
+                                    ? 'alex@vayo.com'
+                                    : (currentPersona.id === 'daniel'
+                                      ? 'david@vayo.com'
+                                      : `${currentPersona.id}@vayo.com`
+                                    )
+                                  );
+
+                                const token = localStorage.getItem("vayo_jwt_token");
+
+                                try {
+                                  const response = await fetch(`http://127.0.0.1:8000/api/v1/events/${encodeURIComponent(selectedEvent.id)}/rsvp`, {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      ...(token && { 'Authorization': `Bearer ${token}` })
+                                    },
+                                    body: JSON.stringify({ user_id })
+                                  });
+
+                                  if (response.ok) {
+                                    triggerToast(`Registered successfully! Ticket generated.`);
+                                    fetchUserRSVPs(user_id, currentPersona.id);
+                                  } else {
+                                    let errorDetail = "Failed to register. Please try again.";
+                                    try {
+                                      const errData = await response.json();
+                                      if (errData && errData.detail) {
+                                        errorDetail = errData.detail;
+                                      }
+                                    } catch (_) {}
+                                    triggerToast(errorDetail);
+                                  }
+                                } catch (err) {
+                                  console.error("Error during RSVP call:", err);
+                                  triggerToast("Server is unreachable.");
+                                }
+                              }}
+                              className="w-full py-2.5 rounded-xl text-xs font-extrabold text-white cursor-pointer transition-opacity hover:opacity-90 flex items-center justify-center gap-2 shadow-sm"
+                              style={{ background: theme.accent }}
+                            >
+                              <CalendarPlus className="w-4 h-4" />
+                              <span>Confirm Registration & Get Ticket</span>
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    )}
 
                     {/* ── Top row: Next-up card (left) + glassmorphic calendar (right) ── */}
                     {(() => {
@@ -2406,12 +2294,12 @@ function ProfileContent() {
                       const daysInMonth = new Date(year, month + 1, 0).getDate();
                       const parseDay = (dateStr) => { const m = dateStr.match(/(\d+)(?:,|$|\s·)/); return m ? parseInt(m[1]) : null; };
                       const eventDays = new Map();
-                      const allEvents = [...(currentPersona.activeTickets || []).map(t => ({ name: t.name, date: t.date })), ...(currentPersona.pastTimeline || []).map(t => ({ name: t.name, date: t.date }))];
+                      const allEvents = [...(displayPersona.activeTickets || []).map(t => ({ name: t.name, date: t.date })), ...(displayPersona.pastTimeline || []).map(t => ({ name: t.name, date: t.date }))];
                       allEvents.forEach(e => { const d = parseDay(e.date); if (d && d <= daysInMonth) { if (!eventDays.has(d)) eventDays.set(d, []); eventDays.get(d).push(e.name); } });
                       const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
                       while (cells.length % 7 !== 0) cells.push(null);
                       const today = 11;
-                      const nextTkt = currentPersona.activeTickets ? currentPersona.activeTickets[0] : null;
+                      const nextTkt = displayPersona.activeTickets ? displayPersona.activeTickets[0] : null;
                       return (
                         <div className="flex flex-col sm:flex-row items-stretch gap-3">
                           {/* Left: section label + next-up card */}
@@ -2510,7 +2398,7 @@ function ProfileContent() {
                         Live Tickets <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                       </h5>
                       <div className="space-y-4">
-                        {(currentPersona.activeTickets || []).map((tkt, i) => (
+                        {(displayPersona.activeTickets || []).map((tkt, i) => (
                           <div key={i} className="border border-neutral-200 rounded-2xl overflow-hidden flex flex-col md:flex-row bg-neutral-50/50 shadow-sm">
                             {/* Left Stub */}
                             <div className="flex-1 p-5 space-y-4 border-r border-dashed border-neutral-200 relative">
@@ -2570,7 +2458,7 @@ function ProfileContent() {
                     <div>
                       <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 font-sans">Application Pipeline</h5>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {(currentPersona.pendingApplications || []).map((app, i) => {
+                        {(displayPersona.pendingApplications || []).map((app, i) => {
                           const stepIdx = getStepperIdx(app.status);
                           const steps = ['Applied', 'Under Review', 'Approved'];
                           const isApproved = app.status.includes('Approved');
@@ -2644,89 +2532,6 @@ function ProfileContent() {
                             </div>
                           </div>
                         ))}
-                      </div>
-                    </div>
-
-                  </div>
-                )}
-
-                {/* ════════════════════ MOMENTS GALLERY TAB ════════════════════ */}
-                {activeSidebarTab === 'moments' && (
-                  <div className="space-y-6 animate-fade-in">
-
-                    {/* Gallery Feed */}
-                    <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 font-sans">Gallery Feed</h5>
-                      <div className="grid grid-cols-2 gap-3">
-                        {personaMoments.map((mom, idx) => (
-                          <div key={idx} onClick={() => setLightboxMoment({ ...mom, idx })}
-                            className="relative aspect-video rounded-2xl overflow-hidden border border-neutral-250 bg-neutral-950 group cursor-pointer shadow-sm">
-                            {mom.imageUrl ? (
-                              <img src={mom.imageUrl} alt={mom.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                            ) : (
-                              <div className={`w-full h-full bg-gradient-to-br ${mom.imageColor} opacity-80 group-hover:scale-105 transition-transform duration-500 flex flex-col items-center justify-center`}>
-                                <svg className="w-8 h-8 opacity-25" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
-                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-                                </svg>
-                                <span className="text-white/40 text-[9.5px] font-bold uppercase mt-1 tracking-wider">{mom.date}</span>
-                              </div>
-                            )}
-                            <div className="absolute top-2.5 left-2.5 bg-black/40 backdrop-blur-md text-white text-[8px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 border border-white/10">
-                              <MapPin className="w-2.5 h-2.5" /> {mom.location}
-                            </div>
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-3 pt-6">
-                              <p className="text-white text-[11px] font-bold leading-snug truncate">{mom.caption}</p>
-                            </div>
-                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <div className="w-7 h-7 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white border border-white/20"><ZoomIn className="w-4 h-4" /></div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <hr className="border-neutral-100" />
-
-                    {/* Upload box */}
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest font-sans">Add Moment</h5>
-                        <span className="text-[9px] text-neutral-400 font-medium">Verify your offline vibe score</span>
-                      </div>
-
-                      <div
-                        className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all ${dragActive ? 'border-sky-500 bg-sky-50/30' : 'border-neutral-200 hover:border-neutral-300 bg-neutral-50/40 hover:bg-neutral-50/80'}`}
-                        onDragEnter={handleDrag}
-                        onDragOver={handleDrag}
-                        onDragLeave={handleDrag}
-                        onDrop={handleDrop}>
-                        <input type="file" id="file-uploader" className="hidden" accept="image/*" onChange={handleFileChange} disabled={uploading} />
-                        <label htmlFor="file-uploader" className="cursor-pointer block space-y-2.5">
-                          {uploading ? (
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-center gap-2">
-                                <span className="w-3.5 h-3.5 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin" />
-                                <span className="text-xs font-bold text-neutral-600">Uploading moment…</span>
-                              </div>
-                              <div className="w-full bg-neutral-200 h-1 rounded-full overflow-hidden max-w-xs mx-auto">
-                                <div className={`h-full ${theme.bgAccent} transition-all duration-150`} style={{ width: `${uploadProgress}%` }} />
-                              </div>
-                              <span className="text-[9px] text-neutral-400 block font-bold">{uploadProgress}% complete</span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex justify-center">
-                                <div className={`w-9 h-9 rounded-full flex items-center justify-center ${theme.badgeBg}`}>
-                                  <Upload className="w-4.5 h-4.5" />
-                                </div>
-                              </div>
-                              <div className="space-y-0.5">
-                                <div className="text-xs font-bold text-neutral-700">Drag &amp; drop hangout photos here</div>
-                                <div className="text-[9.5px] text-neutral-400">or click to browse from device (max 5MB)</div>
-                              </div>
-                            </>
-                          )}
-                        </label>
                       </div>
                     </div>
 
@@ -2843,7 +2648,7 @@ function ProfileContent() {
                               const token = localStorage.getItem("vayo_jwt_token");
                               if (token) {
                                 try {
-                                  await fetch("http://localhost:8000/api/v1/users/me/inbox-shield", {
+                                  await fetch("http://127.0.0.1:8000/api/v1/users/me/inbox-shield", {
                                     method: "PATCH",
                                     headers: {
                                       "Content-Type": "application/json",

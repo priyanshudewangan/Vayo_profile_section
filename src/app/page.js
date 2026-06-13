@@ -160,7 +160,7 @@ export default function Home() {
     e.preventDefault();
     if (isNavigating) return;
     setIsNavigating(true);
-    router.push("/join");
+    router.push("/community");
   };
 
   const handleScrollToFeatures = () => {
@@ -390,8 +390,16 @@ export default function Home() {
                   <Image src="/assets/vayo-logo.png" alt="VAYO Logo" width={180} height={48} className="h-12 w-auto filter drop-shadow-[0_0_20px_rgba(99,102,241,0.25)] mx-auto md:mx-0" />
                 </Link>
                 <p className="text-xs md:text-sm leading-relaxed text-violet-200/45 font-normal tracking-wide">
-                  Vayo Commune is a community-driven social platform and offline community that helps people meet others through real-life activities, hobbies, and shared experiences rather than just online chatting.
+                  Vayo is a verified membership platform and offline community. We help you transition from online discovery to real-life belonging through curated activities and verified social matching.
                 </p>
+                <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
+                  <Link href="/community" className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-white hover:bg-white/10 transition-all decoration-none uppercase tracking-wider">
+                    Explore Community
+                  </Link>
+                  <Link href="/join" className="px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-300 hover:bg-indigo-500/20 transition-all decoration-none uppercase tracking-wider">
+                    Member Registration
+                  </Link>
+                </div>
               </div>
 
               {/* Right: Contact Details */}

@@ -70,7 +70,8 @@ class CreateEventRequest(BaseModel):
 
     @validator("event_date")
     def must_be_future(cls, v):
-        if v <= datetime.utcnow():
+        now = datetime.now(v.tzinfo) if v.tzinfo else datetime.utcnow()
+        if v <= now:
             raise ValueError("Event date must be in the future")
         return v
 

@@ -234,6 +234,41 @@ async def get_event_by_slug(slug: str):
     return _build_event_response(event, counts)
 
 
+@router.get("/user/{user_id}", summary="Get all events a user has RSVP'd to.")
+async def get_user_rsvps(user_id: str):
+    await _get_user_or_404(user_id)
+
+    rows = await db_manager.fetch(
+        """
+        SELECT 
+            e.*,
+            ep.payment_status,
+            ep.attendance_status,
+            ep.rsvp_timestamp,
+            (SELECT COUNT(*) FROM event_participants ep2 WHERE ep2.event_id = e.event_id) as participant_count
+        FROM events e
+        JOIN event_participants ep ON e.event_id = ep.event_id
+        WHERE ep.user_id = $1
+        ORDER BY e.event_date ASC
+        """,
+        user_id
+    )
+
+    events = []
+    for r in rows:
+        d = dict(r)
+        # We don't use all the counts here to keep it simple for the profile view
+        counts = {
+            "total_rsvp": d.pop("participant_count", 0), 
+            "total_checked_in": 0, 
+            "total_paid": 0, 
+            "total_pending": 0
+        }
+        events.append(_build_event_response(d, counts, include_share=True))
+
+    return {"events": events, "count": len(events)}
+
+
 @router.get("/{event_id}", response_model=EventResponse, summary="Get event by ID.")
 async def get_event(event_id: str):
     event = await _get_event_or_404(event_id)

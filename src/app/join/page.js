@@ -302,6 +302,13 @@ function JoinFormContent() {
           <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-b from-white/30 to-transparent pointer-events-none"></div>
 
           <div className="relative z-10">
+            {/* Membership Tag */}
+            <div className="flex justify-center mb-6">
+              <span className="px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-600 text-[9px] font-bold tracking-[2px] uppercase">
+                VAYO Membership Registration
+              </span>
+            </div>
+
             {/* Step Progress Header */}
             <div className="flex justify-between items-center mb-4">
               <span className="text-[10px] text-sky-600 font-extrabold tracking-[3px] uppercase">
