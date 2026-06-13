@@ -23,6 +23,8 @@ export default function Home() {
   const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
 
   const checkWaitlistStatus = async (targetEmail) => {
     if (!targetEmail) return;
@@ -32,6 +34,7 @@ export default function Home() {
     }
     setIsNavigating(true);
     setPasswordError("");
+    setResetMessage("");
     setPasswordInput("");
     setConfirmPasswordInput("");
     try {
@@ -143,6 +146,33 @@ export default function Home() {
       setPasswordError("Network error verifying password.");
     } finally {
       setIsSubmittingPassword(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!pendingEmail) return;
+    
+    setIsSendingReset(true);
+    setPasswordError("");
+    setResetMessage("");
+    
+    try {
+      const response = await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: pendingEmail })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setResetMessage("A new temporary password has been sent to your email.");
+      } else {
+        setPasswordError(data.error || "Failed to send reset email.");
+      }
+    } catch (err) {
+      console.error("Network error during password reset:", err);
+      setPasswordError("Network error during password reset.");
+    } finally {
+      setIsSendingReset(false);
     }
   };
 
@@ -680,15 +710,26 @@ export default function Home() {
               </div>
 
               {/* Title & Description */}
-              <h3 className="text-base font-bold tracking-tight text-white mb-2">
-                Verify credentials
+              <h3 className="text-base font-bold tracking-tight text-white mb-1">
+                Enter your password
               </h3>
-              <p className="text-[11px] text-slate-400 leading-relaxed font-normal mb-5">
-                Please authenticate with your VAYO profile password to retrieve your mixer tickets and connection lists.
+              <p className="text-[11px] text-slate-400 leading-relaxed font-normal mb-4">
+                Please verify your profile password to access your early access dashboard, mixer tickets, and connection lists.
               </p>
 
               {/* Form */}
               <form onSubmit={handleVerifyPasswordSubmit} className="space-y-4">
+                {/* Account info card */}
+                <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3.5 mb-1">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 via-indigo-600 to-purple-600 flex items-center justify-center text-white text-xs font-extrabold shadow-sm ring-1 ring-white/10 shrink-0">
+                    {pendingEmail ? pendingEmail.charAt(0).toUpperCase() : "U"}
+                  </div>
+                  <div className="leading-tight overflow-hidden">
+                    <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block">Approved Account</span>
+                    <span className="text-xs text-slate-200 font-medium block truncate select-all">{pendingEmail}</span>
+                  </div>
+                </div>
+
                 {/* Input inside card */}
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-1">
                   <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Password</label>
@@ -698,33 +739,8 @@ export default function Home() {
                     required
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-sky-500/50 transition-all"
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-indigo-500/50 transition-all"
                   />
-                </div>
-
-                {/* Verification Progress Checklist */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-5 space-y-3.5">
-                  {/* Step 1: Registered Member */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-4.5 h-4.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 text-[9px] font-bold shrink-0 mt-0.5">
-                      ✓
-                    </div>
-                    <div className="leading-tight">
-                      <span className="text-[11px] font-bold text-slate-200 block">Registered Member</span>
-                      <span className="text-[9.5px] text-slate-500 font-mono block mt-0.5 select-all">{pendingEmail}</span>
-                    </div>
-                  </div>
-
-                  {/* Step 2: Verification */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-4.5 h-4.5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse" />
-                    </div>
-                    <div className="leading-tight">
-                      <span className="text-[11px] font-bold text-slate-200">Security Credentials</span>
-                      <span className="text-[9.5px] text-sky-400/80 font-bold block mt-0.5">Waiting for authentication</span>
-                    </div>
-                  </div>
                 </div>
 
                 {passwordError && (
@@ -733,27 +749,44 @@ export default function Home() {
                   </p>
                 )}
 
-                <div className="flex gap-3 pt-1">
+                {resetMessage && (
+                  <p className="text-[10.5px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 text-center">
+                    {resetMessage}
+                  </p>
+                )}
+
+                <div className="flex flex-col gap-3 pt-1">
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowEnterPasswordModal(false)}
+                      className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingPassword || !passwordInput}
+                      className="flex-1 bg-white hover:bg-neutral-100 text-slate-950 font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      {isSubmittingPassword ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
+                          <span>Verifying...</span>
+                        </>
+                      ) : (
+                        "Confirm & Log In"
+                      )}
+                    </button>
+                  </div>
+                  
                   <button
                     type="button"
-                    onClick={() => setShowEnterPasswordModal(false)}
-                    className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all"
+                    onClick={handleForgotPassword}
+                    disabled={isSendingReset}
+                    className="text-[10px] text-slate-500 hover:text-sky-400 font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer text-center mt-1"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmittingPassword || !passwordInput}
-                    className="flex-1 bg-white hover:bg-neutral-100 text-slate-950 font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-                  >
-                    {isSubmittingPassword ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
-                        <span>Verifying...</span>
-                      </>
-                    ) : (
-                      "Confirm & Log In"
-                    )}
+                    {isSendingReset ? "Sending Reset..." : "Forgot Password?"}
                   </button>
                 </div>
               </form>
