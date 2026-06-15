@@ -592,7 +592,22 @@ export default function InvitePage() {
   return (
     <div className="min-h-screen bg-[#4893C6] text-[#E2EFF6] relative overflow-x-hidden">
       {/* High-End Organic Film Grain Overlay */}
-      <div className="fixed inset-0 bg-noise opacity-[0.035] pointer-events-none z-10"></div>
+      <div className="fixed inset-0 bg-noise opacity-[0.035] pointer-events-none z-20"></div>
+
+      {/* Background Video */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <video
+          className="absolute top-1/2 left-1/2 min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+        >
+          <source src="/assets/Sky-bg.mp4" type="video/mp4" />
+        </video>
+        {/* Subtle overlay to enhance contrast and ensure premium aesthetic */}
+        <div className="absolute inset-0 bg-black/10"></div>
+      </div>
 
       {/* Clean Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center px-4 h-24 bg-transparent transition-all duration-300 pointer-events-none">

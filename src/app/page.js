@@ -190,7 +190,7 @@ export default function Home() {
     e.preventDefault();
     if (isNavigating) return;
     setIsNavigating(true);
-    router.push("/invite");
+    router.push("/join");
   };
 
   const handleScrollToFeatures = () => {
