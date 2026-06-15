@@ -1,648 +1,442 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useSearchParams, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import {
-  Mail,
-  Phone,
-  Calendar,
-  Upload,
-  ArrowRight,
-  ArrowLeft,
-  Check,
-  AlertCircle,
-  Sparkles,
-  Camera,
-  X,
-  User,
-  Mountain,
-  Utensils,
-  Dices,
-  Trophy,
-  Leaf,
-  Coffee,
-  Compass,
-  Palette
-} from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
-// Inline Instagram icon SVG component
-const Instagram = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+// Inline Icons for maximum reliability and build performance
+const CalendarIcon = () => (
+  <svg className="w-3.5 h-3.5 text-[#E2EFF6]/85" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
   </svg>
 );
 
-// List of activities matching page.js with Lucide icons
-const vibeOptions = [
-  { title: "Outdoor Adventures", icon: Mountain },
-  { title: "Community Dinners", icon: Utensils },
-  { title: "Board Game Socials", icon: Dices },
-  { title: "Sports & Play", icon: Trophy },
-  { title: "Holi Celebration", icon: Sparkles },
-  { title: "Sankranti Celebration", icon: Leaf },
-  { title: "Cafe Explorations", icon: Coffee },
-  { title: "Socials", icon: Compass },
-  { title: "Creative Workshops", icon: Palette },
+const MIXERS = [
+  {
+    id: 1,
+    image: "/assets/events/outdoorevent.jpg",
+    tag: "Adventure",
+    title: "Western Ghats Trek",
+    date: "Saturday, 7:00 AM",
+    description: "Scale new heights and catch a breathtaking sunrise with a group of explorers.",
+  },
+  {
+    id: 2,
+    image: "/assets/events/hangout.jpg",
+    tag: "Social",
+    title: "Rooftop Cocktail Mixer",
+    date: "Friday, 8:00 PM",
+    description: "Unwind with curated drinks and engaging conversations under the city lights.",
+  },
+  {
+    id: 3,
+    image: "/assets/events/cards.jpg",
+    tag: "Casual",
+    title: "Strategy Board Game Night",
+    date: "Wednesday, 7:30 PM",
+    description: "Test your skills, team up, and share laughs over a collection of indie games.",
+  },
+  {
+    id: 4,
+    image: "/assets/events/sports.jpg",
+    tag: "Sports",
+    title: "Midweek Turf Football",
+    date: "Thursday, 8:30 PM",
+    description: "Friendly, high-energy matches on the best turf in town for all skill levels.",
+  },
+  {
+    id: 5,
+    image: "/assets/events/holi.jpg",
+    tag: "Festival",
+    title: "VAYO Colors & Beats",
+    date: "Sunday, 11:00 AM",
+    description: "A premium, private Holi mixer with music, organic colors, and festive vibes.",
+  },
+  {
+    id: 6,
+    image: "/assets/events/something.jpg",
+    tag: "Creative",
+    title: "Art & Coffee Social",
+    date: "Sunday, 3:00 PM",
+    description: "Get hands-on with pottery or painting while sipping local micro-brews.",
+  },
+];
+
+const DUPLICATED_MIXERS = [...MIXERS, ...MIXERS, ...MIXERS];
+
+const STEPS = [
+  {
+    num: "01",
+    title: "Select Your Vibes",
+    desc: "Share your passions, availability, and social energy profile to customize matches.",
+  },
+  {
+    num: "02",
+    title: "Verification & Vetting",
+    desc: "We review details to ensure a safe, high-intent, and authentic community.",
+  },
+  {
+    num: "03",
+    title: "Receive Invites",
+    desc: "Get personalized notifications and invitations to curated local mixers and events.",
+  },
+  {
+    num: "04",
+    title: "Enjoy Belonging",
+    desc: "Attend experiences, make genuine connections, and join our active private club.",
+  },
 ];
 
 function JoinFormContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const [email] = useState(() => searchParams.get("email") || "");
+  const [interest] = useState(() => searchParams.get("interest") || "");
 
-  // Multi-step state: 1 (Contact), 2 (Details), 3 (Vibes), 4 (Selfie), 5 (Review)
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const containerRef = useRef(null);
+  const cardRefs = useRef([]);
+  const scrollXRef = useRef(0);
+  const speedRef = useRef(0.8);
+  const hoverProgressRef = useRef(new Array(DUPLICATED_MIXERS.length).fill(0));
+  const [hoveredIndex, setHoveredIndex] = useState(null);
 
-  // Form Fields
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState(() => searchParams.get("email") || "");
-  const [phone, setPhone] = useState("");
-  const [birthdate, setBirthdate] = useState("");
-  const [instagram, setInstagram] = useState("");
-  const [selectedVibes, setSelectedVibes] = useState([]);
-  const [selfieFile, setSelfieFile] = useState(null);
-  const [selfiePreview, setSelfiePreview] = useState("");
-  const [selfieUrl, setSelfieUrl] = useState("");
-  const [uploadingSelfie, setUploadingSelfie] = useState(false);
+  const [dimensions, setDimensions] = useState({ cardWidth: 290, cardHeight: 400, gap: 24 });
 
-  // Compute age from birthdate
-  const getAge = (dobString) => {
-    if (!dobString) return 0;
-    const today = new Date();
-    const birthDate = new Date(dobString);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  // Handle Drag & Drop events
-  const [dragActive, setDragActive] = useState(false);
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleSelfieFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleSelfieFile(e.target.files[0]);
-    }
-  };
-
-  const handleSelfieFile = (file) => {
-    if (!file.type.startsWith("image/")) {
-      setErrorMsg("Please upload an image file.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMsg("File size must be less than 5MB.");
-      return;
-    }
-
-    setSelfieFile(file);
-    setErrorMsg("");
-
-    // Create a local preview URL
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setSelfiePreview(reader.result);
+  // Handle responsive resizing of cards
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (window.innerWidth < 640) {
+        setDimensions({ cardWidth: 240, cardHeight: 330, gap: 16 });
+      } else {
+        setDimensions({ cardWidth: 290, cardHeight: 400, gap: 24 });
+      }
     };
-    reader.readAsDataURL(file);
-  };
+    
+    updateDimensions();
+    window.addEventListener("resize", updateDimensions);
+    return () => window.removeEventListener("resize", updateDimensions);
+  }, []);
 
-  // Handle vibe select toggle
-  const toggleVibe = (title) => {
-    setSelectedVibes((prev) =>
-      prev.includes(title)
-        ? prev.filter((v) => v !== title)
-        : [...prev, title]
-    );
-  };
-
-  // Step Navigations & Validations
-  const nextStep = () => {
-    setErrorMsg("");
-    if (step === 1) {
-      if (!name || name.trim().length < 2) {
-        setErrorMsg("Please enter your full name.");
+  // Main 3D requestAnimationFrame Loop
+  useEffect(() => {
+    let animationFrameId;
+    
+    const animate = () => {
+      if (!containerRef.current) {
+        animationFrameId = requestAnimationFrame(animate);
         return;
       }
-      if (!email || !email.includes("@")) {
-        setErrorMsg("Please enter a valid email address.");
-        return;
-      }
-      if (!phone || phone.trim().length < 8) {
-        setErrorMsg("Please enter a valid phone number.");
-        return;
-      }
-    } else if (step === 2) {
-      if (!birthdate) {
-        setErrorMsg("Please select your birthdate.");
-        return;
-      }
-      const age = getAge(birthdate);
-      if (age < 18) {
-        setErrorMsg("You must be 18 years or older to join VAYO.");
-        return;
-      }
-      if (age > 120) {
-        setErrorMsg("Please enter a valid birthdate.");
-        return;
-      }
-      if (!instagram || instagram.trim().length < 2) {
-        setErrorMsg("Please enter your Instagram handle.");
-        return;
-      }
-    } else if (step === 3) {
-      if (selectedVibes.length === 0) {
-        setErrorMsg("Please select at least one vibe/interest.");
-        return;
-      }
-    } else if (step === 4) {
-      if (!selfieFile && !selfieUrl) {
-        setErrorMsg("Please upload a selfie image for verification.");
-        return;
-      }
-    }
-    setStep((prev) => prev + 1);
-  };
-
-  const prevStep = () => {
-    setErrorMsg("");
-    setStep((prev) => prev - 1);
-  };
-
-  // Upload selfie file to Supabase Storage
-  const uploadSelfieToStorage = async (file) => {
-    setUploadingSelfie(true);
-    try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      // Upload file to the 'selfies' bucket
-      const { data, error } = await supabase.storage
-        .from("selfies")
-        .upload(filePath, file);
-
-      if (error) throw error;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("selfies")
-        .getPublicUrl(filePath);
-
-      return publicUrl;
-    } catch (err) {
-      console.error("Selfie Upload Error:", err);
-      throw new Error("Failed to upload image. Please verify you created the 'selfies' bucket in your Supabase console.");
-    } finally {
-      setUploadingSelfie(false);
-    }
-  };
-
-  // Handle final form submit
-  const handleSubmit = async () => {
-    setLoading(true);
-    setErrorMsg("");
-
-    try {
-      let finalSelfieUrl = selfieUrl;
-
-      // Upload file if not already done
-      if (selfieFile && !finalSelfieUrl) {
-        finalSelfieUrl = await uploadSelfieToStorage(selfieFile);
-        setSelfieUrl(finalSelfieUrl);
-      }
-
-      // Submit data to database
-      const response = await fetch("/api/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          phone,
-          birthdate,
-          instagram: instagram.startsWith("@") ? instagram : `@${instagram}`,
-          interests: selectedVibes,
-          selfie_url: finalSelfieUrl,
-        }),
+      
+      const containerWidth = containerRef.current.clientWidth;
+      const screenCenter = containerWidth / 2;
+      
+      const cardWidth = dimensions.cardWidth;
+      const gap = dimensions.gap;
+      const step = cardWidth + gap;
+      const totalWidth = DUPLICATED_MIXERS.length * step;
+      
+      // Interpolate scroll speed based on whether any card is hovered
+      const isAnyCardHovered = hoveredIndex !== null;
+      const targetSpeed = isAnyCardHovered ? 0.04 : 0.75;
+      speedRef.current += (targetSpeed - speedRef.current) * 0.08;
+      
+      scrollXRef.current += speedRef.current;
+      
+      cardRefs.current.forEach((card, index) => {
+        if (!card) return;
+        
+        const p = index * step;
+        let x = (p - scrollXRef.current) % totalWidth;
+        
+        // Wrap around track boundaries
+        if (x < -step) x += totalWidth;
+        if (x > totalWidth - step) x -= totalWidth;
+        
+        const cardCenter = x + cardWidth / 2;
+        const dx = cardCenter - screenCenter;
+        const t = dx / (containerWidth / 2 || 1); // relative distance from viewport center
+        
+        const isHovered = hoveredIndex === index;
+        
+        // Handle custom smooth hover progress
+        let hp = hoverProgressRef.current[index] || 0;
+        if (isHovered) {
+          hp += (1 - hp) * 0.15;
+        } else {
+          hp += (0 - hp) * 0.15;
+        }
+        hoverProgressRef.current[index] = hp;
+        
+        // 3D perspective calculation
+        const maxTilt = 22; // max rotation degrees
+        const angle = -t * maxTilt;
+        const targetRotate = (1 - hp) * angle + hp * 0;
+        
+        // Translate Z: pushed back at edges, pulled forward on hover
+        const zOffset = -Math.abs(t) * 85;
+        const targetZ = (1 - hp) * zOffset + hp * 55;
+        
+        // Scale: smaller at edges, scaled up on hover
+        const baseScale = 1 - Math.min(Math.abs(t), 1.2) * 0.12;
+        const targetScale = (1 - hp) * baseScale + hp * 1.12;
+        
+        // Set transform inline directly on DOM for high-performance updates
+        card.style.transform = `translateX(${x}px) translateZ(${targetZ}px) rotateY(${targetRotate}deg) scale(${targetScale})`;
+        card.style.zIndex = hp > 0.05 ? Math.round(50 + hp * 10) : Math.round(10 - Math.abs(t) * 8);
+        
+        // Visual glows and border highlights matching Sky Reflection and Alice Blue
+        if (hp > 0.01) {
+          card.style.borderColor = `rgba(226, 239, 246, ${0.25 + hp * 0.45})`;
+          card.style.boxShadow = `0 10px 40px -10px rgba(26, 62, 92, 0.3), 0 0 ${hp * 32}px ${hp * 5}px rgba(226, 239, 246, ${hp * 0.3})`;
+        } else {
+          card.style.borderColor = 'rgba(141, 190, 220, 0.3)'; // Sky Reflection border
+          card.style.boxShadow = '0 10px 30px -10px rgba(26, 62, 92, 0.15)';
+        }
       });
+      
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    
+    animationFrameId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [dimensions, hoveredIndex]);
 
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to submit waitlist registration.");
+  // Tally Waitlist Integration Script
+  useEffect(() => {
+    const scriptId = "tally-js";
+    const scriptUrl = "https://tally.so/widgets/embed.js";
+
+    const initializeTally = () => {
+      if (typeof Tally !== "undefined") {
+        Tally.loadEmbeds();
+      } else {
+        document.querySelectorAll("iframe[data-tally-src]:not([src])").forEach((iframe) => {
+          iframe.src = iframe.dataset.tallySrc;
+        });
       }
+    };
 
-      // Successful completion - redirect to thank you screen
-      router.push(`/askvayo/vayo?email=${encodeURIComponent(email)}`);
-    } catch (err) {
-      console.error("Form Submit Error:", err);
-      setErrorMsg(err.message || "An unexpected error occurred. Please try again.");
-      setLoading(false);
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = scriptUrl;
+      script.onload = initializeTally;
+      script.onerror = initializeTally;
+      document.body.appendChild(script);
+    } else {
+      initializeTally();
     }
-  };
+  }, [email, interest]);
+
+  // Construct URL matching production waitlist embed parameters
+  const tallyUrl = `https://tally.so/embed/m6gM9k?alignLeft=1&hideTitle=1&transparentBackground=1&dynamicHeight=1${
+    email ? `&Email=${encodeURIComponent(email)}` : ""
+  }${interest ? `&Interest=${encodeURIComponent(interest)}` : ""}`;
 
   return (
-    <>
-      {/* Background Video specifically for the Join page */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <video
-          className="absolute top-1/2 left-1/2 min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 object-cover opacity-100 blur-[8px]"
-          autoPlay
-          muted
-          loop
-          playsInline
+    <div className="relative z-10 w-full flex flex-col items-center">
+      {/* Hero Headline Section */}
+      <section className="text-center pt-32 pb-10 px-4 max-w-3xl mx-auto relative z-20">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#E2EFF6]/10 border border-[#E2EFF6]/25 mb-6 backdrop-blur-md">
+          <span className="w-2 h-2 rounded-full bg-[#E2EFF6] animate-pulse"></span>
+          <span className="text-xs font-bold text-[#E2EFF6] tracking-wider uppercase">VAYO WAITLIST: OPEN</span>
+        </div>
+        
+        <h1 className="text-4xl sm:text-6xl font-bold tracking-tight mb-6 leading-tight text-[#E2EFF6]">
+          Curious What <br className="sm:hidden" />
+          We've Created?
+        </h1>
+        
+        <p className="text-base sm:text-lg text-[#E2EFF6]/85 leading-relaxed max-w-xl mx-auto font-medium">
+          Take a look at the mixers, activities, and celebrations happening in our community. Join the waitlist below to get vetted.
+        </p>
+      </section>
+
+      {/* 3D Perspective Curved Coverflow Carousel */}
+      <section className="w-full relative overflow-hidden py-14 flex items-center justify-center select-none">
+        {/* Soft edge masking gradients to fade out cards on sides */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-24 sm:w-48 bg-gradient-to-r from-[#4893C6] via-[#4893C6]/60 to-transparent z-20"></div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-24 sm:w-48 bg-gradient-to-l from-[#4893C6] via-[#4893C6]/60 to-transparent z-20"></div>
+
+        {/* 3D Viewport wrapper */}
+        <div 
+          ref={containerRef}
+          className="relative w-full overflow-visible"
+          style={{ 
+            height: `${dimensions.cardHeight + 40}px`,
+            perspective: "1200px", 
+            transformStyle: "preserve-3d" 
+          }}
         >
-          <source src="/assets/Sky-bg.mp4" type="video/mp4" />
-        </video>
-      </div>
-
-      <section className="flex items-start md:items-center justify-center min-h-screen relative z-10 px-4 py-24 md:py-10">
-
-        {/* Premium Light Glassmorphism Card */}
-        <div className="w-full max-w-xl mx-auto relative z-10 bg-white/55 backdrop-blur-2xl border border-white/60 rounded-[2.5rem] p-7 md:p-12 shadow-[0_24px_60px_-12px_rgba(15,23,42,0.08)] overflow-hidden">
-
-          {/* Subtle Shine Effect */}
-          <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
-          <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-b from-white/30 to-transparent pointer-events-none"></div>
-
-          <div className="relative z-10">
-            {/* Membership Tag */}
-            <div className="flex justify-center mb-6">
-              <span className="px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-600 text-[9px] font-bold tracking-[2px] uppercase">
-                VAYO Membership Registration
-              </span>
-            </div>
-
-            {/* Step Progress Header */}
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-[10px] text-sky-600 font-extrabold tracking-[3px] uppercase">
-                Step {step} of 5
-              </span>
-              <span className="text-[10px] text-slate-400 font-bold font-mono">
-                {Math.round((step / 5) * 100)}% Complete
-              </span>
-            </div>
-
-            {/* Dynamic Interactive Progress Bar */}
-            <div className="relative w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-6">
+          {DUPLICATED_MIXERS.map((mixer, index) => {
+            const initialX = index * (dimensions.cardWidth + dimensions.gap);
+            return (
               <div
-                className="absolute top-0 left-0 h-full bg-sky-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(14,165,233,0.4)]"
-                style={{ width: `${(step / 5) * 100}%` }}
-              />
-            </div>
+                key={`${mixer.id}-${index}`}
+                ref={(el) => (cardRefs.current[index] = el)}
+                onMouseEnter={() => setHoveredIndex(index)}
+                onMouseLeave={() => setHoveredIndex(null)}
+                className="absolute top-5 left-0 rounded-[2rem] border border-[#8DBEDC]/35 bg-white/10 backdrop-blur-md text-[#E2EFF6] transition-color-glow cursor-pointer overflow-hidden preserve-3d"
+                style={{
+                  width: `${dimensions.cardWidth}px`,
+                  height: `${dimensions.cardHeight}px`,
+                  transform: `translateX(${initialX}px) translateZ(0px) rotateY(0deg)`,
+                  transformStyle: "preserve-3d",
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden"
+                }}
+              >
+                {/* Visual card content - styled like a premium human-designed polaroid flyer */}
+                <div className="absolute inset-0 w-full h-full flex flex-col preserve-3d">
+                  {/* Event Image Container (Upper Section) */}
+                  <div className="relative w-full h-[55%] overflow-hidden">
+                    <Image 
+                      src={mixer.image} 
+                      alt={mixer.title} 
+                      fill 
+                      sizes={`${dimensions.cardWidth}px`}
+                      className="object-cover opacity-90 transition-all duration-500 pointer-events-none select-none"
+                      priority={index < 5}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent z-10 pointer-events-none"></div>
+                  </div>
 
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 mb-2 text-center">
-              {step === 1 && "Basic Info"}
-              {step === 2 && "A Little About You"}
-              {step === 3 && "Select Your Vibes"}
-              {step === 4 && "Selfie Verification"}
-              {step === 5 && "Review Registration"}
+                  {/* Polaroid Content Area (Lower Section) - Sky Reflection and Alice Blue */}
+                  <div className="w-full h-[45%] bg-[#1a3e5c]/45 border-t border-[#8DBEDC]/25 p-5 flex flex-col justify-between z-20 pointer-events-none select-none">
+                    <div>
+                      <span className="px-2.5 py-0.5 text-[9px] uppercase font-extrabold tracking-widest rounded-full bg-[#8DBEDC]/15 text-[#E2EFF6] border border-[#8DBEDC]/30 w-fit mb-2 inline-block">
+                        {mixer.tag}
+                      </span>
+                      
+                      <h3 className="text-base sm:text-lg font-bold text-[#E2EFF6] tracking-tight leading-tight mb-1">
+                        {mixer.title}
+                      </h3>
+                      
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#E2EFF6]/80 mb-2">
+                        <CalendarIcon />
+                        <span>{mixer.date}</span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-[11px] text-[#E2EFF6]/75 leading-relaxed font-medium">
+                      {mixer.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Onboarding Steps Flow */}
+      <section className="w-full max-w-6xl mx-auto px-4 py-20 relative z-20">
+        <div className="text-center mb-14">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#E2EFF6] mb-3">
+            How VAYO Works
+          </h2>
+          <p className="text-sm text-[#E2EFF6]/75 max-w-md mx-auto font-medium">
+            Our onboarding is designed to create a safe, vetted space for meaningful local connections.
+          </p>
+        </div>
+
+        <div className="flex flex-row overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-4 pb-6 px-4 -mx-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-6 sm:overflow-visible">
+          {STEPS.map((step, idx) => (
+            <div 
+              key={idx}
+              className="group relative bg-white/10 backdrop-blur-md hover:bg-white/15 border border-white/20 hover:border-white/35 rounded-3xl p-5 transition-all duration-300 flex flex-col justify-between h-[175px] w-[230px] shrink-0 snap-start shadow-sm text-[#E2EFF6] sm:w-auto sm:h-[200px] sm:shrink-1"
+            >
+              {/* Top border shine effect */}
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#E2EFF6]/0 hover:via-[#E2EFF6]/25 to-transparent transition-all duration-500"></div>
+
+              <div>
+                <span className="text-[10px] sm:text-xs font-bold text-[#E2EFF6]/70 tracking-wider font-mono">// {step.num}</span>
+                <h3 className="text-base sm:text-lg font-bold text-[#E2EFF6] tracking-tight mt-2 sm:mt-3 mb-1.5 sm:mb-2">
+                  {step.title}
+                </h3>
+              </div>
+              <p className="text-[11px] sm:text-xs text-[#E2EFF6]/80 leading-relaxed font-medium">
+                {step.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Embedded Registration Waitlist Card */}
+      <section className="w-full max-w-xl mx-auto px-4 pb-28 relative z-20">
+        <div className="w-full bg-white/10 backdrop-blur-lg border border-white/20 rounded-[2.5rem] p-6 sm:p-10 shadow-[0_24px_50px_-12px_rgba(26,62,92,0.3)] relative overflow-hidden">
+          {/* Top border shine */}
+          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#E2EFF6]/20 to-transparent"></div>
+          
+          <div className="relative z-10 text-center mb-8">
+            <h2 className="text-3xl font-bold text-[#E2EFF6] tracking-tight mb-3">
+              Request Invite
             </h2>
-
-            <p className="text-xs md:text-sm text-slate-500 mb-8 text-center leading-relaxed max-w-sm mx-auto font-medium font-sans">
-              {step === 1 && "Let's start with your standard contact information."}
-              {step === 2 && "We verify birthday & Instagram to ensure a safe, aligned community."}
-              {step === 3 && "Select the experiences you are excited to do offline."}
-              {step === 4 && "Upload a clear selfie. Only visible to waitlist admins for confirmation."}
-              {step === 5 && "Review your information details before finalizing waitlist submission."}
+            <p className="text-xs sm:text-sm text-[#E2EFF6]/80 leading-relaxed px-4 font-medium">
+              Enter your details below to join the waitlist. Vetting is completed within 48 hours.
             </p>
+          </div>
 
-            {/* Error Message Box */}
-            {errorMsg && (
-              <div className="mb-6 p-4 rounded-2xl bg-rose-50/80 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300 font-semibold shadow-sm">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            {/* STEP 1: Contact Detail (Name, Email & Phone) */}
-            {step === 1 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="space-y-1.5">
-                  <label className="text-xs text-slate-700 font-bold tracking-wider block pl-1">Full Name</label>
-                  <div className="relative flex items-center group/input">
-                    <User className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-sky-500 transition-colors" />
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Name"
-                      className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/25 focus:bg-white transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs text-slate-700 font-bold tracking-wider block pl-1">Email Address</label>
-                  <div className="relative flex items-center group/input">
-                    <Mail className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-sky-500 transition-colors" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="name@example.com"
-                      className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/25 focus:bg-white transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs text-slate-700 font-bold tracking-wider block pl-1">Phone Number</label>
-                  <div className="relative flex items-center group/input">
-                    <Phone className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-sky-500 transition-colors" />
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+91 9999 99999"
-                      className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/25 focus:bg-white transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 2: Birthdate & Instagram */}
-            {step === 2 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="space-y-1.5">
-                  <label className="text-xs text-slate-700 font-bold tracking-wider block pl-1">Birthdate</label>
-                  <div className="relative flex items-center group/input">
-                    <Calendar className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-sky-500 transition-colors" />
-                    <input
-                      type="date"
-                      value={birthdate}
-                      onChange={(e) => setBirthdate(e.target.value)}
-                      className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/25 focus:bg-white transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] [color-scheme:light]"
-                    />
-                  </div>
-                  {birthdate && (
-                    <span className="text-[10px] text-sky-600 pl-1 font-bold block">
-                      Calculated Age: <strong className="text-slate-800">{getAge(birthdate)}</strong> years old
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs text-slate-700 font-bold tracking-wider block pl-1">Instagram Handle</label>
-                  <div className="relative flex items-center group/input">
-                    <Instagram className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-sky-500 transition-colors" />
-                    <input
-                      type="text"
-                      value={instagram}
-                      onChange={(e) => setInstagram(e.target.value)}
-                      placeholder="@username"
-                      className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/25 focus:bg-white transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 3: Selected Vibes */}
-            {step === 3 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="grid grid-cols-2 gap-2.5 max-h-[300px] overflow-y-auto pr-1">
-                  {vibeOptions.map((vibe) => {
-                    const isSelected = selectedVibes.includes(vibe.title);
-                    const IconComponent = vibe.icon;
-                    return (
-                      <button
-                        key={vibe.title}
-                        type="button"
-                        onClick={() => toggleVibe(vibe.title)}
-                        className={`flex items-center gap-2.5 p-3.5 rounded-2xl border text-xs font-semibold tracking-wide text-left cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isSelected
-                          ? "bg-sky-50 border-sky-500 text-sky-700 shadow-[0_4px_16px_rgba(14,165,233,0.08)]"
-                          : "bg-slate-50/50 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-350"
-                          }`}
-                      >
-                        <span className={`p-1.5 rounded-xl shrink-0 ${isSelected ? "bg-sky-500 text-white" : "bg-slate-100 text-slate-500"}`}>
-                          <IconComponent className="w-3.5 h-3.5" />
-                        </span>
-                        <span className="truncate">{vibe.title}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* STEP 4: Selfie Upload */}
-            {step === 4 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div
-                  onDragEnter={handleDrag}
-                  onDragOver={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDrop={handleDrop}
-                  className={`w-full border-2 border-dashed rounded-3xl p-6 transition-all duration-300 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[220px] ${dragActive
-                    ? "border-sky-500 bg-sky-50/20"
-                    : "border-slate-200 bg-slate-50/30 hover:border-slate-350 hover:bg-slate-50/50"
-                    }`}
-                >
-                  {selfiePreview ? (
-                    <div className="relative w-full flex flex-col items-center">
-                      <div className="relative w-28 h-28 rounded-full overflow-hidden border-2 border-sky-500/50 shadow-md">
-                        <img
-                          src={selfiePreview}
-                          alt="Selfie Preview"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelfieFile(null);
-                          setSelfiePreview("");
-                          setSelfieUrl("");
-                        }}
-                        className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-600 text-[10px] font-bold uppercase tracking-wider rounded-full hover:bg-rose-100 transition-all cursor-pointer"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        Remove photo
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center mb-4">
-                        <Camera className="w-5 h-5 text-slate-500" />
-                      </div>
-                      <p className="text-xs text-slate-700 font-bold mb-1 pl-2 pr-2">
-                        Drag & drop a verified selfie here, or{" "}
-                        <label className="text-sky-600 hover:text-sky-500 underline cursor-pointer">
-                          browse files
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="hidden"
-                          />
-                        </label>
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-medium">PNG, JPG, or JPEG (Max 5MB)</p>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* STEP 5: Final Review */}
-            {step === 5 && (
-              <div className="space-y-4 text-left animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="bg-slate-50/50 border border-slate-200 rounded-3xl p-5 space-y-4 max-h-[280px] overflow-y-auto">
-                  <div className="flex items-center gap-4 border-b border-slate-250/65 pb-4">
-                    {selfiePreview ? (
-                      <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border border-slate-250">
-                        <img src={selfiePreview} alt="Review Selfie" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="w-14 h-14 rounded-full bg-slate-100 border border-slate-250 flex items-center justify-center shrink-0">
-                        <Camera className="w-5 h-5 text-slate-400" />
-                      </div>
-                    )}
-                    <div>
-                      <h4 className="text-sm font-extrabold text-slate-900">{name}</h4>
-                      <div className="flex flex-col gap-0.5 text-[10px] text-slate-500 font-medium">
-                        <span>{instagram.startsWith("@") ? instagram : `@${instagram}`}</span>
-                        <span className="font-mono text-slate-400">{email}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold block mb-0.5">Phone Number</span>
-                      <span className="font-bold text-slate-800">{phone}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold block mb-0.5">Age</span>
-                      <span className="font-bold text-slate-800">{getAge(birthdate)} years old ({birthdate})</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold block mb-1.5">Selected Interests</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedVibes.map((vib) => {
-                        const vibeItem = vibeOptions.find(o => o.title === vib);
-                        const Icon = vibeItem?.icon || Sparkles;
-                        return (
-                          <span key={vib} className="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-[10px] text-sky-700 font-bold flex items-center gap-1.5 select-none shadow-sm">
-                            <Icon className="w-3 h-3 text-sky-500" />
-                            <span>{vib}</span>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step Navigation Button Row */}
-            <div className="flex items-center justify-between gap-4 mt-8 pt-6 border-t border-slate-200/60">
-              {step > 1 ? (
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  disabled={loading || uploadingSelfie}
-                  className="px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-700 text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-2 select-none disabled:opacity-50"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Back</span>
-                </button>
-              ) : (
-                <div />
-              )}
-
-              {step < 5 ? (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className="px-6 py-3 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-2 select-none shadow-[0_4px_16px_rgba(14,165,233,0.25)] hover:-translate-y-0.5 active:translate-y-0"
-                >
-                  <span>Continue</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={loading || uploadingSelfie}
-                  className="px-6 py-3.5 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-2 select-none shadow-[0_8px_24px_rgba(14,165,233,0.3)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
-                      <span>Submitting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5 text-sky-300 animate-pulse" />
-                      <span>Submit Request</span>
-                    </>
-                  )}
-                </button>
-              )}
+          {/* Embedded Tally iframe */}
+          <div className="w-full min-h-[460px] relative z-10">
+            <iframe
+              key={tallyUrl}
+              data-tally-src={tallyUrl}
+              loading="lazy"
+              width="100%"
+              height="460"
+              frameBorder="0"
+              marginHeight="0"
+              marginWidth="0"
+              title="VAYO - Let's Do It 💙"
+              className="w-full border-0"
+            ></iframe>
+            
+            <div className="text-center mt-6">
+              <a
+                href={tallyUrl.replace("&transparentBackground=1", "")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-[#E2EFF6]/70 hover:text-[#E2EFF6] underline transition-colors font-bold"
+              >
+                Having trouble? Open registration form in a new tab ↗
+              </a>
             </div>
-
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }
 
 export default function JoinPage() {
   return (
-    <>
+    <div className="min-h-screen bg-[#4893C6] text-[#E2EFF6] relative overflow-x-hidden">
+      {/* High-End Organic Film Grain Overlay */}
+      <div className="fixed inset-0 bg-noise opacity-[0.035] pointer-events-none z-10"></div>
+
+      {/* Clean Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center px-4 h-24 bg-transparent transition-all duration-300 pointer-events-none">
         <div className="pointer-events-auto">
-          <Link href="/" className="flex items-center decoration-none px-6 py-3 rounded-full bg-white/40 backdrop-blur-3xl border border-slate-200/50 shadow-md hover:bg-white/60 hover:border-slate-300/60 transition-all duration-300 group">
-            <Image src="/assets/vayo-logo.png" alt="VAYO Logo" width={90} height={24} className="h-5 w-auto opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" style={{ filter: "brightness(0)" }} priority />
+          <Link href="/" className="flex items-center decoration-none px-6 py-3 rounded-full bg-[#1a3e5c]/90 backdrop-blur-md border border-[#8DBEDC]/20 shadow-md hover:bg-[#1a3e5c] hover:border-[#8DBEDC]/40 transition-all duration-300 group">
+            {/* White logo works perfectly in this layout directly */}
+            <Image 
+              src="/assets/vayo-logo.png" 
+              alt="VAYO Logo" 
+              width={90} 
+              height={24} 
+              className="h-5 w-auto opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" 
+              priority 
+            />
           </Link>
         </div>
       </nav>
 
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
+      {/* Suspense wrapper to handle SearchParams hydration during NextJS build */}
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-[#E2EFF6] font-bold">Loading Waitlist...</div>}>
         <JoinFormContent />
       </Suspense>
-    </>
+    </div>
   );
 }

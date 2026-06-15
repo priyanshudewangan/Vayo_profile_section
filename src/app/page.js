@@ -46,7 +46,7 @@ export default function Home() {
           if (errData && errData.error) {
             errMsg = errData.error;
           }
-        } catch (_) {}
+        } catch (_) { }
         throw new Error(errMsg);
       }
       const data = await response.json();
@@ -63,8 +63,8 @@ export default function Home() {
         setShowPendingModal(true);
         setIsNavigating(false);
       } else {
-        // Unregistered, redirect to join
-        router.push(`/join?email=${encodeURIComponent(targetEmail)}`);
+        // Unregistered, redirect to invite
+        router.push(`/invite?email=${encodeURIComponent(targetEmail)}`);
       }
     } catch (error) {
       console.error("Error checking waitlist status:", error);
@@ -151,11 +151,11 @@ export default function Home() {
 
   const handleForgotPassword = async () => {
     if (!pendingEmail) return;
-    
+
     setIsSendingReset(true);
     setPasswordError("");
     setResetMessage("");
-    
+
     try {
       const response = await fetch("/api/forgot-password", {
         method: "POST",
@@ -190,7 +190,7 @@ export default function Home() {
     e.preventDefault();
     if (isNavigating) return;
     setIsNavigating(true);
-    router.push("/community");
+    router.push("/invite");
   };
 
   const handleScrollToFeatures = () => {
@@ -210,15 +210,15 @@ export default function Home() {
           <button
             onClick={handleNavJoinClick}
             disabled={isNavigating}
-            className="flex items-center justify-center decoration-none px-4 md:px-5 py-2 md:py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/8 shadow-lg text-white text-xs md:text-sm font-semibold hover:bg-white/10 hover:border-white/20 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition-all duration-300 whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+            className="flex items-center justify-center decoration-none px-4 md:px-5 py-2 md:py-2.5 rounded-full bg-white text-slate-950 text-xs md:text-sm font-bold hover:bg-slate-100 hover:-translate-y-0.5 transition-all duration-300 whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
           >
             {isNavigating ? (
               <span className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
                 Loading...
               </span>
             ) : (
-              "Join Our Community ↗"
+              "Join Our Community \u2197"
             )}
           </button>
         </div>
@@ -263,7 +263,7 @@ export default function Home() {
                   Processing...
                 </>
               ) : (
-                "Join VAYO \u2192"
+                "Join VAYO"
               )}
             </button>
           </form>
@@ -292,57 +292,56 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="flex flex-row overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-5 pb-6 px-4 -mx-6 md:mx-0 md:px-0 md:grid md:grid-cols-3 md:gap-8 md:overflow-visible">
           {/* Card 1 */}
-          <div className="group relative rounded-[2rem] bg-white/[0.02] border border-white/[0.06] hover:border-white/10 hover:bg-white/[0.04] p-8 md:p-10 backdrop-blur-md transition-all duration-500">
-            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-indigo-500/20 to-violet-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-              <svg className="w-6 h-6 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <div className="group relative rounded-[2rem] bg-white/[0.02] border border-white/[0.06] hover:border-white/10 hover:bg-white/[0.04] p-6 md:p-10 backdrop-blur-md transition-all duration-500 h-[210px] w-[260px] shrink-0 snap-start md:h-auto md:w-auto md:shrink-1">
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-indigo-500/20 to-violet-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-t-[2rem]"></div>
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
                 <path d="M23 21v-2a4 4 0 00-3-3.87" />
                 <path d="M16 3.13a4 4 0 010 7.75" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">Skip the Swipes</h3>
-            <p className="text-sm text-white/60 leading-relaxed font-normal">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-2 md:mb-3">Skip the Swipes</h3>
+            <p className="text-xs md:text-sm text-white/60 leading-relaxed font-normal">
               No endless small talk or dead-end profiles. Vayo automatically matches you into tiny, friendly groups based on shared interests and values.
             </p>
           </div>
 
           {/* Card 2 */}
-          <div className="group relative rounded-[2rem] bg-white/[0.02] border border-white/[0.06] hover:border-white/10 hover:bg-white/[0.04] p-8 md:p-10 backdrop-blur-md transition-all duration-500">
-            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-emerald-500/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-              <svg className="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <div className="group relative rounded-[2rem] bg-white/[0.02] border border-white/[0.06] hover:border-white/10 hover:bg-white/[0.04] p-6 md:p-10 backdrop-blur-md transition-all duration-500 h-[210px] w-[260px] shrink-0 snap-start md:h-auto md:w-auto md:shrink-1">
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-emerald-500/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-t-[2rem]"></div>
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M8 14s1.5 2 4 2 4-2 4-2" />
                 <line x1="9" y1="9" x2="9.01" y2="9" />
                 <line x1="15" y1="9" x2="15.01" y2="9" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">Activity-First Vibes</h3>
-            <p className="text-sm text-white/60 leading-relaxed font-normal">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-2 md:mb-3">Activity-First Vibes</h3>
+            <p className="text-xs md:text-sm text-white/60 leading-relaxed font-normal">
               Meeting new people is easier when you&apos;re doing something together. We curate board games, dinners, hikes, and sports that keep the vibe casual and stress-free.
             </p>
           </div>
 
           {/* Card 3 */}
-          <div className="group relative rounded-[2rem] bg-white/[0.02] border border-white/[0.06] hover:border-white/10 hover:bg-white/[0.04] p-8 md:p-10 backdrop-blur-md transition-all duration-500">
-            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-              <svg className="w-6 h-6 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <div className="group relative rounded-[2rem] bg-white/[0.02] border border-white/[0.06] hover:border-white/10 hover:bg-white/[0.04] p-6 md:p-10 backdrop-blur-md transition-all duration-500 h-[210px] w-[260px] shrink-0 snap-start md:h-auto md:w-auto md:shrink-1">
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-t-[2rem]"></div>
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">Verified Hosts</h3>
-            <p className="text-sm text-white/60 leading-relaxed font-normal">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-2 md:mb-3">Verified Hosts</h3>
+            <p className="text-xs md:text-sm text-white/60 leading-relaxed font-normal">
               Every Vayo experience is hosted and verified. Safety, quality participation, and a supportive atmosphere are always guaranteed.
             </p>
           </div>
-        </div>
-      </section>
+        </div>      </section>
 
       {/* Event Showcase Section */}
       <section className="relative z-10 py-16 border-t border-white/5 bg-black/10">
@@ -377,30 +376,16 @@ export default function Home() {
             Secure early access to VAYO Commune today. Connect with verified people who actually match your offline vibe.
           </p>
 
-          <form onSubmit={handleBottomEmailSubmit} className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full max-w-[480px] mx-auto bg-white/5 backdrop-blur-3xl border border-white/10 rounded-2xl sm:rounded-full p-2 sm:p-1 pl-4 sm:pl-5 shadow-[0_16px_40px_rgba(0,0,0,0.4)] transition-all duration-300 focus-within:border-indigo-500/40 focus-within:shadow-[0_16px_40px_rgba(0,0,0,0.4),0_0_20px_rgba(99,102,241,0.15)]">
-            <input
-              type="email"
-              placeholder="Enter your email address"
-              className="flex-1 bg-transparent border-0 outline-0 text-sm font-normal text-white py-2.5 sm:py-2 w-full placeholder:text-violet-200/40"
-              value={bottomEmail}
-              onChange={(e) => setBottomEmail(e.target.value)}
-              required
-            />
+          <div className="relative z-10 flex flex-col items-center gap-6 mt-10">
             <button
-              type="submit"
-              disabled={isNavigating}
-              className="bg-white text-slate-950 border-0 outline-0 rounded-xl sm:rounded-full px-5 py-3 sm:py-2.5 text-xs md:text-sm font-bold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_20px_rgba(255,255,255,0.15)] active:translate-y-0 transition-all duration-200 whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed"
+              onClick={() => {
+                router.push("/invite");
+              }}
+              className="bg-white text-slate-950 border-0 outline-0 rounded-full px-12 py-4 text-xs md:text-sm font-extrabold cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_32px_rgba(255,255,255,0.2)] active:translate-y-0 transition-all duration-300 whitespace-nowrap uppercase tracking-widest shadow-xl"
             >
-              {isNavigating ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
-                  Processing...
-                </>
-              ) : (
-                "Join VAYO \u2192"
-              )}
+              Join VAYO NOW
             </button>
-          </form>
+          </div>
         </section>
 
         {/* Footer */}
@@ -426,7 +411,7 @@ export default function Home() {
                   <Link href="/community" className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-white hover:bg-white/10 transition-all decoration-none uppercase tracking-wider">
                     Explore Community
                   </Link>
-                  <Link href="/join" className="px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-300 hover:bg-indigo-500/20 transition-all decoration-none uppercase tracking-wider">
+                  <Link href="/invite" className="px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-300 hover:bg-indigo-500/20 transition-all decoration-none uppercase tracking-wider">
                     Member Registration
                   </Link>
                 </div>
@@ -779,7 +764,7 @@ export default function Home() {
                       )}
                     </button>
                   </div>
-                  
+
                   <button
                     type="button"
                     onClick={handleForgotPassword}

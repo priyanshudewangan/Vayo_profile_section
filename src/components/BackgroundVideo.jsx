@@ -7,7 +7,7 @@ export default function BackgroundVideo() {
 
   // Do not render the background video on the /join, /askvayo/vayo, or /profile pages to prevent heavy memory/GPU usage
   // and to allow clean layouts.
-  if (pathname === "/join" || pathname === "/askvayo/vayo" || pathname === "/profile") {
+  if (pathname === "/join" || pathname === "/invite" || pathname === "/askvayo/vayo" || pathname === "/profile") {
     return null;
   }
 

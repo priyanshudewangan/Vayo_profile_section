@@ -424,7 +424,7 @@ const makeUserPersona = (user, fastApiProfile = null) => {
     socialTags,
     bffTags,
     bizzTags,
-    socialBio: (fastApiProfile && (fastApiProfile.social_bio || fastApiProfile.bio)) || `Hey, I'm ${user.name || 'Vayo Member'}! Excited to join the Vayo community and meet up.`,
+    socialBio: user.bio || (fastApiProfile && (fastApiProfile.social_bio || fastApiProfile.bio)) || `Hey, I'm ${user.name || 'Vayo Member'}! Excited to join the Vayo community and meet up.`,
     bffBio: (fastApiProfile && fastApiProfile.bff_bio) || `Looking to form a new squad or connect for weekend activities.`,
     bizzBio: (fastApiProfile && fastApiProfile.bizz_bio) || `Professional details. Hit me up for discussions on shared interests or collaborations.`,
     bizzRole: (fastApiProfile && fastApiProfile.bizz_role) || "Vayo Builder",
@@ -439,13 +439,18 @@ const makeUserPersona = (user, fastApiProfile = null) => {
       hostSupport: 50
     },
     pendingApplications: [
-      { name: "Vayo Welcome Social Mixer", date: "Coming Soon", status: "Approved & Ticket Generated" }
+      { 
+        name: "Membership Onboarding", 
+        date: user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : "Joined Today", 
+        status: (user.status === "Joined" || user.status === "Approved" || user.status === "Sent") ? "Approved" : "Under Review"
+      }
     ],
-    activeTickets: [
-      { name: "Vayo Welcome Social Mixer", date: "Coming Soon, 7:00 PM", countdown: "Soon", locationPin: "Vayo Hub, Indiranagar", organizer: "Vayo Host", qrCode: `VAYO-TKT-${(user.name || 'MEMBER').slice(0, 3).toUpperCase()}99` }
-    ],
+    activeTickets: (user.status === "Joined") ? [
+      { name: "VAYO Welcome Social", date: "June 20, 7:00 PM", countdown: "7 days", locationPin: "Indiranagar Hub", organizer: "VAYO Host", qrCode: `VAYO-TKT-${(user.name || 'MEMBER').slice(0, 3).toUpperCase()}99` }
+    ] : [],
     pastTimeline: [
-      { name: "Selfie Verification Completed", date: "Approved Today", category: "Milestone", friendsMet: 0 }
+      { name: "Application Submitted", date: user.created_at ? new Date(user.created_at).toLocaleDateString() : "Just now", category: "Milestone", friendsMet: 0 },
+      { name: "Identity Verified", date: (user.status === "Sent" || user.status === "Joined") ? "Confirmed" : "In Progress", category: "Milestone", friendsMet: 0 }
     ],
     bffCrew: [
       { name: "Vayo Explorers Crew", members: 124, type: "Community Group", emoji: "🌐", lastActive: "1 day ago", nextEvent: "Soon" }
@@ -559,7 +564,12 @@ const getNextTierInfo = (tier, balance) => {
 
 const getTierIcon = (tier) => ({ Explorer: '🔭', Pathfinder: '🧭', Voyager: '🚀' }[tier] ?? '🌟');
 
-const getStepperIdx = (status) => status.includes('Approved') ? 2 : status === 'Waitlisted' ? 1 : 0;
+const getStepperIdx = (status) => {
+  const s = (status || "").toLowerCase();
+  if (s === 'joined' || s === 'approved' || s === 'sent') return 2;
+  if (s === 'waitlisted') return 1;
+  return 0; // Applied / Under Review
+};
 
 function ProfileContent() {
   const searchParams = useSearchParams();
@@ -572,19 +582,13 @@ function ProfileContent() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [customMoments, setCustomMoments] = useState({});
-  const [activeTabCircle, setActiveTabCircle] = useState('squads');
   const [showToast, setShowToast] = useState(null);
   const [activeSidebarTab, setActiveSidebarTab] = useState('profile');
   const [lightboxMoment, setLightboxMoment] = useState(null);
   const [deletedMomentIdxs, setDeletedMomentIdxs] = useState({});
-  const [animatedXP, setAnimatedXP] = useState(0);
-  const [inboxShield, setInboxShield] = useState(0);
-  const [karmaLedger, setKarmaLedger] = useState([]);
-  const [karmaData, setKarmaData] = useState(null);
   const [currentEventIdx, setCurrentEventIdx] = useState(0);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [referralCopied, setReferralCopied] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -595,11 +599,60 @@ function ProfileContent() {
   const [personaOverrides, setPersonaOverrides] = useState({});
   const [isUserLoaded, setIsUserLoaded] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [liveNotifications, setLiveNotifications] = useState([]);
-  const [connections, setConnections] = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [suggestedConnectionsState, setSuggestedConnectionsState] = useState([]);
-  const [isCircleLoading, setIsCircleLoading] = useState(false);
+  const [isTicketsLoading, setIsTicketsLoading] = useState(false);
+  const [userTickets, setUserTickets] = useState([]);
+  const [isMomentsLoading, setIsMomentsLoading] = useState(false);
+  const [dbMoments, setDbMoments] = useState([]);
+
+  const fetchUserTickets = async (email) => {
+    if (!email) return;
+    setIsTicketsLoading(true);
+    try {
+      const res = await fetch(`/api/rsvp?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setUserTickets(data.rsvps || []);
+        
+        // Update persona state to show these tickets
+        setPersonaOverrides(prev => ({
+          ...prev,
+          ['user-profile']: {
+            ...prev['user-profile'],
+            activeTickets: (data.rsvps || []).map(t => ({
+              id: t.event_id,
+              name: t.event_title,
+              date: t.event_date,
+              locationPin: t.event_location,
+              organizer: "VAYO Host",
+              qrCode: `VAYO-TKT-${t.event_id.toString().slice(-4).toUpperCase()}`
+            }))
+          }
+        }));
+      }
+    } catch (err) {
+      console.error("Error fetching tickets:", err);
+    } finally {
+      setIsTicketsLoading(false);
+    }
+  };
+
+  const fetchUserMoments = async (email) => {
+    if (!email) return;
+    setIsMomentsLoading(true);
+    try {
+      const res = await fetch(`/api/moments?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDbMoments(data.moments || []);
+      }
+    } catch (err) {
+      console.error("Error fetching moments:", err);
+    } finally {
+      setIsMomentsLoading(false);
+    }
+  };
 
   const currentPersona = personas[activeIdx] || basePersonas[0];
   const _ov = personaOverrides[currentPersona.id];
@@ -614,46 +667,11 @@ function ProfileContent() {
     pendingApplications: _ov.pendingApplications ?? currentPersona.pendingApplications
   } : currentPersona;
 
-  const liveScore = (currentPersona.id === 'user-profile' && karmaData) ? karmaData.karma_score : currentPersona.karmaBalance;
-  const liveTier = (currentPersona.id === 'user-profile' && karmaData) ? karmaData.tier_label : currentPersona.karmaTier;
-  const livePercentage = (currentPersona.id === 'user-profile' && karmaData) ? Math.min(100, Math.round((karmaData.karma_score / 1000) * 100)) : currentPersona.karmaPercentage;
-  const liveConnections = currentPersona.id === 'user-profile' ? connections : (currentPersona.connectionsMet || []);
-  const liveSuggestions = currentPersona.id === 'user-profile' ? suggestedConnectionsState : (currentPersona.suggestedConnections || []);
-
-  const getDynamicBreakdown = () => {
-    const breakdown = {
-      attendedMixers: 0,
-      momentContributor: 0,
-      vibeLeader: 0,
-      hostSupport: 0
-    };
-    if (currentPersona.id === 'user-profile' && karmaLedger && karmaLedger.length > 0) {
-      karmaLedger.forEach(item => {
-        const points = Math.abs(item.point_delta || 0);
-        const type = item.action_type;
-        if (type === 'EVENT_RSVP' || type === 'GPS_CHECKIN') {
-          breakdown.attendedMixers += points;
-        } else if (type === 'EVENT_PHOTO_POST') {
-          breakdown.momentContributor += points;
-        } else if (type === 'PEER_ENDORSEMENT') {
-          breakdown.vibeLeader += points;
-        } else if (type === 'HOST_EVENT') {
-          breakdown.hostSupport += points;
-        }
-      });
-      return breakdown;
-    }
-    return currentPersona.karmaBreakdown || {
-      attendedMixers: 0,
-      momentContributor: 0,
-      vibeLeader: 0,
-      hostSupport: 0
-    };
-  };
-  const liveBreakdown = getDynamicBreakdown();
-
-  const allMoments = [...(customMoments[currentPersona.id] || []), ...(currentPersona.moments || [])];
-  const personaMoments = allMoments.filter((_, i) => !(deletedMomentIdxs[currentPersona.id] || []).includes(i));
+  const allMoments = displayPersona.id === 'user-profile' 
+    ? dbMoments 
+    : [...(customMoments[displayPersona.id] || []), ...(displayPersona.moments || [])];
+  
+  const personaMoments = allMoments.filter((_, i) => !(deletedMomentIdxs[displayPersona.id] || []).includes(i));
 
   const completenessItems = [
     { label: 'Profile photo', done: true },
@@ -662,7 +680,6 @@ function ProfileContent() {
     { label: 'Tags added', done: currentPersona.socialTags.length > 0 },
     { label: 'Location set', done: !!currentPersona.location },
     { label: 'Moments shared', done: personaMoments.length > 0 },
-    { label: 'Circle connected', done: currentPersona.connectionsMet.length > 0 },
     { label: 'Social links', done: Object.keys(currentPersona.socialLinks || {}).length > 0 },
   ];
   const completenessScore = Math.round((completenessItems.filter(i => i.done).length / completenessItems.length) * 100);
@@ -685,12 +702,7 @@ function ProfileContent() {
   const displayNotifications = currentPersona.id === 'user-profile'
     ? liveNotifications.map(n => {
         let icon = '🔔';
-        if (n.type === 'CONNECT_REQUEST') icon = '👋';
-        else if (n.type === 'CONNECT_ACCEPTED') icon = '🤝';
-        else if (n.type === 'CONNECT_DECLINED') icon = '❌';
-        else if (n.type === 'MESSAGE_RECEIVED') icon = '💬';
-        else if (n.type === 'PEER_ENDORSEMENT') icon = '⚡';
-        else if (n.type === 'KARMA_TIER_UPGRADE') icon = '👑';
+        if (n.type === 'MESSAGE_RECEIVED') icon = '💬';
         else if (n.type === 'EVENT_MATCH') icon = '📅';
         else if (n.type === 'EVENT_REMINDER') icon = '⏰';
 
@@ -706,71 +718,123 @@ function ProfileContent() {
         };
       })
     : (activeMode === 'bff' ? [
-        { id: 1, icon: '💚', msg: `${currentPersona.connectionsMet[0]?.name ?? 'A friend'} added you to their BFF Crew!`, time: '1h ago', unread: true },
+        { id: 1, icon: '💚', msg: `Your BFF profile is now live!`, time: '1h ago', unread: true },
         { id: 2, icon: '📸', msg: `New memory added to your shared gallery from last weekend`, time: '4h ago', unread: true },
-        { id: 3, icon: '👥', msg: `${currentPersona.bffCrew[0]?.name ?? 'Your crew'} has a new member — say hi!`, time: '1d ago', unread: false },
-        { id: 4, icon: '👋', msg: `${currentPersona.connectionsMet[0]?.name ?? 'Someone'} viewed your BFF profile`, time: '2d ago', unread: false },
+        { id: 4, icon: '👋', msg: `Someone viewed your BFF profile`, time: '2d ago', unread: false },
       ] : activeMode === 'bizz' ? [
-        { id: 1, icon: '💼', msg: `${currentPersona.connectionsMet[0]?.name ?? 'A contact'} wants to collaborate with you`, time: '2h ago', unread: true },
         { id: 2, icon: '⚡', msg: `Your Bizz profile got 8 new views this week`, time: '6h ago', unread: true },
-        { id: 3, icon: '🤝', msg: `New connection request from someone in your field`, time: '1d ago', unread: false },
         { id: 4, icon: '📅', msg: `${currentPersona.activeTickets[0]?.name ?? 'An upcoming event'} is relevant to your skills`, time: '2d ago', unread: false },
       ] : [
-        { id: 1, icon: '🎉', msg: `A friend joined Vayo using your referral link!`, time: '2h ago', unread: true },
-        { id: 2, icon: '⚡', msg: `Your karma is growing — keep attending events for bonus XP`, time: '5h ago', unread: true },
         { id: 3, icon: '📅', msg: `Reminder: ${currentPersona.activeTickets[0]?.name ?? 'Your next event'} is coming up soon`, time: '1d ago', unread: false },
-        { id: 4, icon: '👋', msg: `${currentPersona.connectionsMet[0]?.name ?? 'Someone'} viewed your profile`, time: '2d ago', unread: false },
+        { id: 4, icon: '👋', msg: `Someone viewed your profile`, time: '2d ago', unread: false },
       ]);
 
   const unreadCount = displayNotifications.filter(n => n.unread).length;
 
-  // Animate XP counter when karma tab opens
-  useEffect(() => {
-    if (activeSidebarTab === 'karma') {
-      const target = liveScore;
-      const steps = 30;
-      let cur = 0;
-      const id = setInterval(() => {
-        if (cur === 0) {
-          setAnimatedXP(0);
-        }
-        cur += target / steps;
-        if (cur >= target) { setAnimatedXP(target); clearInterval(id); }
-        else setAnimatedXP(Math.floor(cur));
-      }, 40);
-      return () => clearInterval(id);
-    }
-  }, [activeSidebarTab, currentPersona.id, liveScore]);
-
-  // Fetch Karma ledger history from FastAPI backend
-  useEffect(() => {
-    const fetchKarmaHistory = async () => {
-      if (activeSidebarTab !== 'karma') return;
-      
-      const sessionEmail = localStorage.getItem("vayo_user_email");
-      const email = emailParam || sessionEmail;
-      const token = localStorage.getItem("vayo_jwt_token");
-      
-      if (!email || !token) return;
-      
-      try {
-        const res = await fetch(`http://127.0.0.1:8000/api/v1/users/${encodeURIComponent(email)}/karma`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setKarmaData(data);
-          setKarmaLedger(data.ledger || []);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch karma history from FastAPI backend:", err);
-      }
-    };
+  const handleRSVP = async (event) => {
+    if (!event) return;
     
-    fetchKarmaHistory();
-  }, [activeSidebarTab, emailParam]);
+    const sessionEmail = localStorage.getItem("vayo_user_email");
+    const email = emailParam || sessionEmail;
+    
+    if (!email) {
+      triggerToast('Please log in to RSVP.');
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/rsvp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email,
+          eventId: event.id,
+          eventTitle: event.title,
+          eventDate: event.date,
+          eventLocation: event.location
+        })
+      });
+
+      if (response.ok) {
+        triggerToast('Registration confirmed! Check your tickets.');
+        setSelectedEvent(null);
+        // Refresh tickets
+        fetchUserTickets(email);
+      } else {
+        const data = await response.json();
+        triggerToast(data.error || 'RSVP failed. Try again.');
+      }
+    } catch (err) {
+      console.error("RSVP Error:", err);
+      triggerToast('Network error during RSVP.');
+    }
+  };
+
+  const handleCancelRSVP = async (eventId) => {
+    const sessionEmail = localStorage.getItem("vayo_user_email");
+    const email = emailParam || sessionEmail;
+
+    if (!email || !eventId) return;
+
+    try {
+      const response = await fetch(`/api/rsvp?email=${encodeURIComponent(email)}&eventId=${encodeURIComponent(eventId)}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        triggerToast("RSVP cancelled successfully.");
+        // Refresh the tickets list
+        fetchUserTickets(email);
+      } else {
+        const data = await response.json();
+        triggerToast(data.error || "Failed to cancel RSVP.");
+      }
+    } catch (err) {
+      console.error("Error cancelling RSVP:", err);
+      triggerToast("Network error while cancelling RSVP.");
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!pwdForm.current || !pwdForm.next || pwdForm.next !== pwdForm.confirm) return;
+    
+    const sessionEmail = localStorage.getItem("vayo_user_email");
+    const email = emailParam || sessionEmail;
+    
+    try {
+      const response = await fetch("/api/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email,
+          currentPassword: pwdForm.current,
+          newPassword: pwdForm.next
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setPwdForm({ current: '', next: '', confirm: '' });
+        setShowChangePwd(false);
+        triggerToast('Password updated successfully!');
+      } else {
+        triggerToast(data.error || 'Failed to update password.');
+      }
+    } catch (err) {
+      console.error("Error updating password:", err);
+      triggerToast('Network error while updating password.');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("vayo_user_email");
+    localStorage.removeItem("vayo_jwt_token");
+    triggerToast("Logging out...");
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 1000);
+  };
 
   // Close lightbox on ESC
   const getAvatarByEmail = (email) => {
@@ -780,115 +844,6 @@ function ProfileContent() {
     if (email === "alex@vayo.com" || email === "maxim@vayo.com") return "/assets/maxim_persona.png";
     if (email === "riya@vayo.com") return "https://picsum.photos/seed/sc4/100/100";
     return "/assets/sarah_persona.png";
-  };
-
-  const fetchCircleData = async () => {
-    const sessionEmail = localStorage.getItem("vayo_user_email");
-    const email = emailParam || sessionEmail;
-    const token = localStorage.getItem("vayo_jwt_token");
-    if (!email || !token) return;
-    setIsCircleLoading(true);
-    try {
-      // 1. Get connections list
-      const connRes = await fetch(`http://127.0.0.1:8000/api/v1/connect/connections/${encodeURIComponent(email)}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      let loadedConns = [];
-      if (connRes.ok) {
-        const connData = await connRes.json();
-        const rawConns = connData.connections || [];
-        const enriched = await Promise.all(rawConns.map(async (c) => {
-          try {
-            const pRes = await fetch(`http://127.0.0.1:8000/api/v1/connect/profile/${encodeURIComponent(c.connected_user)}?requester_id=${encodeURIComponent(email)}`, {
-              headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (pRes.ok) {
-              const pData = await pRes.json();
-              return {
-                user_id: pData.user_id,
-                name: pData.username || pData.user_id.split('@')[0],
-                role: pData.bio ? (pData.bio.length > 50 ? pData.bio.slice(0, 50) + "..." : pData.bio) : "Vayo Member",
-                avatar: getAvatarByEmail(pData.user_id),
-                metAt: pData.region || pData.city || "Vayo Hub",
-                mutualFriends: pData.mutual_connections || 0
-              };
-            }
-          } catch (e) {
-            console.error("Error enriching connection", c.connected_user, e);
-          }
-          return null;
-        }));
-        loadedConns = enriched.filter(Boolean);
-        setConnections(loadedConns);
-      }
-
-      // 2. Get pending requests list
-      const reqRes = await fetch(`http://127.0.0.1:8000/api/v1/connect/requests/${encodeURIComponent(email)}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      let loadedRequests = [];
-      if (reqRes.ok) {
-        const reqData = await reqRes.json();
-        const rawRequests = reqData.requests || [];
-        const enrichedReqs = await Promise.all(rawRequests.map(async (r) => {
-          try {
-            const pRes = await fetch(`http://127.0.0.1:8000/api/v1/connect/profile/${encodeURIComponent(r.sender_id)}?requester_id=${encodeURIComponent(email)}`, {
-              headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (pRes.ok) {
-              const pData = await pRes.json();
-              return {
-                request_id: r.request_id,
-                user_id: pData.user_id,
-                name: pData.username || pData.user_id.split('@')[0],
-                role: pData.bio ? (pData.bio.length > 50 ? pData.bio.slice(0, 50) + "..." : pData.bio) : "Vayo Member",
-                avatar: getAvatarByEmail(pData.user_id),
-              };
-            }
-          } catch (e) {
-            console.error("Error enriching request", r.sender_id, e);
-          }
-          return null;
-        }));
-        loadedRequests = enrichedReqs.filter(Boolean);
-        setPendingRequests(loadedRequests);
-      }
-
-      // 3. Build suggested connections dynamically
-      const allMockEmails = ["sarah@vayo.com", "alex@vayo.com", "david@vayo.com", "riya@vayo.com", "elena@vayo.com"];
-      const connectionIds = new Set(loadedConns.map(c => c.user_id));
-      const requestSenderIds = new Set(loadedRequests.map(r => r.user_id));
-      
-      const suggestedEmails = allMockEmails.filter(emailStr => {
-        return emailStr !== email && !connectionIds.has(emailStr) && !requestSenderIds.has(emailStr);
-      });
-
-      const enrichedSuggestions = await Promise.all(suggestedEmails.map(async (sEmail) => {
-        try {
-          const pRes = await fetch(`http://127.0.0.1:8000/api/v1/connect/profile/${encodeURIComponent(sEmail)}?requester_id=${encodeURIComponent(email)}`, {
-            headers: { "Authorization": `Bearer ${token}` }
-          });
-          if (pRes.ok) {
-            const pData = await pRes.json();
-            return {
-              user_id: pData.user_id,
-              name: pData.username || pData.user_id.split('@')[0],
-              role: pData.bio ? (pData.bio.length > 50 ? pData.bio.slice(0, 50) + "..." : pData.bio) : "Vayo Member",
-              avatar: getAvatarByEmail(sEmail),
-              reason: "Attended same mixer"
-            };
-          }
-        } catch (e) {
-          console.error("Error enriching suggestion", sEmail, e);
-        }
-        return null;
-      }));
-      setSuggestedConnectionsState(enrichedSuggestions.filter(Boolean));
-    } catch (err) {
-      console.warn("Failed to fetch circle connections:", err);
-    } finally {
-      setIsCircleLoading(false);
-    }
   };
 
   const fetchNotifications = async () => {
@@ -944,105 +899,6 @@ function ProfileContent() {
     }
   };
 
-  const connectRequest = async (receiverId, name) => {
-    const sessionEmail = localStorage.getItem("vayo_user_email");
-    const email = emailParam || sessionEmail;
-    const token = localStorage.getItem("vayo_jwt_token");
-    if (!email || !token) return;
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/connect/request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ sender_id: email, receiver_id: receiverId })
-      });
-      if (res.ok) {
-        triggerToast(`Connect request sent to ${name}!`);
-        fetchCircleData();
-      } else {
-        const err = await res.json();
-        triggerToast(err.detail || "Failed to send request.");
-      }
-    } catch (err) {
-      console.error(err);
-      triggerToast("Error sending connect request.");
-    }
-  };
-
-  const acceptRequest = async (requestId, name) => {
-    const token = localStorage.getItem("vayo_jwt_token");
-    if (!token) return;
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/connect/request/${encodeURIComponent(requestId)}/accept`, {
-        method: "PATCH",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        triggerToast(`You are now connected with ${name}!`);
-        fetchCircleData();
-      } else {
-        triggerToast("Failed to accept request.");
-      }
-    } catch (err) {
-      console.error(err);
-      triggerToast("Error accepting request.");
-    }
-  };
-
-  const declineRequest = async (requestId, name) => {
-    const token = localStorage.getItem("vayo_jwt_token");
-    if (!token) return;
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/connect/request/${encodeURIComponent(requestId)}/decline`, {
-        method: "PATCH",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        triggerToast(`Declined request from ${name}.`);
-        fetchCircleData();
-      } else {
-        triggerToast("Failed to decline request.");
-      }
-    } catch (err) {
-      console.error(err);
-      triggerToast("Error declining request.");
-    }
-  };
-
-  const removeConnection = async (otherUserId, name) => {
-    const sessionEmail = localStorage.getItem("vayo_user_email");
-    const email = emailParam || sessionEmail;
-    const token = localStorage.getItem("vayo_jwt_token");
-    if (!email || !token) return;
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/connect/remove", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ user_id: email, other_user_id: otherUserId })
-      });
-      if (res.ok) {
-        triggerToast(`Removed connection with ${name}.`);
-        fetchCircleData();
-      } else {
-        triggerToast("Failed to remove connection.");
-      }
-    } catch (err) {
-      console.error(err);
-      triggerToast("Error removing connection.");
-    }
-  };
-
-  useEffect(() => {
-    if (activeSidebarTab === 'circle') {
-      fetchCircleData();
-    }
-  }, [activeSidebarTab]);
-
   useEffect(() => {
     if (!isUserLoaded) return;
     fetchNotifications();
@@ -1083,7 +939,12 @@ function ProfileContent() {
   };
 
   const saveEdit = async () => {
+    const sessionEmail = localStorage.getItem("vayo_user_email");
+    const email = emailParam || sessionEmail;
+
     const bioKey = activeMode === 'social' ? 'socialBio' : activeMode === 'bff' ? 'bffBio' : 'bizzBio';
+    
+    // 1. Update local state for immediate feedback
     setPersonaOverrides(prev => ({
       ...prev,
       [currentPersona.id]: {
@@ -1101,6 +962,33 @@ function ProfileContent() {
       }
     }));
 
+    // 2. Persist to Supabase via our new API
+    try {
+      const response = await fetch("/api/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email,
+          bio: editDraft.bio,
+          instagram: editDraft.instagram,
+          linkedin: editDraft.linkedin,
+          twitter: editDraft.twitter,
+          github: editDraft.github,
+          bizzSkills: editDraft.bizzSkills,
+          bizzRole: editDraft.bizzRole,
+          bizzCompany: editDraft.bizzCompany
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        console.error("Supabase Update Error:", err);
+      }
+    } catch (err) {
+      console.error("Network error while updating profile:", err);
+    }
+
+    // 3. Keep legacy FastAPI calls as fallback (if any)
     const token = localStorage.getItem("vayo_jwt_token");
     if (token) {
       try {
@@ -1112,23 +1000,8 @@ function ProfileContent() {
           },
           body: JSON.stringify({ bio: editDraft.bio })
         });
-
-        if (activeMode === 'bizz') {
-          await fetch(`http://127.0.0.1:8000/api/v1/users/me/bizz`, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              bizz_role: editDraft.bizzRole,
-              bizz_company: editDraft.bizzCompany,
-              bizz_bio: editDraft.bio
-            })
-          });
-        }
       } catch (err) {
-        console.warn("FastAPI backend is offline. Edits not persisted to database.", err);
+        console.warn("FastAPI backend is offline. skipping FastAPI update.");
       }
     }
 
@@ -1142,33 +1015,80 @@ function ProfileContent() {
     else if (e.type === 'dragleave') setDragActive(false);
   };
 
-  const simulateUpload = (fileName) => {
+  const handleMomentUpload = async (fileName) => {
+    const sessionEmail = localStorage.getItem("vayo_user_email");
+    const email = emailParam || sessionEmail;
+    if (!email) return;
+
     if (uploading) return;
     setUploading(true); setUploadProgress(0);
+
+    // Simulate progress while saving to DB
     const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            setUploading(false);
-            const newMoment = { location: currentPersona.location.split(',')[0], date: 'Just now', imageColor: getRandomGradient(), caption: `Uploaded: ${fileName || 'New Event Moment'} 📸` };
-            setCustomMoments(p => ({ ...p, [currentPersona.id]: [newMoment, ...(p[currentPersona.id] || [])] }));
-            triggerToast('Moment uploaded successfully!');
-          }, 300);
-          return 100;
-        }
-        return prev + 10;
+      setUploadProgress(prev => (prev < 90 ? prev + 10 : prev));
+    }, 100);
+
+    try {
+      // 1. Prepare new moment (Using picsum for now since no storage bucket)
+      const randomId = Math.floor(Math.random() * 1000);
+      const newMoment = {
+        email: email,
+        imageUrl: `https://picsum.photos/seed/vayo-${randomId}/800/500`,
+        caption: `Memories from ${fileName.split('.')[0]} \ud83d\udcf8`,
+        location: currentPersona.location.split(',')[0],
+        imageColor: getRandomGradient()
+      };
+
+      // 2. Save to Supabase
+      const response = await fetch("/api/moments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newMoment)
       });
-    }, 150);
+
+      if (response.ok) {
+        setUploadProgress(100);
+        clearInterval(interval);
+        setTimeout(() => {
+          setUploading(false);
+          fetchUserMoments(email); // Refresh the grid
+          triggerToast('Moment saved to your profile!');
+        }, 500);
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+      setUploading(false);
+      clearInterval(interval);
+      triggerToast('Upload failed.');
+    }
+  };
+
+  const handleMomentDelete = async (momentId) => {
+    const sessionEmail = localStorage.getItem("vayo_user_email");
+    const email = emailParam || sessionEmail;
+    if (!email || !momentId) return;
+
+    try {
+      const response = await fetch(`/api/moments?id=${encodeURIComponent(momentId)}&email=${encodeURIComponent(email)}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        triggerToast("Memory removed.");
+        fetchUserMoments(email);
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
   };
 
   const handleDrop = (e) => {
     e.preventDefault(); e.stopPropagation(); setDragActive(false);
-    if (e.dataTransfer.files?.[0]) simulateUpload(e.dataTransfer.files[0].name);
+    if (e.dataTransfer.files?.[0]) handleMomentUpload(e.dataTransfer.files[0].name);
   };
 
   const handleFileChange = (e) => {
-    if (e.target.files?.[0]) simulateUpload(e.target.files[0].name);
+    if (e.target.files?.[0]) handleMomentUpload(e.target.files[0].name);
   };
 
   const triggerToast = (msg) => {
@@ -1261,6 +1181,10 @@ function ProfileContent() {
   useEffect(() => {
     const fetchUserProfile = async () => {
       const sessionEmail = localStorage.getItem("vayo_user_email");
+      if (sessionEmail) {
+        setIsLoadingUser(true);
+      }
+      setIsMounted(true);
 
       // Security check: Deny direct URL traversal to other accounts
       if (emailParam && emailParam.includes("@") && sessionEmail !== emailParam) {
@@ -1303,12 +1227,10 @@ function ProfileContent() {
             const userPersonaObj = makeUserPersona(data.user, fastApiProfile);
             setPersonas([userPersonaObj, ...basePersonas]);
             
-            if (fastApiProfile) {
-              setInboxShield(fastApiProfile.inbox_shield_threshold || 0);
-            }
-
             setActiveIdx(0);
             setIsUserLoaded(true);
+            fetchUserTickets(sessionEmail);
+            fetchUserMoments(sessionEmail);
             triggerToast(`Logged in as ${data.user.name || 'Vayo Member'}`);
           } else {
             setIsUserLoaded(false);
@@ -1329,77 +1251,62 @@ function ProfileContent() {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/v1/events?limit=20");
-      if (response.ok) {
-        const data = await response.json();
-        if (data.events && data.events.length > 0) {
-          const formatted = data.events.map((evt) => {
-            let formattedDate = evt.event_date;
-            try {
-              const d = new Date(evt.event_date);
-              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-              formattedDate = `${d.getDate()}, ${months[d.getMonth()]} - ${d.getFullYear()}`;
-            } catch (_) {}
+      // 1. Try local Python backend first (if running)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1500);
+      const localRes = await fetch("http://127.0.0.1:8000/api/v1/events?limit=20", { signal: controller.signal });
+      clearTimeout(timeoutId);
 
-            return {
-              id: evt.event_id,
-              title: evt.title,
-              date: formattedDate,
-              location: evt.venue ? `${evt.venue}, ${evt.city}` : evt.city,
-              image: evt.cover_image_url || '/assets/events/something.jpg',
-              min_karma_required: evt.min_karma_required || 0,
-              entry_fee: evt.entry_fee || 0,
-              category: evt.category || 'social',
-              max_participants: evt.max_participants || 0
-            };
-          });
-          setUpcomingEvents(formatted);
+      if (localRes.ok) {
+        const data = await localRes.json();
+        if (data.events?.length > 0) {
+          setUpcomingEvents(formatEventData(data.events));
           return;
         }
       }
     } catch (err) {
-      console.warn("Failed to fetch events from backend. Falling back to static events.", err);
+      console.log("Local backend offline, trying Supabase...");
     }
-    setUpcomingEvents(staticEvents);
-  };
 
-  const fetchUserRSVPs = async (userId, personaId) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/v1/events/user/${encodeURIComponent(userId)}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.events) {
-          const tickets = data.events.map(evt => {
-            let formattedDate = evt.event_date;
-            try {
-              const d = new Date(evt.event_date);
-              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-              formattedDate = `${d.getDate()}, ${months[d.getMonth()]} - ${d.getFullYear()}`;
-            } catch (_) {}
-
-            return {
-              id: evt.event_id,
-              name: evt.title,
-              date: formattedDate,
-              countdown: "Active Ticket",
-              locationPin: evt.venue ? `${evt.venue}, ${evt.city}` : evt.city,
-              organizer: "Vayo Host",
-              qrCode: `VAYO-TKT-${evt.title.slice(0, 3).toUpperCase()}99`
-            };
-          });
-          
-          setPersonaOverrides(prev => ({
-            ...prev,
-            [personaId]: {
-              ...(prev[personaId] || {}),
-              activeTickets: tickets
-            }
-          }));
+      // 2. Fallback to Supabase API
+      const sbRes = await fetch("/api/events");
+      if (sbRes.ok) {
+        const data = await sbRes.json();
+        if (data.events?.length > 0) {
+          setUpcomingEvents(formatEventData(data.events));
+          return;
         }
       }
     } catch (err) {
-      console.warn("Failed to fetch RSVPs for user:", userId, err);
+      console.warn("Supabase fetch failed, showing demo events.");
     }
+
+    // 3. Last resort: Static Demo Data
+    setUpcomingEvents(staticEvents);
+  };
+
+  const formatEventData = (events) => {
+    return events.map((evt) => {
+      let formattedDate = evt.event_date;
+      try {
+        const d = new Date(evt.event_date);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        formattedDate = `${d.getDate()}, ${months[d.getMonth()]} - ${d.getFullYear()}`;
+      } catch (_) {}
+
+      return {
+        id: evt.event_id || evt.id,
+        title: evt.title,
+        date: formattedDate,
+        location: evt.venue ? `${evt.venue}, ${evt.city}` : (evt.location || evt.city || 'Bangalore'),
+        image: evt.cover_image_url || evt.image || '/assets/events/something.jpg',
+        min_karma_required: evt.min_karma_required || 0,
+        entry_fee: evt.entry_fee || 0,
+        category: evt.category || 'social',
+        max_participants: evt.max_participants || 0
+      };
+    });
   };
 
   useEffect(() => {
@@ -1407,17 +1314,10 @@ function ProfileContent() {
   }, []);
 
   useEffect(() => {
-    if (currentPersona) {
-      const user_id = currentPersona.id === 'user-profile'
-        ? (localStorage.getItem("vayo_user_email") || 'tester@vayo.com')
-        : (currentPersona.id === 'maxim'
-          ? 'alex@vayo.com'
-          : (currentPersona.id === 'daniel'
-            ? 'david@vayo.com'
-            : `${currentPersona.id}@vayo.com`
-          )
-        );
-      fetchUserRSVPs(user_id, currentPersona.id);
+    if (currentPersona && currentPersona.id === 'user-profile') {
+      const sessionEmail = localStorage.getItem("vayo_user_email");
+      const email = emailParam || sessionEmail;
+      fetchUserTickets(email);
     }
   }, [activeIdx, isUserLoaded]);
 
@@ -1425,6 +1325,24 @@ function ProfileContent() {
 
   return (
     <div className="min-h-screen relative overflow-hidden text-[#1f2937] font-sans antialiased py-12 px-4 md:px-8 lg:px-12 selection:bg-sky-100">
+      
+      {/* Universal Loading Shield to prevent Demo Flash */}
+      {isMounted && isLoadingUser && (
+        <div className="fixed inset-0 z-[1000] bg-[#f8f9fa] flex items-center justify-center">
+          <div className="text-center space-y-6 animate-in fade-in duration-500">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-neutral-100 border-t-sky-500 rounded-full animate-spin mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 bg-sky-500/10 rounded-full blur-xl animate-pulse"></div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <img src="/assets/vayo-logo.png" alt="VAYO" className="h-6 w-auto mx-auto opacity-40" />
+              <p className="text-[10px] font-bold tracking-[4px] uppercase text-neutral-400 animate-pulse">Verifying Identity</p>
+            </div>
+          </div>
+        </div>
+      )}
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(4px); }
@@ -1470,9 +1388,13 @@ function ProfileContent() {
             <div className="absolute top-3 right-3 flex items-center gap-2">
               <button
                 onClick={() => {
-                  setDeletedMomentIdxs(prev => ({ ...prev, [currentPersona.id]: [...(prev[currentPersona.id] || []), lightboxMoment.idx] }));
+                  if (currentPersona.id === 'user-profile' && lightboxMoment.id) {
+                    handleMomentDelete(lightboxMoment.id);
+                  } else {
+                    setDeletedMomentIdxs(prev => ({ ...prev, [currentPersona.id]: [...(prev[currentPersona.id] || []), lightboxMoment.idx] }));
+                    triggerToast('Moment deleted');
+                  }
                   setLightboxMoment(null);
-                  triggerToast('Moment deleted');
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-red-500/80 text-white text-[10px] font-bold transition-colors cursor-pointer border border-white/10">
                 <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -1519,8 +1441,8 @@ function ProfileContent() {
             <div className="bg-white p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Karma Tier</div>
-                  <div className={`text-sm font-extrabold ${theme.textAccent}`}>{liveTier} · {liveScore} XP</div>
+                  <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Profile Status</div>
+                  <div className={`text-sm font-extrabold ${theme.textAccent}`}>{completenessScore}% Complete</div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {(currentPersona.socialTags || []).slice(0, 2).map(tag => (
@@ -1530,28 +1452,21 @@ function ProfileContent() {
               </div>
               <div className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold ${theme.cardBg} ${theme.cardBorder}`}>
                 <span className="text-neutral-500">vayo.community/</span>
-                <span className={theme.textAccent}>{currentPersona.name.toLowerCase()}</span>
+                <span className={theme.textAccent}>{currentPersona.name.toLowerCase().replace(/\s+/g, '')}</span>
               </div>
 
-              {/* Referral code */}
-              <div className="space-y-2">
-                <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Referral Code</div>
-                <div className={`flex items-center justify-between p-3 rounded-xl border ${theme.cardBg} ${theme.cardBorder}`}>
-                  <span className={`text-[13px] font-extrabold tracking-widest ${theme.textAccent}`}>{currentPersona.referral.code}</span>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(currentPersona.referral.code); triggerToast('Referral code copied!') }}
-                    className="text-[9.5px] font-bold px-2.5 py-1 rounded-lg border cursor-pointer transition-opacity hover:opacity-80"
-                    style={{ color: theme.accent, borderColor: `${theme.accent}40`, background: `${theme.accent}12` }}>
-                    Copy
-                  </button>
+              {/* Verified Badge */}
+              <div className={`flex items-center gap-3 p-3 rounded-xl border ${theme.cardBg} ${theme.cardBorder}`}>
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
+                  <ShieldCheck className={`w-4 h-4 ${theme.textAccent}`} />
                 </div>
-                <div className="flex items-center justify-between px-0.5">
-                  <span className="text-[9.5px] text-neutral-400 font-medium">{currentPersona.referral.referredCount} friends referred</span>
-                  <span className="text-[9.5px] font-bold text-emerald-600">+{currentPersona.referral.xpEarned} XP earned</span>
+                <div>
+                  <div className="text-[10px] font-extrabold text-neutral-800">Verified Member</div>
+                  <div className="text-[8px] text-neutral-400 font-medium">Authenticity checks completed</div>
                 </div>
               </div>
 
-              <button onClick={() => { navigator.clipboard.writeText(`vayo.community/${currentPersona.name.toLowerCase()}`); triggerToast('Profile link copied!'); setShowShareCard(false) }}
+              <button onClick={() => { navigator.clipboard.writeText(`vayo.community/${currentPersona.name.toLowerCase().replace(/\s+/g, '')}`); triggerToast('Profile link copied!'); setShowShareCard(false) }}
                 className={`w-full py-2.5 rounded-xl text-xs font-bold text-white ${theme.bgAccent} hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2`}>
                 <Share2 className="w-3.5 h-3.5" /> Copy Profile Link
               </button>
@@ -1747,7 +1662,7 @@ function ProfileContent() {
                   })}
                 <div className="hidden md:block border-t border-white/20 my-2" />
                 <div className="md:hidden w-px h-6 bg-white/20 self-center mx-1 shrink-0" />
-                <button onClick={() => triggerToast('Logout simulated successfully!')} className="flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold text-rose-500/80 hover:text-rose-600 hover:bg-rose-500/10 transition-all duration-200 cursor-pointer shrink-0 w-auto md:w-full">
+                <button onClick={handleLogout} className="flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold text-rose-500/80 hover:text-rose-600 hover:bg-rose-500/10 transition-all duration-200 cursor-pointer shrink-0 w-auto md:w-full">
                   <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
                   <span>Log out</span>
                 </button>
@@ -1856,7 +1771,11 @@ function ProfileContent() {
                           ) : Object.keys(displayPersona.socialLinks || {}).length > 0 && (
                             <div className="flex items-center justify-center sm:justify-start gap-1.5 pt-0.5">
                               {displayPersona.socialLinks.instagram && (
-                                <a href="#" onClick={e => e.preventDefault()} title={`@${displayPersona.socialLinks.instagram}`}
+                                <a 
+                                  href={`https://instagram.com/${displayPersona.socialLinks.instagram.replace('@', '')}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  title={`@${displayPersona.socialLinks.instagram}`}
                                   className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
                                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
@@ -1864,7 +1783,11 @@ function ProfileContent() {
                                 </a>
                               )}
                               {displayPersona.socialLinks.linkedin && (
-                                <a href="#" onClick={e => e.preventDefault()} title={displayPersona.socialLinks.linkedin}
+                                <a 
+                                  href={`https://linkedin.com/in/${displayPersona.socialLinks.linkedin}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  title={displayPersona.socialLinks.linkedin}
                                   className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
                                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" /><circle cx="4" cy="4" r="2" />
@@ -1872,7 +1795,11 @@ function ProfileContent() {
                                 </a>
                               )}
                               {displayPersona.socialLinks.twitter && (
-                                <a href="#" onClick={e => e.preventDefault()} title={`@${displayPersona.socialLinks.twitter}`}
+                                <a 
+                                  href={`https://twitter.com/${displayPersona.socialLinks.twitter.replace('@', '')}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  title={`@${displayPersona.socialLinks.twitter}`}
                                   className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
                                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -1880,7 +1807,11 @@ function ProfileContent() {
                                 </a>
                               )}
                               {displayPersona.socialLinks.github && (
-                                <a href="#" onClick={e => e.preventDefault()} title={displayPersona.socialLinks.github}
+                                <a 
+                                  href={`https://github.com/${displayPersona.socialLinks.github}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  title={displayPersona.socialLinks.github}
                                   className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
                                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
@@ -1934,17 +1865,17 @@ function ProfileContent() {
                     {/* Stats bar — per mode */}
                     <div className={`flex items-center rounded-2xl border ${theme.cardBorder} ${theme.cardBg} overflow-hidden`}>
                       {(activeMode === 'bff' ? [
-                        { label: 'BFF Squads', value: currentPersona.bffCrew ? currentPersona.bffCrew.length : 0 },
+                        { label: 'BFF Squads', value: displayPersona.bffCrew ? displayPersona.bffCrew.length : 0 },
                         { label: 'Memories', value: personaMoments.length },
-                        { label: 'Close Friends', value: currentPersona.connectionsMet ? currentPersona.connectionsMet.length : 0 },
+                        { label: 'Close Friends', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0 },
                       ] : activeMode === 'bizz' ? [
-                        { label: 'Connections', value: currentPersona.connectionsMet ? currentPersona.connectionsMet.length : 0 },
-                        { label: 'Skills', value: currentPersona.bizzSkills ? currentPersona.bizzSkills.length : 0 },
-                        { label: 'Events', value: currentPersona.pastTimeline ? currentPersona.pastTimeline.length : 0 },
+                        { label: 'Connections', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0 },
+                        { label: 'Skills', value: displayPersona.bizzSkills ? displayPersona.bizzSkills.length : 0 },
+                        { label: 'Events', value: displayPersona.pastTimeline ? displayPersona.pastTimeline.length : 0 },
                       ] : [
-                        { label: 'Mixers', value: currentPersona.pastTimeline ? currentPersona.pastTimeline.length : 0 },
-                        { label: 'Connections', value: currentPersona.connectionsMet ? currentPersona.connectionsMet.length : 0 },
-                        { label: 'Karma XP', value: liveScore >= 1000 ? `${(liveScore / 1000).toFixed(1)}k` : liveScore },
+                        { label: 'Mixers', value: displayPersona.activeTickets ? displayPersona.activeTickets.length : 0 },
+                        { label: 'Connections', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0 },
+                        { label: 'Profile Vibe', value: `${completenessScore}%` },
                       ]).map((s, i, arr) => (
                         <div key={i} className={`flex-1 py-3 text-center ${i < arr.length - 1 ? 'border-r border-neutral-200/50' : ''}`}>
                           <div className={`text-lg font-black tracking-tight ${theme.textAccent}`}>{s.value}</div>
@@ -2190,38 +2121,7 @@ function ProfileContent() {
                                   <span>Applied / Ticket Approved ✓</span>
                                 </div>
                                 <button
-                                  onClick={async () => {
-                                    const user_id = currentPersona.id === 'user-profile'
-                                      ? (localStorage.getItem("vayo_user_email") || 'tester@vayo.com')
-                                      : (currentPersona.id === 'maxim'
-                                        ? 'alex@vayo.com'
-                                        : (currentPersona.id === 'daniel'
-                                          ? 'david@vayo.com'
-                                          : `${currentPersona.id}@vayo.com`
-                                        )
-                                      );
-
-                                    const token = localStorage.getItem("vayo_jwt_token");
-                                    try {
-                                      const response = await fetch(`http://127.0.0.1:8000/api/v1/events/${encodeURIComponent(selectedEvent.id)}/rsvp?user_id=${encodeURIComponent(user_id)}`, {
-                                        method: 'DELETE',
-                                        headers: {
-                                          ...(token && { 'Authorization': `Bearer ${token}` })
-                                        }
-                                      });
-
-                                      if (response.ok) {
-                                        triggerToast("RSVP cancelled successfully.");
-                                        fetchUserRSVPs(user_id, currentPersona.id);
-                                      } else {
-                                        const errData = await response.json();
-                                        triggerToast(errData.detail || "Failed to cancel RSVP.");
-                                      }
-                                    } catch (err) {
-                                      console.error("Error cancelling RSVP:", err);
-                                      triggerToast("Failed to reach server.");
-                                    }
-                                  }}
+                                  onClick={() => handleCancelRSVP(selectedEvent.id)}
                                   className="w-full py-2 rounded-xl text-[10px] font-bold text-rose-600 border border-rose-100 bg-rose-50/50 hover:bg-rose-50 cursor-pointer transition-colors flex items-center justify-center gap-1.5"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -2233,47 +2133,7 @@ function ProfileContent() {
 
                           return (
                             <button
-                              onClick={async () => {
-                                const user_id = currentPersona.id === 'user-profile'
-                                  ? (localStorage.getItem("vayo_user_email") || 'tester@vayo.com')
-                                  : (currentPersona.id === 'maxim'
-                                    ? 'alex@vayo.com'
-                                    : (currentPersona.id === 'daniel'
-                                      ? 'david@vayo.com'
-                                      : `${currentPersona.id}@vayo.com`
-                                    )
-                                  );
-
-                                const token = localStorage.getItem("vayo_jwt_token");
-
-                                try {
-                                  const response = await fetch(`http://127.0.0.1:8000/api/v1/events/${encodeURIComponent(selectedEvent.id)}/rsvp`, {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      ...(token && { 'Authorization': `Bearer ${token}` })
-                                    },
-                                    body: JSON.stringify({ user_id })
-                                  });
-
-                                  if (response.ok) {
-                                    triggerToast(`Registered successfully! Ticket generated.`);
-                                    fetchUserRSVPs(user_id, currentPersona.id);
-                                  } else {
-                                    let errorDetail = "Failed to register. Please try again.";
-                                    try {
-                                      const errData = await response.json();
-                                      if (errData && errData.detail) {
-                                        errorDetail = errData.detail;
-                                      }
-                                    } catch (_) {}
-                                    triggerToast(errorDetail);
-                                  }
-                                } catch (err) {
-                                  console.error("Error during RSVP call:", err);
-                                  triggerToast("Server is unreachable.");
-                                }
-                              }}
+                              onClick={() => handleRSVP(selectedEvent)}
                               className="w-full py-2.5 rounded-xl text-xs font-extrabold text-white cursor-pointer transition-opacity hover:opacity-90 flex items-center justify-center gap-2 shadow-sm"
                               style={{ background: theme.accent }}
                             >
@@ -2454,57 +2314,70 @@ function ProfileContent() {
 
                     <hr className="border-neutral-100" />
 
-                    {/* Application Stepper */}
+                    {/* Event Journey Stepper */}
                     <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 font-sans">Application Pipeline</h5>
+                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 font-sans">Event Journey</h5>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {(displayPersona.pendingApplications || []).map((app, i) => {
-                          const stepIdx = getStepperIdx(app.status);
-                          const steps = ['Applied', 'Under Review', 'Approved'];
-                          const isApproved = app.status.includes('Approved');
-                          const isWaitlisted = app.status === 'Waitlisted';
-                          const accentColor = isApproved ? '#10b981' : isWaitlisted ? '#94a3b8' : theme.accent;
-                          return (
-                            <div key={i} className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm space-y-4">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-extrabold text-neutral-800 truncate max-w-[150px]">{app.name}</span>
-                                <span className="text-[9.5px] text-neutral-400 font-medium">{app.date.split(',')[0]}</span>
-                              </div>
+                        {userTickets.length > 0 ? (
+                          userTickets.slice(0, 2).map((tkt, i) => {
+                            const eventStatus = tkt.status || 'Registered';
+                            const steps = ['Registered', 'Processing', 'Confirmed'];
+                            
+                            // Map status to step index
+                            let stepIdx = 0;
+                            const s = eventStatus.toLowerCase();
+                            if (s === 'confirmed' || s === 'completed') stepIdx = 2;
+                            else if (s === 'processing' || s === 'payment_pending') stepIdx = 1;
+                            
+                            const isConfirmed = s === 'confirmed';
+                            const accentColor = isConfirmed ? '#10b981' : '#6366f1';
 
-                              {/* Stepper display */}
-                              <div className="flex items-center justify-between relative px-2 pt-1">
-                                {/* Connecting line background */}
-                                <div className="absolute top-[13px] left-8 right-8 h-0.5 bg-neutral-100 z-0" />
-                                {/* Connecting line progress */}
-                                <div className="absolute top-[13px] left-8 h-0.5 bg-neutral-800 z-0 transition-all duration-500"
-                                  style={{
-                                    width: isWaitlisted ? '0%' : stepIdx === 2 ? '100%' : '50%',
-                                    backgroundColor: accentColor
-                                  }} />
+                            return (
+                              <div key={i} className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-extrabold text-neutral-800 truncate max-w-[150px]">{tkt.event_title}</span>
+                                  <span className="text-[9.5px] text-neutral-400 font-medium">Progress</span>
+                                </div>
 
-                                {steps.map((label, step) => {
-                                  const isCurrent = step === stepIdx;
-                                  const isDone = step < stepIdx || isApproved;
-                                  const showWarn = isWaitlisted && step === 1;
-                                  return (
-                                    <div key={step} className="flex flex-col items-center relative z-10">
-                                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-bold transition-all duration-300 bg-white ${showWarn ? 'border-amber-400 text-amber-500' : isDone ? '' : 'border-neutral-200 text-neutral-400'}`}
-                                        style={isDone && !showWarn ? { borderColor: accentColor, backgroundColor: accentColor, color: '#fff' } : isCurrent ? { borderColor: accentColor, color: accentColor } : {}}>
-                                        {showWarn ? '!' : isDone ? '✓' : step + 1}
+                                {/* Stepper display */}
+                                <div className="flex items-center justify-between relative px-2 pt-1">
+                                  <div className="absolute top-[13px] left-8 right-8 h-0.5 bg-neutral-100 z-0">
+                                    <div className="h-full transition-all duration-500"
+                                      style={{
+                                        width: stepIdx === 2 ? '100%' : stepIdx === 1 ? '50%' : '0%',
+                                        backgroundColor: accentColor
+                                      }} />
+                                  </div>
+
+                                  {steps.map((label, step) => {
+                                    const isCurrent = step === stepIdx;
+                                    const isDone = step <= stepIdx;
+                                    return (
+                                      <div key={step} className="flex flex-col items-center relative z-10">
+                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-bold transition-all duration-300 bg-white ${isDone ? '' : 'border-neutral-200 text-neutral-400'}`}
+                                          style={isDone ? { borderColor: accentColor, backgroundColor: accentColor, color: '#fff' } : isCurrent ? { borderColor: accentColor, color: accentColor } : {}}>
+                                          {isDone ? '✓' : step + 1}
+                                        </div>
+                                        <span className={`text-[7.5px] font-extrabold uppercase tracking-wider mt-1.5 transition-colors duration-300 ${isDone ? 'text-neutral-700' : 'text-neutral-400'}`}>{label}</span>
                                       </div>
-                                      <span className="text-[7.5px] font-bold uppercase tracking-wider mt-1.5 text-neutral-400">{label}</span>
-                                    </div>
-                                  )
-                                })}
-                              </div>
+                                    )
+                                  })}
+                                </div>
 
-                              <div className="flex items-center justify-between pt-1">
-                                <span className="text-[9px] text-neutral-400 font-medium">Status</span>
-                                <span className="text-[9.5px] font-black" style={{ color: accentColor }}>{app.status}</span>
+                                <div className="flex items-center justify-between pt-1">
+                                  <span className="text-[9px] text-neutral-400 font-medium">Latest Status</span>
+                                  <span className="text-[9.5px] font-black uppercase" style={{ color: accentColor }}>{eventStatus}</span>
+                                </div>
                               </div>
-                            </div>
-                          )
-                        })}
+                            )
+                          })
+                        ) : (
+                          <div className="col-span-full py-8 border-2 border-dashed border-neutral-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-2">
+                             <Calendar className="w-8 h-8 text-neutral-200" />
+                             <div className="text-xs font-bold text-neutral-400">No Active Event Journey</div>
+                             <p className="text-[10px] text-neutral-300 max-w-[200px]">RSVP to an upcoming mixer to track your ticket status here.</p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -2522,12 +2395,6 @@ function ProfileContent() {
                               <div className="text-xs font-extrabold text-neutral-800 mt-0.5">{past.name}</div>
                               <div className="flex gap-2 text-[9.5px] text-neutral-400 font-semibold mt-0.5">
                                 <span>{past.category}</span>
-                                {past.friendsMet > 0 && (
-                                  <>
-                                    <span>•</span>
-                                    <span className={theme.textAccent}>Met {past.friendsMet} connections</span>
-                                  </>
-                                )}
                               </div>
                             </div>
                           </div>
@@ -2582,11 +2449,7 @@ function ProfileContent() {
                           <p className="text-[10.5px] text-red-500 font-semibold">Passwords do not match</p>
                         )}
                         <button
-                          onClick={() => {
-                            if (!pwdForm.current || !pwdForm.next || pwdForm.next !== pwdForm.confirm) return;
-                            setPwdForm({ current: '', next: '', confirm: '' });
-                            triggerToast('Password updated successfully!');
-                          }}
+                          onClick={handleUpdatePassword}
                           disabled={!pwdForm.current || !pwdForm.next || pwdForm.next !== pwdForm.confirm}
                           className="w-full py-2.5 rounded-xl text-xs font-extrabold text-white disabled:opacity-40 cursor-pointer mt-1"
                           style={{ background: theme.accent }}>
@@ -2617,60 +2480,6 @@ function ProfileContent() {
                             </div>
                           </div>
                         ))}
-                      </div>
-                    </div>
-
-                    {/* Inbox Shield Settings */}
-                    <div className="rounded-2xl border border-neutral-100 bg-white shadow-sm overflow-hidden animate-fade-in">
-                      <div className={`px-4 py-3 border-b border-neutral-100 ${theme.panelHeader} flex items-center gap-2`}>
-                        <ShieldCheck className={`w-3.5 h-3.5 ${theme.textAccent}`} />
-                        <span className="text-[11px] font-extrabold text-neutral-700 uppercase tracking-wider">Inbox Shield Settings</span>
-                      </div>
-                      <div className="p-4 space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-neutral-700">Minimum Karma for DMs</span>
-                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg ${theme.badgeBg}`}>
-                            {inboxShield} XP
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] text-neutral-400 font-medium leading-relaxed">
-                          Prevent unwanted messages! People with a Karma score below this threshold will not be allowed to send you direct messages.
-                        </p>
-                        <div className="flex items-center gap-4">
-                          <input
-                            type="range"
-                            min="0"
-                            max="1000"
-                            step="50"
-                            value={inboxShield}
-                            onChange={e => setInboxShield(parseInt(e.target.value))}
-                            onMouseUp={async () => {
-                              const token = localStorage.getItem("vayo_jwt_token");
-                              if (token) {
-                                try {
-                                  await fetch("http://127.0.0.1:8000/api/v1/users/me/inbox-shield", {
-                                    method: "PATCH",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                      "Authorization": `Bearer ${token}`
-                                    },
-                                    body: JSON.stringify({ threshold: inboxShield })
-                                  });
-                                  triggerToast(`Inbox Shield threshold set to ${inboxShield} XP!`);
-                                } catch (err) {
-                                  console.error("Failed to update inbox shield in backend:", err);
-                                }
-                              }
-                            }}
-                            className="w-full h-1.5 bg-neutral-200 rounded-lg appearance-none cursor-pointer transition-all"
-                            style={{ accentColor: theme.accent }}
-                          />
-                        </div>
-                        <div className="flex justify-between text-[8px] text-neutral-400 font-bold uppercase tracking-wider">
-                          <span>0 (No Shield)</span>
-                          <span>500 (Moderate)</span>
-                          <span>1000 (Maximum Shield)</span>
-                        </div>
                       </div>
                     </div>
 

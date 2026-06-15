@@ -21,8 +21,12 @@
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-vayo-blue: #4893C6;
+  --color-vayo-light: #64A4CE;
+  --color-vayo-pale: #8DBEDC;
+  --color-vayo-sky: #B7D7EA;
+  --color-vayo-alice: #E2EFF6;
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -200,6 +204,14 @@
 @utility backface-hidden {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+@utility perspective-card {
+  transition: transform 0.15s ease-out, border-color 0.3s, box-shadow 0.3s;
+}
+
+@utility transition-color-glow {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
 @utility rotate-y-180 {

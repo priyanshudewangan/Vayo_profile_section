@@ -196,6 +196,8 @@ export default function CommunityPage() {
   const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
 
   // Video seamless loop fade-in transition
   const handleVideoEnd = () => {
@@ -247,7 +249,7 @@ export default function CommunityPage() {
       } else {
         // Unregistered - redirect directly to signup/onboarding steps
         setShowSignupModal(false);
-        router.push(`/join?email=${encodeURIComponent(emailInput)}`);
+        router.push(`/invite?email=${encodeURIComponent(emailInput)}`);
       }
     } catch (err) {
       console.error(err);
@@ -257,7 +259,6 @@ export default function CommunityPage() {
     }
   };
 
-  // Password submission functions (matching page.js logic)
   const handleCreatePasswordSubmit = async (e) => {
     e.preventDefault();
     if (!passwordInput || !confirmPasswordInput) {
@@ -331,6 +332,33 @@ export default function CommunityPage() {
       setPasswordError("Network error verifying password.");
     } finally {
       setIsSubmittingPassword(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!emailInput) return;
+    
+    setIsSendingReset(true);
+    setPasswordError("");
+    setResetMessage("");
+    
+    try {
+      const response = await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailInput })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setResetMessage("A new temporary password has been sent to your email.");
+      } else {
+        setPasswordError(data.error || "Failed to send reset email.");
+      }
+    } catch (err) {
+      console.error(err);
+      setPasswordError("Network error during password reset.");
+    } finally {
+      setIsSendingReset(false);
     }
   };
 
@@ -496,6 +524,7 @@ export default function CommunityPage() {
               Join VAYO
             </button>
           </div>
+
         </div>
 
         {/* Right side illustration doodle column */}
@@ -765,27 +794,44 @@ export default function CommunityPage() {
                 </p>
               )}
 
-              <div className="flex gap-3 pt-1">
+              {resetMessage && (
+                <p className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 text-center">
+                  {resetMessage}
+                </p>
+              )}
+
+              <div className="flex flex-col gap-3 pt-1">
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowEnterPasswordModal(false)}
+                    className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all uppercase tracking-wider"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingPassword || !passwordInput}
+                    className="flex-1 bg-white hover:bg-slate-100 text-slate-950 font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 uppercase tracking-wider shadow-sm"
+                  >
+                    {isSubmittingPassword ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      "Confirm & Log In"
+                    )}
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => setShowEnterPasswordModal(false)}
-                  className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all uppercase tracking-wider"
+                  onClick={handleForgotPassword}
+                  disabled={isSendingReset}
+                  className="text-[10px] text-slate-500 hover:text-indigo-400 font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer text-center mt-1"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingPassword || !passwordInput}
-                  className="flex-1 bg-white hover:bg-slate-100 text-slate-950 font-bold text-xs py-2.5 rounded-xl cursor-pointer text-center transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 uppercase tracking-wider shadow-sm"
-                >
-                  {isSubmittingPassword ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
-                      <span>Verifying...</span>
-                    </>
-                  ) : (
-                    "Confirm & Log In"
-                  )}
+                  {isSendingReset ? "Sending Reset..." : "Forgot Password?"}
                 </button>
               </div>
             </form>

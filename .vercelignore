@@ -1,0 +1,15 @@
+.next
+node_modules
+temp_git
+.git
+.vercel
+.agent
+.gemini
+VAYO-version-0
+scratch
+Profile_vayo
+*.log
+.env.local
+.env
+.env.development
+.env.production

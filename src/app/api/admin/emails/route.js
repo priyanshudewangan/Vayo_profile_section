@@ -10,15 +10,23 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized access." }, { status: 401 });
     }
 
-    // Fetch waitlist details directly from Supabase
-    const { data, error } = await supabase
+    // Fetch waitlist details from Supabase
+    const { data: waitlistData, error: dbError } = await supabase
       .from("waitlist")
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (dbError) throw dbError;
 
-    return NextResponse.json({ emails: data }, { status: 200 });
+    // Enhance data: If they have a password, they are effectively "Joined" members
+    const enhancedData = waitlistData.map(user => {
+      if (user.password) {
+        return { ...user, status: "Joined" };
+      }
+      return user;
+    });
+
+    return NextResponse.json({ emails: enhancedData }, { status: 200 });
   } catch (error) {
     console.error("Admin Fetch Error:", error);
     return NextResponse.json(
