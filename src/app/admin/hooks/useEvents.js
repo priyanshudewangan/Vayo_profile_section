@@ -21,19 +21,33 @@ export const useEvents = (password, addToast) => {
   const [imagePreset, setImagePreset] = useState("/assets/events/something.jpg");
   const [customImageUrl, setCustomImageUrl] = useState("");
   const [eventHostId, setEventHostId] = useState(HOST_OPTIONS[0].id);
+  const [eventLat, setEventLat] = useState(null);
+  const [eventLng, setEventLng] = useState(null);
 
   const fetchEvents = async () => {
     setIsLoadingEvents(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/v1/events?limit=100`, {
-        signal: AbortSignal.timeout(2000)
-      });
-      if (response.ok) {
-        const data = await response.json();
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/v1/events?limit=100`, {
+          signal: AbortSignal.timeout(2000)
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setEvents(data.events || []);
+          return;
+        }
+      } catch {
+        console.log("Note: Python backend is currently offline.");
+      }
+
+      // Fallback to Supabase
+      const sbRes = await fetch("/api/events");
+      if (sbRes.ok) {
+        const data = await sbRes.json();
         setEvents(data.events || []);
       }
     } catch (err) {
-      console.log("Note: Python backend is currently offline.");
+      console.warn("Could not load events:", err);
     } finally {
       setIsLoadingEvents(false);
     }
@@ -73,27 +87,51 @@ export const useEvents = (password, addToast) => {
       min_karma_required: parseInt(eventMinKarma) || 0,
       entry_fee: parseInt(eventEntryFee) || 0,
       max_participants: eventMaxParticipants ? parseInt(eventMaxParticipants) : null,
-      cover_image_url: coverImageUrl || "/assets/events/something.jpg"
+      cover_image_url: coverImageUrl || "/assets/events/something.jpg",
+      lat: eventLat || null,
+      lng: eventLng || null
     };
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/v1/events`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
+      // Try FastAPI first, fall back to Supabase
+      let success = false;
+      let createdData = null;
 
-      const data = await response.json();
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/v1/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(3000)
+        });
+        if (response.ok) {
+          createdData = await response.json();
+          success = true;
+        }
+      } catch {
+        console.log("FastAPI offline, saving event to Supabase instead.");
+      }
 
-      if (response.ok) {
+      if (!success) {
+        const response = await fetch("/api/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (response.ok) {
+          createdData = data;
+          success = true;
+        } else {
+          addToast(data.error || "Failed to publish event", "error");
+        }
+      }
+
+      if (success) {
         addToast("Event published successfully!", "success");
-        setCreatedEventData(data);
+        setCreatedEventData(createdData);
         resetForm();
         fetchEvents();
-      } else {
-        addToast(data.detail || "Failed to publish event", "error");
       }
     } catch (err) {
       console.error(err);
@@ -112,6 +150,8 @@ export const useEvents = (password, addToast) => {
     setEventMinKarma(0);
     setEventEntryFee(0);
     setEventMaxParticipants("");
+    setEventLat(null);
+    setEventLng(null);
   };
 
   const handleCancelEvent = async (eventId, hostId) => {
@@ -159,6 +199,8 @@ export const useEvents = (password, addToast) => {
     eventMaxParticipants, setEventMaxParticipants,
     imagePreset, setImagePreset,
     customImageUrl, setCustomImageUrl,
-    eventHostId, setEventHostId
+    eventHostId, setEventHostId,
+    eventLat, setEventLat,
+    eventLng, setEventLng
   };
 };

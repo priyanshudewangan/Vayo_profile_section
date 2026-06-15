@@ -1,5 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { CalendarPlus, Plus, Calendar, MapPin, Trash2, Users, CheckCircle2 } from "lucide-react";
+
+const LocationPicker = dynamic(() => import("@/components/LocationPicker"), { ssr: false });
 import { HOST_OPTIONS, CATEGORY_OPTIONS, IMAGE_PRESETS } from "../lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,8 +33,36 @@ export const EventCatalog = ({
   eventMaxParticipants, setEventMaxParticipants,
   imagePreset, setImagePreset,
   customImageUrl, setCustomImageUrl,
-  eventHostId, setEventHostId
+  eventHostId, setEventHostId,
+  eventLat, setEventLat,
+  eventLng, setEventLng
 }) => {
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [editingLocationId, setEditingLocationId] = useState(null);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+
+  const handleSaveLocation = async (eventId, { venue, lat, lng }) => {
+    setIsSavingLocation(true);
+    try {
+      const res = await fetch("/api/events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId, venue, lat, lng })
+      });
+      if (res.ok) {
+        addToast("Location updated!", "success");
+        setEditingLocationId(null);
+        fetchEvents();
+      } else {
+        addToast("Failed to update location", "error");
+      }
+    } catch {
+      addToast("Network error", "error");
+    } finally {
+      setIsSavingLocation(false);
+    }
+  };
+
   return (
     <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-10 items-start animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 md:pb-0">
       {/* Left Column: Publish Event Form (Col span 5) */}
@@ -109,6 +140,26 @@ export const EventCatalog = ({
                 onChange={(e) => setEventVenue(e.target.value)}
                 className="w-full bg-vayo-alice/40 border-2 border-vayo-sky/50 rounded-xl md:rounded-2xl px-4 md:px-5 py-6 md:py-7 text-xs md:text-sm text-slate-800 placeholder:text-slate-300 focus:border-vayo-blue focus:bg-white transition-all shadow-inner"
               />
+              <button
+                type="button"
+                onClick={() => setShowMapPicker(v => !v)}
+                className="flex items-center gap-1.5 text-[10px] font-black text-vayo-blue hover:text-vayo-light transition-colors pl-1 pt-0.5 cursor-pointer"
+              >
+                <MapPin className="w-3 h-3" />
+                {showMapPicker ? "Hide Map" : "📍 Pin on Map"}
+                {eventLat && !showMapPicker && <span className="text-emerald-500 ml-1">✓ Pinned</span>}
+              </button>
+              {showMapPicker && (
+                <div className="pt-1">
+                  <LocationPicker
+                    onChange={({ venue, lat, lng }) => {
+                      setEventVenue(venue);
+                      setEventLat(lat);
+                      setEventLng(lng);
+                    }}
+                  />
+                </div>
+              )}
             </div>
             <div className="space-y-1.5 md:space-y-2">
               <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Category</Label>
@@ -171,6 +222,33 @@ export const EventCatalog = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Cover Image */}
+          <div className="space-y-1.5 md:space-y-2">
+            <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Cover Image</Label>
+            <Select value={imagePreset} onValueChange={setImagePreset}>
+              <SelectTrigger className="w-full bg-vayo-alice/40 border-2 border-vayo-sky/50 rounded-xl md:rounded-2xl px-4 md:px-5 py-6 md:py-7 text-xs md:text-sm text-slate-800 focus:border-vayo-blue transition-all shadow-inner h-auto">
+                <SelectValue placeholder="Select image" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-vayo-sky shadow-xl">
+                {IMAGE_PRESETS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-[10px] md:text-xs font-bold py-2 md:py-3 focus:bg-vayo-alice focus:text-vayo-blue transition-colors cursor-pointer">{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {imagePreset === "custom" && (
+              <input
+                type="url"
+                placeholder="https://..."
+                value={customImageUrl}
+                onChange={(e) => setCustomImageUrl(e.target.value)}
+                className="w-full bg-vayo-alice/40 border-2 border-vayo-sky/50 rounded-xl px-4 py-3 text-xs text-slate-800 placeholder:text-slate-300 focus:border-vayo-blue focus:bg-white transition-all shadow-inner outline-none mt-1"
+              />
+            )}
+            {imagePreset && imagePreset !== "custom" && (
+              <img src={imagePreset} alt="preview" className="w-full h-20 object-cover rounded-xl border border-vayo-sky/30 mt-1" />
+            )}
           </div>
 
           <Button
@@ -273,8 +351,8 @@ export const EventCatalog = ({
               });
 
               return (
+                <div key={evt.event_id} className="flex flex-col">
                 <div
-                  key={evt.event_id}
                   className={`bg-white border-2 ${isCancelled ? "border-rose-200/50 opacity-80" : "border-vayo-sky/40 hover:border-vayo-blue/60"} rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-6 flex flex-col sm:flex-row gap-5 md:gap-6 items-center shadow-[0_4px_24px_rgba(72,147,198,0.04)] hover:shadow-xl hover:-translate-y-1 transition-all duration-500 relative group/card overflow-hidden`}
                 >
                   <div className="w-full sm:w-24 sm:h-24 rounded-2xl md:rounded-3xl overflow-hidden shrink-0 border-2 border-vayo-sky/30 relative bg-slate-100 shadow-md aspect-video sm:aspect-square">
@@ -333,6 +411,14 @@ export const EventCatalog = ({
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => setEditingLocationId(editingLocationId === evt.event_id ? null : evt.event_id)}
+                          className="flex-1 sm:flex-none rounded-xl md:rounded-2xl bg-vayo-alice/60 hover:bg-vayo-blue hover:text-white border-vayo-sky hover:border-vayo-blue transition-all duration-300 shadow-sm flex items-center justify-center gap-2 h-9 md:h-11 px-4 md:px-6 font-black uppercase text-[9px] md:text-[10px] tracking-widest"
+                        >
+                          <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleCancelEvent(evt.event_id, evt.host_id)}
                           className="flex-1 sm:flex-none rounded-xl md:rounded-2xl bg-white hover:bg-rose-500 hover:text-white border-slate-200 hover:border-rose-500 transition-all duration-300 shadow-sm flex items-center justify-center gap-2 h-9 md:h-11 px-4 md:px-6 font-black uppercase text-[9px] md:text-[10px] tracking-widest text-slate-400"
                         >
@@ -341,6 +427,19 @@ export const EventCatalog = ({
                       </>
                     )}
                   </div>
+                </div>
+
+                {/* Inline Location Editor */}
+                {editingLocationId === evt.event_id && (
+                  <div className="bg-white border-2 border-t-0 border-vayo-sky/40 rounded-b-[2rem] md:rounded-b-[2.5rem] px-5 md:px-6 pb-5 md:pb-6 pt-4 space-y-3 -mt-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-vayo-blue uppercase tracking-[2px]">📍 Update Location</span>
+                      {evt.lat && <span className="text-[9px] text-emerald-600 font-bold">Pinned: {Number(evt.lat).toFixed(4)}, {Number(evt.lng).toFixed(4)}</span>}
+                    </div>
+                    <LocationPicker onChange={(loc) => handleSaveLocation(evt.event_id, loc)} />
+                    {isSavingLocation && <p className="text-[10px] text-vayo-blue font-bold animate-pulse">Saving…</p>}
+                  </div>
+                )}
                 </div>
               );
             })}

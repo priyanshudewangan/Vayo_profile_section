@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
+
+const LocationMap = dynamic(() => import("@/components/LocationMap"), { ssr: false });
 import { useSearchParams } from "next/navigation";
 import {
   ShieldCheck,
@@ -589,6 +592,7 @@ function ProfileContent() {
   const [currentEventIdx, setCurrentEventIdx] = useState(0);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [rsvpedIds, setRsvpedIds] = useState(new Set());
   const [showNotifications, setShowNotifications] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -757,8 +761,8 @@ function ProfileContent() {
 
       if (response.ok) {
         triggerToast('Registration confirmed! Check your tickets.');
+        setRsvpedIds(prev => new Set([...prev, event.id]));
         setSelectedEvent(null);
-        // Refresh tickets
         fetchUserTickets(email);
       } else {
         const data = await response.json();
@@ -1251,39 +1255,29 @@ function ProfileContent() {
 
   const fetchEvents = async () => {
     try {
-      // 1. Try local Python backend first (if running)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1500);
-      const localRes = await fetch("http://127.0.0.1:8000/api/v1/events?limit=20", { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (localRes.ok) {
-        const data = await localRes.json();
-        if (data.events?.length > 0) {
-          setUpcomingEvents(formatEventData(data.events));
-          return;
+      try {
+        const localRes = await fetch("http://127.0.0.1:8000/api/v1/events?limit=20", {
+          signal: AbortSignal.timeout(1500)
+        });
+        if (localRes.ok) {
+          const data = await localRes.json();
+          if (data.events?.length > 0) {
+            setUpcomingEvents(formatEventData(data.events)); setCurrentEventIdx(0);
+            return;
+          }
         }
+      } catch {
+        // FastAPI offline, fall through to Supabase
       }
-    } catch (err) {
-      console.log("Local backend offline, trying Supabase...");
-    }
 
-    try {
-      // 2. Fallback to Supabase API
       const sbRes = await fetch("/api/events");
       if (sbRes.ok) {
         const data = await sbRes.json();
-        if (data.events?.length > 0) {
-          setUpcomingEvents(formatEventData(data.events));
-          return;
-        }
+        setUpcomingEvents(formatEventData(data.events || [])); setCurrentEventIdx(0);
       }
     } catch (err) {
-      console.warn("Supabase fetch failed, showing demo events.");
+      console.warn("Could not load events:", err);
     }
-
-    // 3. Last resort: Static Demo Data
-    setUpcomingEvents(staticEvents);
   };
 
   const formatEventData = (events) => {
@@ -1304,7 +1298,9 @@ function ProfileContent() {
         min_karma_required: evt.min_karma_required || 0,
         entry_fee: evt.entry_fee || 0,
         category: evt.category || 'social',
-        max_participants: evt.max_participants || 0
+        max_participants: evt.max_participants || 0,
+        lat: evt.lat || null,
+        lng: evt.lng || null
       };
     });
   };
@@ -1920,9 +1916,10 @@ function ProfileContent() {
                         return (
                           <div className="space-y-4">
                             <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Upcoming Events</h5>
-                            <div className="relative w-full h-[220px] sm:h-[280px] rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-lg border border-neutral-100 bg-neutral-900 flex flex-col items-center justify-center gap-3">
-                              <span className="w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
-                              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider animate-pulse">Syncing mixers…</span>
+                            <div className="relative w-full h-[220px] sm:h-[280px] rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-lg border border-neutral-100 bg-neutral-50 flex flex-col items-center justify-center gap-3">
+                              <span className="text-2xl">🎉</span>
+                              <span className="text-[11px] text-neutral-400 font-bold uppercase tracking-wider">No upcoming events yet</span>
+                              <span className="text-[10px] text-neutral-300">Check back soon for new mixers</span>
                             </div>
                           </div>
                         );
@@ -2079,6 +2076,34 @@ function ProfileContent() {
                 {activeSidebarTab === 'mixers' && (
                   <div className="space-y-6 animate-fade-in">
 
+                    {/* Upcoming Events to RSVP */}
+                    {upcomingEvents.length > 0 && (
+                      <div className="space-y-2">
+                        <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Upcoming Events</h5>
+                        {upcomingEvents.map((evt) => {
+                          const isRegistered = rsvpedIds.has(evt.id) ||
+                            (displayPersona.activeTickets || []).some(t => t.name === evt.title);
+                          return (
+                            <button
+                              key={evt.id}
+                              onClick={() => !isRegistered && setSelectedEvent(evt)}
+                              className={`w-full flex items-center gap-3 p-2.5 rounded-xl border transition-all text-left ${isRegistered ? 'border-emerald-100 bg-emerald-50/40 cursor-default' : selectedEvent?.id === evt.id ? 'border-blue-300 bg-blue-50/60 cursor-pointer' : 'border-neutral-100 bg-white/70 hover:border-blue-200 hover:bg-blue-50/30 cursor-pointer'}`}
+                            >
+                              <img src={evt.image} alt={evt.title} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-neutral-100" />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[11px] font-extrabold text-neutral-800 truncate">{evt.title}</div>
+                                <div className="text-[9.5px] text-neutral-400 font-medium truncate">{evt.date} · {evt.location}</div>
+                              </div>
+                              {isRegistered
+                                ? <span className="text-[9px] font-extrabold text-emerald-600 shrink-0 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-full">✓ Registered</span>
+                                : <span className="text-[9px] font-extrabold text-blue-600 shrink-0 bg-blue-50 border border-blue-100 px-2 py-1 rounded-full">RSVP</span>
+                              }
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     {/* Event Registration Panel */}
                     {selectedEvent && (
                       <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4 shadow-sm space-y-4 relative animate-fade-in">
@@ -2105,43 +2130,19 @@ function ProfileContent() {
                           </div>
                         </div>
 
-                        {/* CTA button or state */}
-                        {(() => {
-                          const isAlreadyApplied = (displayPersona.pendingApplications || []).some(
-                            app => app.name === selectedEvent.title
-                          ) || (displayPersona.activeTickets || []).some(
-                            tkt => tkt.name === selectedEvent.title
-                          );
+                        {/* Location Map */}
+                        {selectedEvent.lat && selectedEvent.lng && (
+                          <LocationMap lat={selectedEvent.lat} lng={selectedEvent.lng} venue={selectedEvent.location} />
+                        )}
 
-                          if (isAlreadyApplied) {
-                            return (
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-center gap-2 py-2 w-full rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 text-xs font-bold">
-                                  <Check className="w-4 h-4" />
-                                  <span>Applied / Ticket Approved ✓</span>
-                                </div>
-                                <button
-                                  onClick={() => handleCancelRSVP(selectedEvent.id)}
-                                  className="w-full py-2 rounded-xl text-[10px] font-bold text-rose-600 border border-rose-100 bg-rose-50/50 hover:bg-rose-50 cursor-pointer transition-colors flex items-center justify-center gap-1.5"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Cancel My RSVP</span>
-                                </button>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <button
-                              onClick={() => handleRSVP(selectedEvent)}
-                              className="w-full py-2.5 rounded-xl text-xs font-extrabold text-white cursor-pointer transition-opacity hover:opacity-90 flex items-center justify-center gap-2 shadow-sm"
-                              style={{ background: theme.accent }}
-                            >
-                              <CalendarPlus className="w-4 h-4" />
-                              <span>Confirm Registration & Get Ticket</span>
-                            </button>
-                          );
-                        })()}
+                        <button
+                          onClick={() => handleRSVP(selectedEvent)}
+                          className="w-full py-2.5 rounded-xl text-xs font-extrabold text-white cursor-pointer transition-opacity hover:opacity-90 flex items-center justify-center gap-2 shadow-sm"
+                          style={{ background: theme.accent }}
+                        >
+                          <CalendarPlus className="w-4 h-4" />
+                          <span>Confirm Registration & Get Ticket</span>
+                        </button>
                       </div>
                     )}
 
@@ -2258,7 +2259,11 @@ function ProfileContent() {
                         Live Tickets <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                       </h5>
                       <div className="space-y-4">
-                        {(displayPersona.activeTickets || []).map((tkt, i) => (
+                        {(displayPersona.activeTickets || []).map((tkt, i) => {
+                          const matchedEvent = upcomingEvents.find(e => e.title === tkt.name);
+                          const tktLat = matchedEvent?.lat || null;
+                          const tktLng = matchedEvent?.lng || null;
+                          return (
                           <div key={i} className="border border-neutral-200 rounded-2xl overflow-hidden flex flex-col md:flex-row bg-neutral-50/50 shadow-sm">
                             {/* Left Stub */}
                             <div className="flex-1 p-5 space-y-4 border-r border-dashed border-neutral-200 relative">
@@ -2290,6 +2295,9 @@ function ProfileContent() {
                                 {/* LIVE COUNTDOWN */}
                                 <TicketCountdown date={tkt.date} />
                               </div>
+                              {tktLat && tktLng && (
+                                <LocationMap lat={tktLat} lng={tktLng} venue={tkt.locationPin} />
+                              )}
                             </div>
                             {/* Right QR Stub */}
                             <div className="w-full md:w-[130px] p-4 flex flex-col items-center justify-center bg-white shrink-0 border-l border-neutral-100">
@@ -2308,7 +2316,8 @@ function ProfileContent() {
                               <button onClick={() => triggerToast('Showing full-screen ticket for verification!')} className={`mt-1.5 text-[9px] font-bold ${theme.textAccent} hover:underline cursor-pointer`}>Show Full QR</button>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
 
