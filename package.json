@@ -40,6 +40,12 @@
   "allowScripts": {
     "msw@2.14.6": true,
     "sharp@0.34.5": true,
-    "unrs-resolver@1.11.1": true
+    "unrs-resolver@1.11.1": true,
+    "esbuild@0.14.47": true,
+    "esbuild@0.15.18": true,
+    "esbuild@0.27.3": true,
+    "workerd@1.20250718.0": true,
+    "workerd@1.20260616.1": true,
+    "fsevents@2.3.3": true
   }
 }
