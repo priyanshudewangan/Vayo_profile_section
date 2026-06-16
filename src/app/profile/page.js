@@ -722,15 +722,6 @@ function ProfileContent() {
   };
 
   const karmaNotifications = karmaData ? [
-    karmaData.total > 0 && {
-      id: 'karma-total',
-      icon: '⭐',
-      msg: `Your karma is ${karmaData.total} pts — ${karmaData.tier} tier`,
-      time: 'Karma summary',
-      unread: false,
-      type: 'KARMA_UPDATE',
-      pts: `${karmaData.total} pts`,
-    },
     (karmaData.breakdown?.eventRsvps?.count ?? 0) > 0 && {
       id: 'karma-rsvp',
       icon: '🎟️',
@@ -790,7 +781,6 @@ function ProfileContent() {
       ] : [
         { id: 3, icon: '📅', msg: `Reminder: ${currentPersona.activeTickets[0]?.name ?? 'Your next event'} is coming up soon`, time: '1d ago', unread: false },
         { id: 4, icon: '👋', msg: `Someone viewed your profile`, time: '2d ago', unread: false },
-        { id: 'k1', icon: '⭐', msg: `You have ${currentPersona.karmaBalance} karma pts — ${currentPersona.karmaTier} tier`, time: 'Karma summary', unread: false, type: 'KARMA_UPDATE', pts: `${currentPersona.karmaBalance} pts` },
         { id: 'k2', icon: '🎟️', msg: `Earned karma from attending events`, time: 'From RSVPs', unread: false, type: 'KARMA_UPDATE', pts: `+${Math.round((currentPersona.karmaBreakdown?.attendedMixers ?? 0))}` },
       ]);
 
