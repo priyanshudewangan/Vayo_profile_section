@@ -2,18 +2,24 @@ import React, { useMemo } from "react";
 
 // Custom Monthly Calendar Widget for scheduler card (Rethemed to light blue palette)
 export const CalendarWidget = ({ events }) => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth(); // 0-indexed
+  const { year, month, todayDate } = useMemo(() => {
+    const d = new Date();
+    return {
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      todayDate: d.getDate()
+    };
+  }, []);
+
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
 
   // First day of current month
-  const firstDay = new Date(year, month, 1).getDay();
+  const firstDay = useMemo(() => new Date(year, month, 1).getDay(), [year, month]);
   // Number of days in current month
-  const numDays = new Date(year, month + 1, 0).getDate();
+  const numDays = useMemo(() => new Date(year, month + 1, 0).getDate(), [year, month]);
 
   // Map event dates to day numbers for current month/year
   const activeEventDays = useMemo(() => {
@@ -29,14 +35,17 @@ export const CalendarWidget = ({ events }) => {
     return days;
   }, [events, year, month]);
 
-  const daysArr = [];
-  // Add blank spots for days before the first day of the week
-  for (let i = 0; i < firstDay; i++) {
-    daysArr.push(null);
-  }
-  for (let i = 1; i <= numDays; i++) {
-    daysArr.push(i);
-  }
+  const daysArr = useMemo(() => {
+    const arr = [];
+    // Add blank spots for days before the first day of the week
+    for (let i = 0; i < firstDay; i++) {
+      arr.push(null);
+    }
+    for (let i = 1; i <= numDays; i++) {
+      arr.push(i);
+    }
+    return arr;
+  }, [firstDay, numDays]);
 
   const weekdays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -58,7 +67,7 @@ export const CalendarWidget = ({ events }) => {
       <div className="grid grid-cols-7 gap-0.5 md:gap-1 text-center text-[10px] md:text-xs">
         {daysArr.map((day, idx) => {
           if (day === null) return <div key={`empty-${idx}`} />;
-          const isToday = day === today.getDate();
+          const isToday = day === todayDate;
           const hasEvent = activeEventDays.has(day);
 
           return (

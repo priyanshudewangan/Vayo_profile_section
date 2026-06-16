@@ -4,6 +4,8 @@ import React, { useState, useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 
+import { BACKEND_URL } from "@/lib/constants";
+
 const LocationMap = dynamic(() => import("@/components/LocationMap"), { ssr: false });
 import { useSearchParams } from "next/navigation";
 import {
@@ -574,6 +576,21 @@ const getStepperIdx = (status) => {
   return 0; // Applied / Under Review
 };
 
+const formatTimeAgo = (dateStr) => {
+  try {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  } catch {
+    return '';
+  }
+};
+
 function ProfileContent() {
   const searchParams = useSearchParams();
   const emailParam = searchParams.get("email");
@@ -705,21 +722,6 @@ function ProfileContent() {
     { label: 'Social links', done: Object.keys(currentPersona.socialLinks || {}).length > 0 },
   ];
   const completenessScore = Math.round((completenessItems.filter(i => i.done).length / completenessItems.length) * 100);
-
-  const formatTimeAgo = (dateStr) => {
-    try {
-      const diffMs = Date.now() - new Date(dateStr).getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      if (diffMins < 1) return 'Just now';
-      if (diffMins < 60) return `${diffMins}m ago`;
-      const diffHours = Math.floor(diffMins / 60);
-      if (diffHours < 24) return `${diffHours}h ago`;
-      const diffDays = Math.floor(diffHours / 24);
-      return `${diffDays}d ago`;
-    } catch {
-      return '';
-    }
-  };
 
   const karmaNotifications = karmaData ? [
     (karmaData.breakdown?.eventRsvps?.count ?? 0) > 0 && {
@@ -907,7 +909,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!email || !token) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/notifications/${encodeURIComponent(email)}`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/notifications/${encodeURIComponent(email)}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -923,7 +925,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!token) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/notifications/${encodeURIComponent(notificationId)}/read`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/notifications/${encodeURIComponent(notificationId)}/read`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -941,7 +943,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!email || !token) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/notifications/user/${encodeURIComponent(email)}/read-all`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/notifications/user/${encodeURIComponent(email)}/read-all`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -956,14 +958,14 @@ function ProfileContent() {
 
   useEffect(() => {
     if (!isUserLoaded) return;
-    fetchNotifications();
+    Promise.resolve().then(() => fetchNotifications());
     const interval = setInterval(fetchNotifications, 15000);
     return () => clearInterval(interval);
   }, [isUserLoaded]);
 
   useEffect(() => {
     if (showNotifications) {
-      fetchNotifications();
+      Promise.resolve().then(() => fetchNotifications());
     }
   }, [showNotifications]);
 
@@ -1047,7 +1049,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (token) {
       try {
-        await fetch(`http://127.0.0.1:8000/api/v1/users/me/bio/${activeMode}`, {
+        await fetch(`${BACKEND_URL}/api/v1/users/me/bio/${activeMode}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -1266,7 +1268,7 @@ function ProfileContent() {
             let fastApiProfile = null;
             if (token) {
               try {
-                const fastApiRes = await fetch(`http://127.0.0.1:8000/api/v1/users/${encodeURIComponent(data.user.email)}/profile`, {
+                const fastApiRes = await fetch(`${BACKEND_URL}/api/v1/users/${encodeURIComponent(data.user.email)}/profile`, {
                   headers: {
                     "Authorization": `Bearer ${token}`
                   }
@@ -1308,7 +1310,7 @@ function ProfileContent() {
   const fetchEvents = async () => {
     try {
       try {
-        const localRes = await fetch("http://127.0.0.1:8000/api/v1/events?limit=20", {
+        const localRes = await fetch(`${BACKEND_URL}/api/v1/events?limit=20`, {
           signal: AbortSignal.timeout(1500)
         });
         if (localRes.ok) {
@@ -1358,14 +1360,14 @@ function ProfileContent() {
   };
 
   useEffect(() => {
-    fetchEvents();
+    Promise.resolve().then(() => fetchEvents());
   }, []);
 
   useEffect(() => {
     if (currentPersona && currentPersona.id === 'user-profile') {
       const sessionEmail = localStorage.getItem("vayo_user_email");
       const email = emailParam || sessionEmail;
-      fetchUserTickets(email);
+      Promise.resolve().then(() => fetchUserTickets(email));
     }
   }, [activeIdx, isUserLoaded]);
 
@@ -1576,7 +1578,7 @@ function ProfileContent() {
                   const token = localStorage.getItem("vayo_jwt_token");
                   if (token) {
                     try {
-                      await fetch("http://127.0.0.1:8000/api/v1/users/me/mode", {
+                      await fetch(`${BACKEND_URL}/api/v1/users/me/mode`, {
                         method: "PATCH",
                         headers: {
                           "Content-Type": "application/json",

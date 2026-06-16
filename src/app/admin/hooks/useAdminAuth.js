@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export const useAdminAuth = () => {
   const [password, setPassword] = useState("");
@@ -7,15 +7,15 @@ export const useAdminAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
 
-  const addToast = (message, type = "success") => {
+  const addToast = useCallback((message, type = "success") => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
-  };
+  }, []);
 
-  const login = async (inputPassword) => {
+  const login = useCallback(async (inputPassword) => {
     setIsLoading(true);
     setAuthError("");
     try {
@@ -44,22 +44,24 @@ export const useAdminAuth = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [addToast]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     sessionStorage.removeItem("vayo_admin_token");
     setIsAuthenticated(false);
     setPassword("");
     addToast("Logged out of session", "info");
-  };
+  }, [addToast]);
 
   useEffect(() => {
     const cachedPassword = sessionStorage.getItem("vayo_admin_token");
     if (cachedPassword) {
-      setPassword(cachedPassword);
-      login(cachedPassword);
+      Promise.resolve().then(() => {
+        setPassword(cachedPassword);
+        login(cachedPassword);
+      });
     }
-  }, []);
+  }, [login]);
 
   return {
     password,
