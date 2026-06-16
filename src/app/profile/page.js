@@ -2126,23 +2126,6 @@ function ProfileContent() {
                                 )}
                               </div>
 
-                              {/* Breakdown row */}
-                              <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5">
-                                {[
-                                  { label: 'Profile',    icon: '🛡️', pts: karma?.breakdown?.profileSetup?.points ?? 0,  sub: `${karma?.breakdown?.profileSetup?.items?.filter(i => i.done).length ?? 4}/4` },
-                                  { label: 'RSVPs',      icon: '🎟️', pts: karma?.breakdown?.eventRsvps?.points ?? 0,    sub: `${karma?.breakdown?.eventRsvps?.count ?? 0} × 0.5` },
-                                  { label: 'Check-ins',  icon: '📍', pts: karma?.breakdown?.gpsCheckins?.points ?? 0,   sub: 'GPS soon' },
-                                  { label: 'Community',  icon: '👥', pts: karma?.breakdown?.community?.points ?? 0,     sub: 'Streaks…' },
-                                ].map(cat => (
-                                  <div key={cat.label} className="flex-1 min-w-[72px] rounded-xl border border-neutral-100/80 bg-white/70 backdrop-blur-sm px-3 py-2.5 text-center shadow-sm">
-                                    <div className="text-base mb-1">{cat.icon}</div>
-                                    <div className="text-[13px] font-black text-neutral-800 leading-none">{cat.pts}</div>
-                                    <div className="text-[8px] font-extrabold text-neutral-400 uppercase tracking-wider mt-0.5 leading-tight">{cat.label}</div>
-                                    <div className="text-[7.5px] text-neutral-300 font-medium mt-0.5">{cat.sub}</div>
-                                  </div>
-                                ))}
-                              </div>
-
                               {/* Locked feature teaser */}
                               {(() => {
                                 const UNLOCK_AT = 251;
