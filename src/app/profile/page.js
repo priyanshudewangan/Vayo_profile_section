@@ -721,24 +721,65 @@ function ProfileContent() {
     }
   };
 
-  const displayNotifications = currentPersona.id === 'user-profile'
-    ? liveNotifications.map(n => {
-        let icon = '🔔';
-        if (n.type === 'MESSAGE_RECEIVED') icon = '💬';
-        else if (n.type === 'EVENT_MATCH') icon = '📅';
-        else if (n.type === 'EVENT_REMINDER') icon = '⏰';
+  const karmaNotifications = karmaData ? [
+    karmaData.total > 0 && {
+      id: 'karma-total',
+      icon: '⭐',
+      msg: `Your karma is ${karmaData.total} pts — ${karmaData.tier} tier`,
+      time: 'Karma summary',
+      unread: false,
+      type: 'KARMA_UPDATE',
+      pts: `${karmaData.total} pts`,
+    },
+    (karmaData.breakdown?.eventRsvps?.count ?? 0) > 0 && {
+      id: 'karma-rsvp',
+      icon: '🎟️',
+      msg: `Earned ${karmaData.breakdown.eventRsvps.points} karma from ${karmaData.breakdown.eventRsvps.count} event RSVP${karmaData.breakdown.eventRsvps.count > 1 ? 's' : ''}`,
+      time: 'From RSVPs',
+      unread: false,
+      type: 'KARMA_UPDATE',
+      pts: `+${karmaData.breakdown.eventRsvps.points}`,
+    },
+    (karmaData.breakdown?.profileSetup?.points ?? 0) > 0 && {
+      id: 'karma-profile',
+      icon: '🛡️',
+      msg: `Profile setup earned you ${karmaData.breakdown.profileSetup.points} karma pts`,
+      time: 'From profile',
+      unread: false,
+      type: 'KARMA_UPDATE',
+      pts: `+${karmaData.breakdown.profileSetup.points}`,
+    },
+    (karmaData.breakdown?.community?.referrals ?? 0) > 0 && {
+      id: 'karma-referral',
+      icon: '👥',
+      msg: `You referred ${karmaData.breakdown.community.referrals} member${karmaData.breakdown.community.referrals > 1 ? 's' : ''} — karma earned`,
+      time: 'From referrals',
+      unread: false,
+      type: 'KARMA_UPDATE',
+      pts: `+${karmaData.breakdown.community.referralPts}`,
+    },
+  ].filter(Boolean) : [];
 
-        return {
-          id: n.id,
-          icon,
-          msg: n.body || n.title,
-          time: formatTimeAgo(n.created_at),
-          unread: !n.is_read,
-          type: n.type,
-          reference_id: n.reference_id,
-          actor_id: n.actor_id
-        };
-      })
+  const displayNotifications = currentPersona.id === 'user-profile'
+    ? [
+        ...liveNotifications.map(n => {
+          let icon = '🔔';
+          if (n.type === 'MESSAGE_RECEIVED') icon = '💬';
+          else if (n.type === 'EVENT_MATCH') icon = '📅';
+          else if (n.type === 'EVENT_REMINDER') icon = '⏰';
+          return {
+            id: n.id,
+            icon,
+            msg: n.body || n.title,
+            time: formatTimeAgo(n.created_at),
+            unread: !n.is_read,
+            type: n.type,
+            reference_id: n.reference_id,
+            actor_id: n.actor_id
+          };
+        }),
+        ...karmaNotifications,
+      ]
     : (activeMode === 'bff' ? [
         { id: 1, icon: '💚', msg: `Your BFF profile is now live!`, time: '1h ago', unread: true },
         { id: 2, icon: '📸', msg: `New memory added to your shared gallery from last weekend`, time: '4h ago', unread: true },
@@ -749,6 +790,8 @@ function ProfileContent() {
       ] : [
         { id: 3, icon: '📅', msg: `Reminder: ${currentPersona.activeTickets[0]?.name ?? 'Your next event'} is coming up soon`, time: '1d ago', unread: false },
         { id: 4, icon: '👋', msg: `Someone viewed your profile`, time: '2d ago', unread: false },
+        { id: 'k1', icon: '⭐', msg: `You have ${currentPersona.karmaBalance} karma pts — ${currentPersona.karmaTier} tier`, time: 'Karma summary', unread: false, type: 'KARMA_UPDATE', pts: `${currentPersona.karmaBalance} pts` },
+        { id: 'k2', icon: '🎟️', msg: `Earned karma from attending events`, time: 'From RSVPs', unread: false, type: 'KARMA_UPDATE', pts: `+${Math.round((currentPersona.karmaBreakdown?.attendedMixers ?? 0))}` },
       ]);
 
   const unreadCount = displayNotifications.filter(n => n.unread).length;
@@ -1600,13 +1643,17 @@ function ProfileContent() {
                           key={n.id}
                           onClick={() => { if (n.unread && currentPersona.id === 'user-profile') markNotificationAsRead(n.id); }}
                           className={`flex flex-col gap-2 px-4 py-3 ${n.unread ? 'bg-blue-50/40' : ''}`}>
-                          <div className="flex items-start gap-3">
+                          <div className={`flex items-start gap-3 ${n.type === 'KARMA_UPDATE' ? 'bg-emerald-50/40 -mx-4 px-4 py-1 rounded-lg' : ''}`}>
                             <span className="text-lg shrink-0 mt-0.5">{n.icon}</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-semibold leading-snug text-neutral-700">{n.msg}</p>
                               <p className="text-[9.5px] text-neutral-400 font-medium mt-0.5">{n.time}</p>
                             </div>
-                            {n.unread && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
+                            {n.pts ? (
+                              <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full shrink-0 mt-0.5 whitespace-nowrap">{n.pts}</span>
+                            ) : n.unread ? (
+                              <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />
+                            ) : null}
                           </div>
                           {n.type === 'CONNECT_REQUEST' && n.unread && currentPersona.id === 'user-profile' && (
                             <div className="flex gap-2 pl-8">
@@ -1757,7 +1804,6 @@ function ProfileContent() {
                             <img src={currentPersona.image} alt={currentPersona.name} className="w-full h-full object-cover" />
                           </div>
                         </div>
-                        <div className="absolute inset-[-4px] rounded-full border-2 opacity-25 transition-colors duration-500" style={{ borderColor: theme.accent }} />
                         {/* Tier badge */}
                         {(() => {
                           const t = currentPersona.id === 'user-profile' ? (karmaData?.tier || 'Explorer') : (currentPersona.karmaTier || 'Explorer');
