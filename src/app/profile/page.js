@@ -2143,52 +2143,71 @@ function ProfileContent() {
                                 ))}
                               </div>
 
-                              {/* How to earn more */}
-                              <details className="group">
-                                <summary className="flex items-center gap-1.5 text-[9.5px] font-extrabold text-neutral-400 uppercase tracking-[2px] cursor-pointer list-none select-none hover:text-sky-500 transition-colors">
-                                  <svg className="w-2.5 h-2.5 group-open:rotate-90 transition-transform duration-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
-                                  How to earn karma
-                                </summary>
-                                <div className="mt-3 space-y-3">
-                                  {/* Events category */}
-                                  <div>
-                                    <p className="text-[7.5px] font-extrabold text-neutral-300 uppercase tracking-[2.5px] mb-2 px-0.5">Events</p>
-                                    <div className="grid grid-cols-2 gap-1.5">
-                                      {[
-                                        { icon: '🎟️', text: 'RSVP',        pts: '+0.5' },
-                                        { icon: '📍', text: 'GPS Meetup',   pts: '+3'   },
-                                        { icon: '📍', text: 'GPS Event',    pts: '+5'   },
-                                        { icon: '✈️', text: 'GPS Trip',     pts: '+12'  },
-                                      ].map((row, i) => (
-                                        <div key={i} className="flex items-center gap-2 bg-sky-50/70 border border-sky-100 rounded-xl px-2.5 py-2">
-                                          <span className="text-sm shrink-0">{row.icon}</span>
-                                          <div className="flex-1 min-w-0">
-                                            <div className="text-[9px] font-semibold text-sky-950/70 truncate leading-tight">{row.text}</div>
-                                            <div className="text-[9.5px] font-extrabold text-emerald-500 leading-tight">{row.pts}</div>
+                              {/* Locked feature teaser */}
+                              {(() => {
+                                const UNLOCK_AT = 251;
+                                const ptsNeeded = Math.max(0, UNLOCK_AT - (karma?.total ?? 0));
+                                const alreadyUnlocked = (karma?.total ?? 0) >= UNLOCK_AT;
+                                return (
+                                  <details className="group">
+                                    <summary className="list-none cursor-pointer select-none">
+                                      <div className={`flex items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-3 transition-all duration-200
+                                        ${alreadyUnlocked
+                                          ? 'border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50'
+                                          : 'border-neutral-200 bg-neutral-50/60 hover:border-sky-200 hover:bg-sky-50/40'
+                                        }`}>
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg transition-colors
+                                          ${alreadyUnlocked ? 'bg-emerald-100' : 'bg-neutral-100 group-hover:bg-sky-100'}`}>
+                                          {alreadyUnlocked ? '🎉' : '🔒'}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-[11px] font-extrabold text-neutral-800 leading-tight">Host an Event</div>
+                                          <div className={`text-[9px] font-semibold mt-0.5 ${alreadyUnlocked ? 'text-emerald-500' : 'text-neutral-400'}`}>
+                                            {alreadyUnlocked ? 'Feature unlocked · Voyager tier' : 'Tap to see how to unlock'}
                                           </div>
                                         </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  {/* Social category */}
-                                  <div>
-                                    <p className="text-[7.5px] font-extrabold text-neutral-300 uppercase tracking-[2.5px] mb-2 px-0.5">Social</p>
-                                    <div className="grid grid-cols-3 gap-1.5">
-                                      {[
-                                        { icon: '👥', text: 'Refer',   pts: '+1–4' },
-                                        { icon: '🔥', text: 'Streak',  pts: '+1–8' },
-                                        { icon: '⭐', text: 'Review',  pts: '+1'   },
-                                      ].map((row, i) => (
-                                        <div key={i} className="flex flex-col items-center bg-violet-50/70 border border-violet-100 rounded-xl px-2 py-2.5 text-center">
-                                          <span className="text-base mb-1">{row.icon}</span>
-                                          <div className="text-[8.5px] font-semibold text-violet-950/70 leading-tight mb-0.5">{row.text}</div>
-                                          <div className="text-[9px] font-extrabold text-emerald-500">{row.pts}</div>
+                                        {!alreadyUnlocked && (
+                                          <svg className="w-3.5 h-3.5 text-neutral-300 group-open:rotate-180 transition-transform duration-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                                        )}
+                                      </div>
+                                    </summary>
+
+                                    {!alreadyUnlocked && (
+                                      <div className="mt-2 px-1 space-y-2.5">
+                                        {/* Points needed */}
+                                        <div className="flex items-center justify-between bg-white rounded-xl border border-neutral-100 px-3.5 py-3">
+                                          <div>
+                                            <div className="text-[10.5px] font-extrabold text-neutral-700">Points required</div>
+                                            <div className="text-[9px] text-neutral-400 font-medium mt-0.5">Reach Voyager tier to host</div>
+                                          </div>
+                                          <div className="text-right shrink-0">
+                                            <div className="text-[18px] font-black text-neutral-800 leading-none">{UNLOCK_AT}</div>
+                                            <div className="text-[8px] font-bold text-neutral-300 uppercase tracking-wider">pts needed</div>
+                                          </div>
                                         </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              </details>
+
+                                        {/* Progress toward unlock */}
+                                        <div className="space-y-1.5 px-0.5">
+                                          <div className="flex justify-between text-[8.5px] font-bold">
+                                            <span className="text-neutral-400">Your karma</span>
+                                            <span className="text-sky-500">{ptsNeeded} pts to go</span>
+                                          </div>
+                                          <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full bg-gradient-to-r from-sky-400 to-violet-500 rounded-full transition-all duration-700"
+                                              style={{ width: `${Math.min(100, ((karma?.total ?? 0) / UNLOCK_AT) * 100)}%` }}
+                                            />
+                                          </div>
+                                          <div className="flex justify-between text-[7.5px] text-neutral-300 font-medium">
+                                            <span>{karma?.total ?? 0} pts</span>
+                                            <span>{UNLOCK_AT} pts</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </details>
+                                );
+                              })()}
                             </>
                           )}
                         </div>
