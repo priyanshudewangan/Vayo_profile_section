@@ -2149,24 +2149,44 @@ function ProfileContent() {
                                   <svg className="w-2.5 h-2.5 group-open:rotate-90 transition-transform duration-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
                                   How to earn karma
                                 </summary>
-                                <div className="mt-2.5 space-y-0.5">
-                                  {[
-                                    { icon: '🎟️', text: 'RSVP confirmation',          pts: '+0.5' },
-                                    { icon: '📍', text: 'GPS check-in at meetup',      pts: '+3'   },
-                                    { icon: '📍', text: 'GPS check-in at event',        pts: '+5'   },
-                                    { icon: '✈️', text: 'GPS check-in at trip',         pts: '+12'  },
-                                    { icon: '👥', text: 'Refer a new member',           pts: '+1–4' },
-                                    { icon: '🔥', text: 'Weekly activity streak',       pts: '+1–8' },
-                                    { icon: '⭐', text: 'Positive community review',    pts: '+1'   },
-                                  ].map((row, i) => (
-                                    <div key={i} className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors">
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <span className="text-sm shrink-0">{row.icon}</span>
-                                        <span className="text-[10px] text-neutral-600 font-medium truncate">{row.text}</span>
-                                      </div>
-                                      <span className="text-[10px] font-extrabold text-emerald-500 shrink-0">{row.pts}</span>
+                                <div className="mt-3 space-y-3">
+                                  {/* Events category */}
+                                  <div>
+                                    <p className="text-[7.5px] font-extrabold text-neutral-300 uppercase tracking-[2.5px] mb-2 px-0.5">Events</p>
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      {[
+                                        { icon: '🎟️', text: 'RSVP',        pts: '+0.5' },
+                                        { icon: '📍', text: 'GPS Meetup',   pts: '+3'   },
+                                        { icon: '📍', text: 'GPS Event',    pts: '+5'   },
+                                        { icon: '✈️', text: 'GPS Trip',     pts: '+12'  },
+                                      ].map((row, i) => (
+                                        <div key={i} className="flex items-center gap-2 bg-sky-50/70 border border-sky-100 rounded-xl px-2.5 py-2">
+                                          <span className="text-sm shrink-0">{row.icon}</span>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-[9px] font-semibold text-sky-950/70 truncate leading-tight">{row.text}</div>
+                                            <div className="text-[9.5px] font-extrabold text-emerald-500 leading-tight">{row.pts}</div>
+                                          </div>
+                                        </div>
+                                      ))}
                                     </div>
-                                  ))}
+                                  </div>
+                                  {/* Social category */}
+                                  <div>
+                                    <p className="text-[7.5px] font-extrabold text-neutral-300 uppercase tracking-[2.5px] mb-2 px-0.5">Social</p>
+                                    <div className="grid grid-cols-3 gap-1.5">
+                                      {[
+                                        { icon: '👥', text: 'Refer',   pts: '+1–4' },
+                                        { icon: '🔥', text: 'Streak',  pts: '+1–8' },
+                                        { icon: '⭐', text: 'Review',  pts: '+1'   },
+                                      ].map((row, i) => (
+                                        <div key={i} className="flex flex-col items-center bg-violet-50/70 border border-violet-100 rounded-xl px-2 py-2.5 text-center">
+                                          <span className="text-base mb-1">{row.icon}</span>
+                                          <div className="text-[8.5px] font-semibold text-violet-950/70 leading-tight mb-0.5">{row.text}</div>
+                                          <div className="text-[9px] font-extrabold text-emerald-500">{row.pts}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
                                 </div>
                               </details>
                             </>
