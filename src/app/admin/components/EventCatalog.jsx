@@ -75,7 +75,7 @@ export const EventCatalog = ({
             <div className="p-2 rounded-xl bg-vayo-blue/10 text-vayo-blue shadow-sm">
               <CalendarPlus className="w-4 h-4 md:w-5 md:h-5" />
             </div>
-            <span>Publish Mixer</span>
+            <span>Publish Event</span>
           </h3>
           <p className="text-[11px] md:text-xs text-slate-500 font-medium pl-1">
             Build and broadcast a new offline community event.
@@ -84,7 +84,7 @@ export const EventCatalog = ({
 
         <form onSubmit={handleCreateEventSubmit} className="space-y-4 md:space-y-5">
           <div className="space-y-1.5 md:space-y-2">
-            <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Mixer Title *</Label>
+            <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Event Title *</Label>
             <Input
               type="text"
               placeholder="e.g. Salsa Social Nights"
@@ -264,7 +264,7 @@ export const EventCatalog = ({
             ) : (
               <>
                 <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
-                <span>Publish Mixer Live</span>
+                <span>Publish Event Live</span>
               </>
             )}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
@@ -274,7 +274,7 @@ export const EventCatalog = ({
         {createdEventData && (
           <div className="bg-emerald-50/80 backdrop-blur-sm border-2 border-emerald-200 rounded-2xl md:rounded-[2rem] p-5 md:p-6 text-left animate-in zoom-in-95 duration-500 shadow-sm mt-1 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-2"><CheckCircle2 className="w-10 h-10 md:w-12 md:h-12 text-emerald-100" /></div>
-            <span className="text-[9px] md:text-[10px] font-black text-emerald-700 uppercase tracking-[2px] block">Mixer Live!</span>
+            <span className="text-[9px] md:text-[10px] font-black text-emerald-700 uppercase tracking-[2px] block">Event Live!</span>
             <div className="flex gap-2 mt-4 md:mt-5">
               <Button
                 variant="outline"
@@ -309,7 +309,7 @@ export const EventCatalog = ({
               <span>Upcoming Catalog</span>
             </h3>
             <p className="text-[10px] md:text-xs text-vayo-alice/70 font-medium tracking-wide">
-              Manage mixers and track registrant counts.
+              Manage events and track registrant counts.
             </p>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[8px] md:text-[9px] font-black text-white uppercase tracking-[2px] shrink-0">
@@ -334,7 +334,7 @@ export const EventCatalog = ({
             </div>
             <div className="space-y-1 px-4">
               <p className="text-sm md:text-base font-bold text-white opacity-80 tracking-tight">Catalog is empty</p>
-              <p className="text-[10px] md:text-[11px] text-vayo-alice/40 font-medium">Publish your first community mixer above.</p>
+              <p className="text-[10px] md:text-[11px] text-vayo-alice/40 font-medium">Publish your first community event above.</p>
             </div>
           </div>
         ) : (

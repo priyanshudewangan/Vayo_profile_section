@@ -18,7 +18,7 @@ export const AdminSidebar = ({
       <div className="fixed bottom-0 left-0 right-0 z-[60] md:hidden bg-white/90 backdrop-blur-2xl border-t border-vayo-sky flex items-center justify-around py-3 px-6 shadow-[0_-8px_32px_rgba(72,147,198,0.1)]">
         {[
           { id: "waitlist", icon: <Users className="w-5 h-5" />, label: "Ledger" },
-          { id: "events", icon: <Calendar className="w-5 h-5" />, label: "Mixers" },
+          { id: "events", icon: <Calendar className="w-5 h-5" />, label: "Events" },
           { id: "rsvps", icon: <CalendarPlus className="w-5 h-5" />, label: "RSVPs" },
         ].map((item) => (
           <button
@@ -78,7 +78,7 @@ export const AdminSidebar = ({
         <nav className={`flex flex-col gap-4 w-full transition-all duration-300 ${isExpanded ? "px-2" : "items-center"}`}>
           {[
             { id: "waitlist", label: "Waitlist Ledger", icon: <Users className="w-5 h-5 shrink-0" />, color: "bg-vayo-blue" },
-            { id: "events", label: "Mixers Catalog", icon: <Calendar className="w-5 h-5 shrink-0" />, color: "bg-vayo-blue" },
+            { id: "events", label: "Events Catalog", icon: <Calendar className="w-5 h-5 shrink-0" />, color: "bg-vayo-blue" },
             { id: "rsvps", label: "RSVP Console", icon: <CalendarPlus className="w-5 h-5 shrink-0" />, color: "bg-vayo-light" },
           ].map((item) => {
             const isActive = currentSection === item.id;

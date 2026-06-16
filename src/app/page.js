@@ -699,7 +699,7 @@ export default function Home() {
                 Enter your password
               </h3>
               <p className="text-[11px] text-slate-400 leading-relaxed font-normal mb-4">
-                Please verify your profile password to access your early access dashboard, mixer tickets, and connection lists.
+                Please verify your profile password to access your early access dashboard, event tickets, and connection lists.
               </p>
 
               {/* Form */}

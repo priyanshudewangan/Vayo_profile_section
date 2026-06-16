@@ -120,7 +120,7 @@ const basePersonas = [
       { name: "Cozy Coding & Coffee", date: "June 05, 6:00 PM", countdown: "3 days left", locationPin: "Third Wave Coffee, Koramangala", organizer: "Vikas (Host)", qrCode: "VAYO-TKT-MAX05" }
     ],
     pastTimeline: [
-      { name: "Lofi Beats Study Session", date: "May 28, 2026", category: "Social Mixer", friendsMet: 3 },
+      { name: "Lofi Beats Study Session", date: "May 28, 2026", category: "Social Event", friendsMet: 3 },
       { name: "Indie Game Show-and-Tell", date: "May 15, 2026", category: "BFF Squad Meetup", friendsMet: 2 }
     ],
     bffCrew: [
@@ -133,7 +133,7 @@ const basePersonas = [
     ],
     suggestedConnections: [
       { name: "Priya R.", role: "Full Stack Dev", mutualFriends: 4, avatar: "https://picsum.photos/seed/sc1/100/100", reason: "In Koramangala Coders" },
-      { name: "Aryan K.", role: "ML Engineer", mutualFriends: 2, avatar: "https://picsum.photos/seed/sc2/100/100", reason: "Attended same mixer" },
+      { name: "Aryan K.", role: "ML Engineer", mutualFriends: 2, avatar: "https://picsum.photos/seed/sc2/100/100", reason: "Attended same event" },
       { name: "Nisha P.", role: "UX Designer", mutualFriends: 3, avatar: "https://picsum.photos/seed/sc3/100/100", reason: "Friday Boardgamers" },
     ],
     moments: [
@@ -194,7 +194,7 @@ const basePersonas = [
       { name: "Pottery & Mocktails", date: "June 06, 4:00 PM", countdown: "4 days left", locationPin: "Clay Station, HSR Layout", organizer: "Ritu (Host)", qrCode: "VAYO-TKT-SAR06" }
     ],
     pastTimeline: [
-      { name: "Indiranagar Cafe Crawl", date: "May 29, 2026", category: "Social Mixer", friendsMet: 5 },
+      { name: "Indiranagar Cafe Crawl", date: "May 29, 2026", category: "Social Event", friendsMet: 5 },
       { name: "Rooftop Acoustic Session", date: "May 22, 2026", category: "Acoustic Nights", friendsMet: 4 }
     ],
     bffCrew: [
@@ -207,7 +207,7 @@ const basePersonas = [
     ],
     suggestedConnections: [
       { name: "Kavya M.", role: "Brand Designer", mutualFriends: 5, avatar: "https://picsum.photos/seed/sc4/100/100", reason: "Weekend Explorers" },
-      { name: "Rohit S.", role: "Startup Founder", mutualFriends: 2, avatar: "https://picsum.photos/seed/sc5/100/100", reason: "Attended same mixer" },
+      { name: "Rohit S.", role: "Startup Founder", mutualFriends: 2, avatar: "https://picsum.photos/seed/sc5/100/100", reason: "Attended same event" },
       { name: "Anjali T.", role: "Art Director", mutualFriends: 4, avatar: "https://picsum.photos/seed/sc6/100/100", reason: "Pottery Enthusiasts" },
     ],
     moments: [
@@ -269,8 +269,8 @@ const basePersonas = [
       { name: "Beer & Trivia Night", date: "June 09, 8:30 PM", countdown: "7 days left", locationPin: "Toit Brewery, Indiranagar", organizer: "Rohan (Trivia Master)", qrCode: "VAYO-TKT-DAN09" }
     ],
     pastTimeline: [
-      { name: "Sunset Run at Agara Lake", date: "May 30, 2026", category: "Active Mixer", friendsMet: 6 },
-      { name: "Tech Founders Dinner", date: "May 20, 2026", category: "Bizz Mixer", friendsMet: 2 }
+      { name: "Sunset Run at Agara Lake", date: "May 30, 2026", category: "Active Event", friendsMet: 6 },
+      { name: "Tech Founders Dinner", date: "May 20, 2026", category: "Bizz Event", friendsMet: 2 }
     ],
     bffCrew: [
       { name: "Agara Lake Runners", members: 42, type: "BFF Squad", emoji: "🏃", lastActive: "Yesterday", nextEvent: "Tomorrow 6 AM" },
@@ -282,7 +282,7 @@ const basePersonas = [
     ],
     suggestedConnections: [
       { name: "Vikram J.", role: "DevOps Lead", mutualFriends: 6, avatar: "https://picsum.photos/seed/sc7/100/100", reason: "Agara Lake Runners" },
-      { name: "Meera K.", role: "Cloud Architect", mutualFriends: 3, avatar: "https://picsum.photos/seed/sc8/100/100", reason: "Attended same mixer" },
+      { name: "Meera K.", role: "Cloud Architect", mutualFriends: 3, avatar: "https://picsum.photos/seed/sc8/100/100", reason: "Attended same event" },
       { name: "Sid L.", role: "Backend Dev", mutualFriends: 4, avatar: "https://picsum.photos/seed/sc9/100/100", reason: "HSR Badminton Club" },
     ],
     moments: [
@@ -357,7 +357,7 @@ const basePersonas = [
     suggestedConnections: [
       { name: "Riya A.", role: "Illustrator", mutualFriends: 5, avatar: "https://picsum.photos/seed/sc10/100/100", reason: "Indie Art Collaborators" },
       { name: "Nikhil V.", role: "Poet & Writer", mutualFriends: 3, avatar: "https://picsum.photos/seed/sc11/100/100", reason: "Jayanagar Book Club" },
-      { name: "Shreya B.", role: "Gallery Curator", mutualFriends: 4, avatar: "https://picsum.photos/seed/sc12/100/100", reason: "Attended same mixer" },
+      { name: "Shreya B.", role: "Gallery Curator", mutualFriends: 4, avatar: "https://picsum.photos/seed/sc12/100/100", reason: "Attended same event" },
     ],
     moments: [
       { location: "NGMA Palace Road", date: "May 27", imageColor: "from-yellow-400 to-amber-500", caption: "Sunday inspiration at the gallery 🎨", imageUrl: "https://picsum.photos/seed/vayo13/800/500" },
@@ -400,7 +400,7 @@ const makeUserPersona = (user, fastApiProfile = null) => {
     image: user.selfie_url || '/assets/sarah_persona.png',
     motivations: [
       'Meet like-minded people through real-life activities',
-      'Discover curated local mixers in Bangalore',
+      'Discover curated local events in Bangalore',
       'Enjoy safe, verified, and platonic-first community spaces'
     ],
     painPoints: [
@@ -561,7 +561,7 @@ const getBadgeLockProgress = (personaId, badgeName) => {
 
 const getNextTierInfo = (tier, balance) => {
   if (tier === 'Explorer') return { nextTier: 'Pathfinder', needed: Math.max(0, 300 - balance), icon: '🧭', perks: ['Priority ticket booking', 'Host support badge', 'Special venue perks'] };
-  if (tier === 'Pathfinder') return { nextTier: 'Voyager', needed: Math.max(0, 600 - balance), icon: '🚀', perks: ['VIP mixer access', 'Private dining', 'Community voting rights'] };
+  if (tier === 'Pathfinder') return { nextTier: 'Voyager', needed: Math.max(0, 600 - balance), icon: '🚀', perks: ['VIP event access', 'Private dining', 'Community voting rights'] };
   return { nextTier: 'Legend', needed: Math.max(0, 1000 - balance), icon: '🌟', perks: ['Founding member badge', 'Free event hosting', 'National hub access'] };
 };
 
@@ -1165,7 +1165,7 @@ function ProfileContent() {
           { name: 'Community Host', desc: 'Support hosting a neighborhood meet', icon: '🏠', status: 'locked' }
         ];
       case 'maxim': return [
-        { name: 'Cozy Connector', desc: 'Attended 5 cozy venue mixers', icon: '☕', status: 'unlocked' },
+        { name: 'Cozy Connector', desc: 'Attended 5 cozy venue events', icon: '☕', status: 'unlocked' },
         { name: 'Board Game Guild', desc: 'Host of 3 board game meetups', icon: '🎲', status: 'unlocked' },
         { name: 'First Mixer RSVP', desc: 'Completed first event checkout', icon: '🎟️', status: 'unlocked' },
         { name: 'Social Catalyst', desc: 'Contributed +100 vibe points', icon: '⚡', status: 'locked' },
@@ -1184,7 +1184,7 @@ function ProfileContent() {
         { name: 'Speed Runner', desc: 'Completed 10 morning runs', icon: '🏃‍♂️', status: 'unlocked' },
         { name: 'Shuttle Ace', desc: 'Winner of HSR Badminton club', icon: '🏸', status: 'unlocked' },
         { name: 'Trivia Champion', desc: 'Weekly beer & trivia winner', icon: '🍺', status: 'unlocked' },
-        { name: 'Cozy Host', desc: 'Host 5 offline hub mixers', icon: '🏠', status: 'locked' },
+        { name: 'Cozy Host', desc: 'Host 5 offline hub events', icon: '🏠', status: 'locked' },
         { name: 'Elite Pathfinder', desc: 'Earned pathfinder badge', icon: '🛡️', status: 'unlocked' },
         { name: 'Global Voyager', desc: 'Earn 1000+ Karma XP balance', icon: '🌍', status: 'locked' }
       ]
@@ -1194,7 +1194,7 @@ function ProfileContent() {
         { name: 'Literature Guild', desc: 'Jayanagar Book Club lead', icon: '📚', status: 'unlocked' },
         { name: 'Quiet Hub Host', desc: 'Set up low-intensity cafe event', icon: '☕', status: 'locked' },
         { name: 'Profile Guardian', desc: 'Helped verify 10 offline profiles', icon: '🛡️', status: 'locked' },
-        { name: 'Voyager VIP', desc: 'VIP mixer access level', icon: '✨', status: 'unlocked' }
+        { name: 'Voyager VIP', desc: 'VIP event access level', icon: '✨', status: 'unlocked' }
       ]
       default: return []
     }
@@ -1531,7 +1531,7 @@ function ProfileContent() {
                   setActiveMode(mode);
                   setIsEditing(false);
                   const allowedTabs = {
-                    social: ['profile', 'karma', 'circle', 'mixers', 'moments', 'security'],
+                    social: ['profile', 'karma', 'circle', 'events', 'moments', 'security'],
                     bff: ['profile', 'circle', 'moments', 'security'],
                     bizz: ['profile', 'circle', 'security'],
                   }[mode];
@@ -1663,7 +1663,7 @@ function ProfileContent() {
               <div className="bg-white/40 backdrop-blur-sm rounded-2xl border border-white/40 p-2 md:p-3 shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-1.5 md:gap-1 scrollbar-none whitespace-nowrap w-full">
                 {[
                   { key: 'profile', label: 'Vibe Profile', icon: <User className="w-4 h-4" /> },
-                  { key: 'mixers', label: 'Event Stage', icon: <Calendar className="w-4 h-4" /> },
+                  { key: 'events', label: 'Event Stage', icon: <Calendar className="w-4 h-4" /> },
                   { key: 'security', label: 'Account & Security', icon: <Lock className="w-4 h-4" /> },
                 ].map(item => {
                     const isActive = activeSidebarTab === item.key;
@@ -1692,12 +1692,12 @@ function ProfileContent() {
                 <div className="flex items-center gap-2.5">
                   <div className="p-1.5 bg-neutral-100 rounded-lg text-neutral-600">
                     {activeSidebarTab === 'profile' && <User className="w-4 h-4" />}
-                    {activeSidebarTab === 'mixers' && <Calendar className="w-4 h-4" />}
+                    {activeSidebarTab === 'events' && <Calendar className="w-4 h-4" />}
                     {activeSidebarTab === 'security' && <Lock className="w-4 h-4" />}
                   </div>
                   <h3 className="text-sm font-extrabold text-neutral-800 tracking-tight font-sans">
                     {activeSidebarTab === 'profile' && 'Profile Details'}
-                    {activeSidebarTab === 'mixers' && 'Event Stage'}
+                    {activeSidebarTab === 'events' && 'Event Stage'}
                     {activeSidebarTab === 'security' && 'Account & Security'}
                   </h3>
                 </div>
@@ -1888,7 +1888,7 @@ function ProfileContent() {
                         { label: 'Skills', value: displayPersona.bizzSkills ? displayPersona.bizzSkills.length : 0 },
                         { label: 'Events', value: displayPersona.pastTimeline ? displayPersona.pastTimeline.length : 0 },
                       ] : [
-                        { label: 'Mixers', value: displayPersona.activeTickets ? displayPersona.activeTickets.length : 0 },
+                        { label: 'Events', value: displayPersona.activeTickets ? displayPersona.activeTickets.length : 0 },
                         { label: 'Connections', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0 },
                         { label: 'Karma', value: currentPersona.id === 'user-profile' ? (karmaData?.total ?? '…') : displayPersona.karmaBalance },
                       ]).map((s, i, arr) => (
@@ -1906,7 +1906,7 @@ function ProfileContent() {
                         <div>
                           <div className="text-[9.5px] text-neutral-400 font-bold uppercase tracking-wider">User Type</div>
                           <div className="text-xs font-bold text-neutral-700 mt-0.5">
-                            {activeMode === 'bizz' ? 'Founder / Builder' : activeMode === 'bff' ? 'Hobbyist Mixer' : 'Social Connector'}
+                            {activeMode === 'bizz' ? 'Founder / Builder' : activeMode === 'bff' ? 'Event Enthusiast' : 'Social Connector'}
                           </div>
                         </div>
                         <div>
@@ -1936,7 +1936,7 @@ function ProfileContent() {
                             <div className="relative w-full h-[220px] sm:h-[280px] rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-lg border border-neutral-100 bg-neutral-50 flex flex-col items-center justify-center gap-3">
                               <span className="text-2xl">🎉</span>
                               <span className="text-[11px] text-neutral-400 font-bold uppercase tracking-wider">No upcoming events yet</span>
-                              <span className="text-[10px] text-neutral-300">Check back soon for new mixers</span>
+                              <span className="text-[10px] text-neutral-300">Check back soon for new events</span>
                             </div>
                           </div>
                         );
@@ -1956,7 +1956,7 @@ function ProfileContent() {
                             <div 
                               onClick={() => {
                                 setSelectedEvent(event);
-                                setActiveSidebarTab('mixers');
+                                setActiveSidebarTab('events');
                                 triggerToast(`Opening registration for: ${event.title}`);
                               }}
                               className="absolute inset-0 w-full h-full cursor-pointer z-10"
@@ -2273,7 +2273,7 @@ function ProfileContent() {
                 )}
 
                 {/* ════════════════════ EVENT STAGE TAB ════════════════════ */}
-                {activeSidebarTab === 'mixers' && (
+                {activeSidebarTab === 'events' && (
                   <div className="space-y-6 animate-fade-in">
 
                     {/* Upcoming Events to RSVP */}
@@ -2584,7 +2584,7 @@ function ProfileContent() {
                           <div className="col-span-full py-8 border-2 border-dashed border-neutral-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-2">
                              <Calendar className="w-8 h-8 text-neutral-200" />
                              <div className="text-xs font-bold text-neutral-400">No Active Event Journey</div>
-                             <p className="text-[10px] text-neutral-300 max-w-[200px]">RSVP to an upcoming mixer to track your ticket status here.</p>
+                             <p className="text-[10px] text-neutral-300 max-w-[200px]">RSVP to an upcoming event to track your ticket status here.</p>
                           </div>
                         )}
                       </div>

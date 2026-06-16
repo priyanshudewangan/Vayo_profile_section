@@ -45,7 +45,7 @@ export const CalendarWidget = ({ events }) => {
       <div className="flex justify-between items-center mb-1.5 md:mb-3">
         <h4 className="text-[11px] md:text-xs font-bold text-slate-500">{monthNames[month]} {year}</h4>
         <span className="text-[8px] md:text-[9px] bg-vayo-blue/15 border border-vayo-blue/30 px-1.5 py-0.5 rounded-full text-vayo-blue font-bold uppercase tracking-wider">
-          Mixers Calendar
+          Events Calendar
         </span>
       </div>
 
@@ -70,7 +70,7 @@ export const CalendarWidget = ({ events }) => {
                   ? "border border-vayo-light text-vayo-light font-semibold"
                   : "text-slate-500 hover:text-slate-800 hover:bg-vayo-alice"
                 }`}
-              title={hasEvent ? "Scheduled Mixer" : undefined}
+              title={hasEvent ? "Scheduled Event" : undefined}
             >
               {day}
             </div>

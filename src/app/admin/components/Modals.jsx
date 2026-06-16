@@ -88,7 +88,7 @@ export const AttendeeModal = ({
                   <div className="w-12 h-12 rounded-full bg-vayo-alice border border-vayo-sky flex items-center justify-center text-slate-500 mb-2">
                     <Users className="w-5 h-5" />
                   </div>
-                  <p className="text-xs text-slate-500 font-medium">No registrations yet for this mixer.</p>
+                  <p className="text-xs text-slate-500 font-medium">No registrations yet for this event.</p>
                 </div>
               );
             }
