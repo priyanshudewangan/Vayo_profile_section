@@ -1648,12 +1648,38 @@ function ProfileContent() {
         {/* ═══ MAIN CARD ═══ */}
         <div className="bg-white/30 backdrop-blur-md rounded-[32px] border border-white/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] overflow-hidden mb-12">
 
-          {/* Card Header */}
-          <div className="px-6 py-4 flex items-center justify-between border-b border-white/30 bg-white/10">
-            <div className="w-6 h-6 rounded bg-white/30 flex items-center justify-center text-neutral-600/70 border border-white/20"><LayoutGrid className="w-3.5 h-3.5" /></div>
-            <h2 className="text-sm font-extrabold text-neutral-800 tracking-wider uppercase font-sans">Profile Dashboard</h2>
-            <div className="w-6 h-6 rounded bg-white/30 flex items-center justify-center text-neutral-600/70 border border-white/20"><FileText className="w-3.5 h-3.5" /></div>
-          </div>
+          {/* Card Header — personal tier strip */}
+          {(() => {
+            const t = currentPersona.id === 'user-profile' ? (karmaData?.tier || 'Explorer') : (currentPersona.karmaTier || 'Explorer');
+            const score = currentPersona.id === 'user-profile' ? (karmaData?.total ?? null) : currentPersona.karmaBalance;
+            const headerMeta = {
+              Explorer:   { bg: 'from-sky-50 via-blue-50/60 to-white/0',     dot: 'bg-sky-400',     text: 'text-sky-600',    icon: '🔭' },
+              Pathfinder: { bg: 'from-amber-50 via-orange-50/60 to-white/0',  dot: 'bg-amber-400',   text: 'text-amber-600',  icon: '🧭' },
+              Voyager:    { bg: 'from-violet-50 via-purple-50/60 to-white/0', dot: 'bg-violet-500',  text: 'text-violet-600', icon: '🚀' },
+              Conqueror:  { bg: 'from-emerald-50 via-teal-50/60 to-white/0', dot: 'bg-emerald-400', text: 'text-emerald-600',icon: '🌟' },
+            };
+            const hm = headerMeta[t] || headerMeta.Explorer;
+            return (
+              <div className={`px-5 py-3.5 flex items-center justify-between border-b border-white/30 bg-gradient-to-r ${hm.bg}`}>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{hm.icon}</span>
+                  <div>
+                    <div className="text-[13px] font-extrabold text-neutral-800 leading-tight">{currentPersona.name}</div>
+                    <div className={`text-[9px] font-bold uppercase tracking-widest ${hm.text} flex items-center gap-1.5 mt-0.5`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${hm.dot} inline-block`} />
+                      {t} · Vayo Member
+                    </div>
+                  </div>
+                </div>
+                {score !== null && (
+                  <div className="text-right">
+                    <div className={`text-[18px] font-black leading-none ${hm.text}`}>{score}</div>
+                    <div className="text-[8px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">karma pts</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Two-Column Layout */}
           <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-6 p-4 md:p-6 min-w-0 w-full">
@@ -1725,13 +1751,24 @@ function ProfileContent() {
                     {/* Avatar + Info */}
                     <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                       {/* GRADIENT RING AVATAR */}
-                      <div className="relative shrink-0">
+                      <div className="relative shrink-0 pb-4">
                         <div className={`w-28 h-28 rounded-full p-[3px] bg-gradient-to-br ${theme.gradient} shadow-xl`}>
                           <div className="w-full h-full rounded-full overflow-hidden bg-neutral-900 border-2 border-white/80">
                             <img src={currentPersona.image} alt={currentPersona.name} className="w-full h-full object-cover" />
                           </div>
                         </div>
                         <div className="absolute inset-[-4px] rounded-full border-2 opacity-25 transition-colors duration-500" style={{ borderColor: theme.accent }} />
+                        {/* Tier badge */}
+                        {(() => {
+                          const t = currentPersona.id === 'user-profile' ? (karmaData?.tier || 'Explorer') : (currentPersona.karmaTier || 'Explorer');
+                          const tg = { Explorer: 'from-sky-400 to-blue-500', Pathfinder: 'from-amber-400 to-orange-500', Voyager: 'from-violet-500 to-purple-600', Conqueror: 'from-emerald-400 to-teal-500' }[t] || 'from-sky-400 to-blue-500';
+                          const ti = { Explorer: '🔭', Pathfinder: '🧭', Voyager: '🚀', Conqueror: '🌟' }[t] || '🔭';
+                          return (
+                            <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gradient-to-r ${tg} text-white text-[8px] font-extrabold px-2.5 py-1 rounded-full shadow-lg whitespace-nowrap z-10`}>
+                              <span>{ti}</span><span>{t}</span>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       <div className="flex-1 text-center sm:text-left space-y-2 min-w-0">
@@ -1880,21 +1917,22 @@ function ProfileContent() {
                     {/* Stats bar — per mode */}
                     <div className={`flex items-center rounded-2xl border ${theme.cardBorder} ${theme.cardBg} overflow-hidden`}>
                       {(activeMode === 'bff' ? [
-                        { label: 'BFF Squads', value: displayPersona.bffCrew ? displayPersona.bffCrew.length : 0 },
-                        { label: 'Memories', value: personaMoments.length },
-                        { label: 'Close Friends', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0 },
+                        { label: 'BFF Squads', value: displayPersona.bffCrew ? displayPersona.bffCrew.length : 0, icon: <Users className="w-3.5 h-3.5" /> },
+                        { label: 'Memories', value: personaMoments.length, icon: <Award className="w-3.5 h-3.5" /> },
+                        { label: 'Close Friends', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0, icon: <Users className="w-3.5 h-3.5" /> },
                       ] : activeMode === 'bizz' ? [
-                        { label: 'Connections', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0 },
-                        { label: 'Skills', value: displayPersona.bizzSkills ? displayPersona.bizzSkills.length : 0 },
-                        { label: 'Events', value: displayPersona.pastTimeline ? displayPersona.pastTimeline.length : 0 },
+                        { label: 'Connections', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0, icon: <Users className="w-3.5 h-3.5" /> },
+                        { label: 'Skills', value: displayPersona.bizzSkills ? displayPersona.bizzSkills.length : 0, icon: <Zap className="w-3.5 h-3.5" /> },
+                        { label: 'Events', value: displayPersona.pastTimeline ? displayPersona.pastTimeline.length : 0, icon: <Calendar className="w-3.5 h-3.5" /> },
                       ] : [
-                        { label: 'Events', value: displayPersona.activeTickets ? displayPersona.activeTickets.length : 0 },
-                        { label: 'Connections', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0 },
-                        { label: 'Karma', value: currentPersona.id === 'user-profile' ? (karmaData?.total ?? '…') : displayPersona.karmaBalance },
+                        { label: 'Events', value: displayPersona.activeTickets ? displayPersona.activeTickets.length : 0, icon: <Calendar className="w-3.5 h-3.5" /> },
+                        { label: 'Connections', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0, icon: <Users className="w-3.5 h-3.5" /> },
+                        { label: 'Karma', value: currentPersona.id === 'user-profile' ? (karmaData?.total ?? '…') : displayPersona.karmaBalance, icon: <Sparkles className="w-3.5 h-3.5" /> },
                       ]).map((s, i, arr) => (
-                        <div key={i} className={`flex-1 py-3 text-center ${i < arr.length - 1 ? 'border-r border-neutral-200/50' : ''}`}>
+                        <div key={i} className={`flex-1 py-3.5 text-center ${i < arr.length - 1 ? 'border-r border-neutral-200/50' : ''}`}>
+                          <div className={`flex items-center justify-center gap-1 mb-1 ${theme.textAccent} opacity-60`}>{s.icon}</div>
                           <div className={`text-lg font-black tracking-tight ${theme.textAccent}`}>{s.value}</div>
-                          <div className="text-[9px] text-neutral-450 font-bold uppercase tracking-wider mt-0.5">{s.label}</div>
+                          <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-0.5">{s.label}</div>
                         </div>
                       ))}
                     </div>
@@ -2068,7 +2106,7 @@ function ProfileContent() {
 
                       return (
                         <div className="space-y-4">
-                          <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Karma Points</h5>
+                          <h5 className={`text-[11px] font-extrabold uppercase tracking-widest bg-gradient-to-r ${tm.gradient} bg-clip-text text-transparent`}>Karma Points</h5>
 
                           {isRealUser && isKarmaLoading ? (
                             <div className="h-28 rounded-2xl bg-neutral-50/60 border border-neutral-100 flex items-center justify-center gap-2.5">
