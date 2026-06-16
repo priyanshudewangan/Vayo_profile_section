@@ -2126,6 +2126,28 @@ function ProfileContent() {
                                 )}
                               </div>
 
+                              {/* Profile completeness nudge — real users only */}
+                              {isRealUser && !isKarmaLoading && (() => {
+                                const missing = (karma?.breakdown?.profileSetup?.items ?? []).filter(i => !i.done);
+                                if (!missing.length) return null;
+                                return (
+                                  <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/60 px-3.5 py-3">
+                                    <span className="text-base shrink-0 mt-0.5">💡</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-[10px] font-extrabold text-amber-700 mb-2">Complete your profile for more karma</div>
+                                      <div className="space-y-1.5">
+                                        {missing.map((item, i) => (
+                                          <div key={i} className="flex items-center justify-between gap-2">
+                                            <span className="text-[9.5px] text-amber-600/80 font-medium leading-tight">{item.label}</span>
+                                            <span className="text-[9px] font-extrabold text-emerald-500 shrink-0">+{item.max} pt{item.max > 1 ? 's' : ''}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
                               {/* Locked feature teaser */}
                               {(() => {
                                 const UNLOCK_AT = 251;

@@ -28,16 +28,19 @@ export async function GET(request) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Fetch in parallel: user profile, RSVPs, moments
-    const [userRes, rsvpRes, momentRes] = await Promise.all([
+    // Fetch in parallel: user profile, RSVPs, moments, referrals
+    const [userRes, rsvpRes, momentRes, referralRes] = await Promise.all([
       supabase.from("waitlist").select("*").eq("email", normalizedEmail).maybeSingle(),
       supabase.from("rsvps").select("event_id, status, created_at").eq("user_email", normalizedEmail),
       supabase.from("moments").select("id, created_at").eq("email", normalizedEmail),
+      supabase.from("waitlist").select("id").eq("referred_by", normalizedEmail),
     ]);
 
     const user = userRes.data;
     const rsvps = rsvpRes.data || [];
     const moments = momentRes.data || [];
+    // referralRes.error means column doesn't exist yet — treat as 0
+    const referralCount = referralRes.error ? 0 : (referralRes.data?.length ?? 0);
 
     // ── 1. Profile Setup (max 5 pts) ──────────────────────────────────
     const profileBreakdown = [
@@ -52,14 +55,13 @@ export async function GET(request) {
     const confirmedRsvps = rsvps.filter(r => r.status === "confirmed" || !r.status);
     const rsvpPoints = confirmedRsvps.length * 0.5;
 
-    // ── 3. Moments shared (future referral tracking) ──────────────────
-    const momentPoints = 0; // GPS check-in reward; moments tracked for referral chain
-
-    // ── 4. GPS Check-ins (not yet implemented) ────────────────────────
+    // ── 3. GPS Check-ins (not yet implemented) ────────────────────────
+    const momentPoints = 0;
     const gpsPoints = 0;
 
-    // ── 5. Community (streaks, reviews, referrals — future) ───────────
-    const communityPoints = 0;
+    // ── 4. Community: referrals (+1 per confirmed member, max 4) ──────
+    const referralPoints = Math.min(referralCount, 4);
+    const communityPoints = referralPoints;
 
     const total = Math.round((profilePoints + rsvpPoints + momentPoints + gpsPoints + communityPoints) * 10) / 10;
     const tier = getTier(total);
@@ -96,8 +98,10 @@ export async function GET(request) {
         },
         community: {
           points: communityPoints,
+          referrals: referralCount,
+          referralPts: referralPoints,
           moments: moments.length,
-          note: "Streaks, reviews & referrals coming soon",
+          note: "Streaks & reviews coming soon",
         },
       },
       monthlyCapInfo: {
