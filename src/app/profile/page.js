@@ -609,6 +609,8 @@ function ProfileContent() {
   const [userTickets, setUserTickets] = useState([]);
   const [isMomentsLoading, setIsMomentsLoading] = useState(false);
   const [dbMoments, setDbMoments] = useState([]);
+  const [karmaData, setKarmaData] = useState(null);
+  const [isKarmaLoading, setIsKarmaLoading] = useState(false);
 
   const fetchUserTickets = async (email) => {
     if (!email) return;
@@ -655,6 +657,22 @@ function ProfileContent() {
       console.error("Error fetching moments:", err);
     } finally {
       setIsMomentsLoading(false);
+    }
+  };
+
+  const fetchKarma = async (email) => {
+    if (!email) return;
+    setIsKarmaLoading(true);
+    try {
+      const res = await fetch(`/api/karma?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setKarmaData(data);
+      }
+    } catch (err) {
+      console.error("Error fetching karma:", err);
+    } finally {
+      setIsKarmaLoading(false);
     }
   };
 
@@ -1235,6 +1253,7 @@ function ProfileContent() {
             setIsUserLoaded(true);
             fetchUserTickets(sessionEmail);
             fetchUserMoments(sessionEmail);
+            fetchKarma(sessionEmail);
             triggerToast(`Logged in as ${data.user.name || 'Vayo Member'}`);
           } else {
             setIsUserLoaded(false);
@@ -1871,7 +1890,7 @@ function ProfileContent() {
                       ] : [
                         { label: 'Mixers', value: displayPersona.activeTickets ? displayPersona.activeTickets.length : 0 },
                         { label: 'Connections', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0 },
-                        { label: 'Profile Vibe', value: `${completenessScore}%` },
+                        { label: 'Karma', value: currentPersona.id === 'user-profile' ? (karmaData?.total ?? '…') : displayPersona.karmaBalance },
                       ]).map((s, i, arr) => (
                         <div key={i} className={`flex-1 py-3 text-center ${i < arr.length - 1 ? 'border-r border-neutral-200/50' : ''}`}>
                           <div className={`text-lg font-black tracking-tight ${theme.textAccent}`}>{s.value}</div>
@@ -1879,8 +1898,6 @@ function ProfileContent() {
                         </div>
                       ))}
                     </div>
-
-                    <hr className="border-neutral-100" />
 
                     {/* Internal Info */}
                     <div>
@@ -2020,7 +2037,146 @@ function ProfileContent() {
 
                     <hr className="border-neutral-100" />
 
-                    {/* Vibe Profile Tags Section */}
+                    {/* ── KARMA SECTION ── */}
+                    {(() => {
+                      const isRealUser = currentPersona.id === 'user-profile';
+                      const karma = isRealUser ? karmaData : {
+                        total: currentPersona.karmaBalance,
+                        tier: currentPersona.karmaTier,
+                        tierIcon: { Explorer: '🔭', Pathfinder: '🧭', Voyager: '🚀', Conqueror: '🌟' }[currentPersona.karmaTier] ?? '🌟',
+                        nextTier: currentPersona.karmaTier === 'Explorer' ? 'Pathfinder' : currentPersona.karmaTier === 'Pathfinder' ? 'Voyager' : currentPersona.karmaTier === 'Voyager' ? 'Conqueror' : null,
+                        nextTierMin: currentPersona.karmaTier === 'Explorer' ? 85 : currentPersona.karmaTier === 'Pathfinder' ? 251 : currentPersona.karmaTier === 'Voyager' ? 421 : null,
+                        tierMin: currentPersona.karmaTier === 'Explorer' ? 0 : currentPersona.karmaTier === 'Pathfinder' ? 85 : currentPersona.karmaTier === 'Voyager' ? 251 : 421,
+                        progressToNext: currentPersona.karmaPercentage,
+                        breakdown: {
+                          profileSetup: { points: currentPersona.karmaBreakdown?.hostSupport ?? 0, max: 5, items: [] },
+                          eventRsvps: { points: currentPersona.karmaBreakdown?.attendedMixers ?? 0, count: Math.round((currentPersona.karmaBreakdown?.attendedMixers ?? 0) / 0.5) },
+                          gpsCheckins: { points: currentPersona.karmaBreakdown?.vibeLeader ?? 0 },
+                          community: { points: currentPersona.karmaBreakdown?.momentContributor ?? 0 },
+                        },
+                      };
+
+                      const tierMeta = {
+                        Explorer:   { gradient: 'from-sky-400 to-blue-500',       glow: 'shadow-sky-200',    bar: '#38bdf8',  pill: 'bg-sky-100 text-sky-700 border-sky-200' },
+                        Pathfinder: { gradient: 'from-amber-400 to-orange-500',   glow: 'shadow-amber-200',  bar: '#fbbf24',  pill: 'bg-amber-100 text-amber-700 border-amber-200' },
+                        Voyager:    { gradient: 'from-violet-500 to-purple-600',  glow: 'shadow-violet-200', bar: '#a78bfa',  pill: 'bg-violet-100 text-violet-700 border-violet-200' },
+                        Conqueror:  { gradient: 'from-emerald-400 to-teal-500',   glow: 'shadow-emerald-200',bar: '#34d399',  pill: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+                      };
+                      const tm = tierMeta[karma?.tier] || tierMeta.Explorer;
+                      const pct = Math.min(100, karma?.progressToNext ?? 0);
+                      const ptsToNext = karma?.nextTierMin ? Math.max(0, karma.nextTierMin - (karma?.total ?? 0)) : 0;
+
+                      return (
+                        <div className="space-y-4">
+                          <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Karma Points</h5>
+
+                          {isRealUser && isKarmaLoading ? (
+                            <div className="h-28 rounded-2xl bg-neutral-50/60 border border-neutral-100 flex items-center justify-center gap-2.5">
+                              <div className="w-4 h-4 border-2 border-neutral-200 border-t-sky-400 rounded-full animate-spin" />
+                              <span className="text-[10px] font-bold uppercase tracking-[2px] text-neutral-400">Computing karma…</span>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Hero card */}
+                              <div className={`relative rounded-2xl overflow-hidden shadow-lg ${tm.glow}`}>
+                                <div className={`absolute inset-0 bg-gradient-to-br ${tm.gradient} opacity-90`} />
+                                <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")' }} />
+
+                                <div className="relative px-5 py-4 flex items-center gap-4">
+                                  <div className="text-5xl drop-shadow-md select-none shrink-0">{karma?.tierIcon}</div>
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-baseline gap-1.5">
+                                      <span className="text-4xl font-black text-white tracking-tight drop-shadow">{karma?.total ?? 0}</span>
+                                      <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">/ 500</span>
+                                    </div>
+                                    <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest border ${tm.pill} bg-white/80 backdrop-blur-sm`}>
+                                      {karma?.tier} Tier
+                                    </span>
+                                  </div>
+
+                                  <div className="shrink-0 relative w-12 h-12">
+                                    <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+                                      <circle cx="24" cy="24" r="19" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="4" />
+                                      <circle cx="24" cy="24" r="19" fill="none" stroke="white" strokeWidth="4"
+                                        strokeDasharray={`${2 * Math.PI * 19}`}
+                                        strokeDashoffset={`${2 * Math.PI * 19 * (1 - Math.min(1, (karma?.total ?? 0) / 84))}`}
+                                        strokeLinecap="round" className="transition-all duration-700" />
+                                    </svg>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                      <span className="text-[8px] font-extrabold text-white leading-none">{Math.min(84, Math.round(karma?.total ?? 0))}</span>
+                                      <span className="text-[6px] text-white/60 font-bold">/84</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {karma?.nextTier && (
+                                  <div className="relative px-5 pb-4 space-y-1">
+                                    <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
+                                      <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+                                    </div>
+                                    <div className="flex justify-between text-[8.5px] font-bold text-white/60">
+                                      <span>{karma.tier}</span>
+                                      <span className="text-white/90">{ptsToNext} pts → {karma.nextTier}</span>
+                                    </div>
+                                  </div>
+                                )}
+                                {!karma?.nextTier && (
+                                  <div className="relative px-5 pb-3 text-[9px] font-bold text-white/80">Maximum tier reached 🎉</div>
+                                )}
+                              </div>
+
+                              {/* Breakdown row */}
+                              <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5">
+                                {[
+                                  { label: 'Profile',    icon: '🛡️', pts: karma?.breakdown?.profileSetup?.points ?? 0,  sub: `${karma?.breakdown?.profileSetup?.items?.filter(i => i.done).length ?? 4}/4` },
+                                  { label: 'RSVPs',      icon: '🎟️', pts: karma?.breakdown?.eventRsvps?.points ?? 0,    sub: `${karma?.breakdown?.eventRsvps?.count ?? 0} × 0.5` },
+                                  { label: 'Check-ins',  icon: '📍', pts: karma?.breakdown?.gpsCheckins?.points ?? 0,   sub: 'GPS soon' },
+                                  { label: 'Community',  icon: '👥', pts: karma?.breakdown?.community?.points ?? 0,     sub: 'Streaks…' },
+                                ].map(cat => (
+                                  <div key={cat.label} className="flex-1 min-w-[72px] rounded-xl border border-neutral-100/80 bg-white/70 backdrop-blur-sm px-3 py-2.5 text-center shadow-sm">
+                                    <div className="text-base mb-1">{cat.icon}</div>
+                                    <div className="text-[13px] font-black text-neutral-800 leading-none">{cat.pts}</div>
+                                    <div className="text-[8px] font-extrabold text-neutral-400 uppercase tracking-wider mt-0.5 leading-tight">{cat.label}</div>
+                                    <div className="text-[7.5px] text-neutral-300 font-medium mt-0.5">{cat.sub}</div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* How to earn more */}
+                              <details className="group">
+                                <summary className="flex items-center gap-1.5 text-[9.5px] font-extrabold text-neutral-400 uppercase tracking-[2px] cursor-pointer list-none select-none hover:text-sky-500 transition-colors">
+                                  <svg className="w-2.5 h-2.5 group-open:rotate-90 transition-transform duration-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
+                                  How to earn karma
+                                </summary>
+                                <div className="mt-2.5 space-y-0.5">
+                                  {[
+                                    { icon: '🎟️', text: 'RSVP confirmation',          pts: '+0.5' },
+                                    { icon: '📍', text: 'GPS check-in at meetup',      pts: '+3'   },
+                                    { icon: '📍', text: 'GPS check-in at event',        pts: '+5'   },
+                                    { icon: '✈️', text: 'GPS check-in at trip',         pts: '+12'  },
+                                    { icon: '👥', text: 'Refer a new member',           pts: '+1–4' },
+                                    { icon: '🔥', text: 'Weekly activity streak',       pts: '+1–8' },
+                                    { icon: '⭐', text: 'Positive community review',    pts: '+1'   },
+                                  ].map((row, i) => (
+                                    <div key={i} className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="text-sm shrink-0">{row.icon}</span>
+                                        <span className="text-[10px] text-neutral-600 font-medium truncate">{row.text}</span>
+                                      </div>
+                                      <span className="text-[10px] font-extrabold text-emerald-500 shrink-0">{row.pts}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    <hr className="border-neutral-100" />
+
                     <div>
                       <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest mb-3">Vibe Profile Tags</h5>
                       <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
