@@ -1,6 +1,8 @@
+export const runtime = "edge";
+
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase";
-import crypto from "crypto";
+import { sha256 } from "@/lib/crypto";
 
 export async function POST(request) {
   try {
@@ -24,14 +26,14 @@ export async function POST(request) {
     }
 
     // 2. Verify current password
-    const hashedCurrent = crypto.createHash("sha256").update(currentPassword).digest("hex");
+    const hashedCurrent = await sha256(currentPassword);
     
     if (user.password !== hashedCurrent) {
       return NextResponse.json({ error: "Current password is incorrect." }, { status: 401 });
     }
 
     // 3. Hash and update new password
-    const hashedNew = crypto.createHash("sha256").update(newPassword).digest("hex");
+    const hashedNew = await sha256(newPassword);
     
     const { error: updateError } = await supabase
       .from("waitlist")

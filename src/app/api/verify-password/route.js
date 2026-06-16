@@ -1,6 +1,8 @@
+export const runtime = "edge";
+
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase";
-import crypto from "crypto";
+import { sha256 } from "@/lib/crypto";
 import jwt from "jsonwebtoken";
 
 export async function POST(request) {
@@ -48,7 +50,7 @@ export async function POST(request) {
     }
 
     // Hash the input password and compare
-    const hashedInput = crypto.createHash("sha256").update(password).digest("hex");
+    const hashedInput = await sha256(password);
 
     if (hashedInput !== user.password) {
       return NextResponse.json(
