@@ -2193,15 +2193,6 @@ function ProfileContent() {
                                       <span>{karma.tier}</span>
                                       <span className="text-white/90">{ptsToNext} pts → {karma.nextTier}</span>
                                     </div>
-                                    {/* Actionable tip */}
-                                    <div className="text-[8px] text-white/65 font-medium text-center pt-0.5 leading-snug">
-                                      {(() => {
-                                        const profilePts = (karma?.breakdown?.profileSetup?.items ?? []).filter(i => !i.done).reduce((s, i) => s + i.max, 0);
-                                        if (ptsToNext <= 5) return `Almost there! A few more RSVPs and you reach ${karma.nextTier} 🎉`;
-                                        if (profilePts > 0) return `Complete your profile for +${profilePts} pts · Refer friends for +1 each`;
-                                        return `Refer friends (+1 pt each) · RSVP to events (+0.5 each)`;
-                                      })()}
-                                    </div>
                                   </div>
                                 )}
                                 {!karma?.nextTier && (
@@ -2226,90 +2217,6 @@ function ProfileContent() {
                                           </div>
                                         ))}
                                       </div>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-
-                              {/* Referral card */}
-                              {(() => {
-                                const genCode = (str) => {
-                                  const name = (str || '').replace(/\s+/g, '').slice(0, 3).toUpperCase().padEnd(3, 'X');
-                                  const hash = Math.abs([...(str || '')].reduce((a, c) => Math.imul(31, a) + c.charCodeAt(0) | 0, 0)) % 65536;
-                                  return `VAYO-${name}-${hash.toString(16).toUpperCase().padStart(4, '0')}`;
-                                };
-                                const code = currentPersona.referral?.code || genCode(currentPersona.name || '');
-                                const referralCount = isRealUser
-                                  ? (karmaData?.breakdown?.community?.referrals ?? 0)
-                                  : (currentPersona.referral?.referredCount ?? 0);
-                                return (
-                                  <div className="rounded-xl border border-neutral-100 bg-white/60 px-4 py-3 space-y-2.5">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-base">👥</span>
-                                        <div>
-                                          <div className="text-[10px] font-extrabold text-neutral-700">Your Referral Code</div>
-                                          <div className="text-[8.5px] text-neutral-400 font-medium">+1 karma per friend who joins</div>
-                                        </div>
-                                      </div>
-                                      {referralCount > 0 && (
-                                        <span className="text-[8px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full whitespace-nowrap">{referralCount} referred</span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <div className="flex-1 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 font-mono text-[11px] font-extrabold text-neutral-700 tracking-widest select-all">{code}</div>
-                                      <button
-                                        onClick={(e) => {
-                                          const shareUrl = `${window.location.origin}/join?ref=${encodeURIComponent(code)}`;
-                                          navigator.clipboard?.writeText(shareUrl);
-                                          const btn = e.currentTarget;
-                                          btn.textContent = '✓ Copied';
-                                          btn.style.background = '#10b981';
-                                          setTimeout(() => { btn.textContent = 'Copy link'; btn.style.background = ''; }, 2000);
-                                        }}
-                                        className="shrink-0 text-[9px] font-extrabold text-white bg-neutral-800 hover:bg-neutral-700 px-3 py-2 rounded-lg transition-colors cursor-pointer">
-                                        Copy link
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-
-                              {/* Tier progression roadmap */}
-                              {(() => {
-                                const TIERS = [
-                                  { name: 'Explorer',   icon: '🔭', range: '0 – 84',   min: 0,   gradient: 'from-sky-400 to-blue-500',       unlocks: 'Community access' },
-                                  { name: 'Pathfinder', icon: '🧭', range: '85 – 250',  min: 85,  gradient: 'from-amber-400 to-orange-500',   unlocks: 'Early event access' },
-                                  { name: 'Voyager',    icon: '🚀', range: '251 – 420', min: 251, gradient: 'from-violet-500 to-purple-600',  unlocks: 'Host an Event' },
-                                  { name: 'Conqueror',  icon: '🌟', range: '421 – 500', min: 421, gradient: 'from-emerald-400 to-teal-500',   unlocks: 'Community Leader' },
-                                ];
-                                const total = karma?.total ?? 0;
-                                return (
-                                  <div>
-                                    <p className="text-[9px] font-extrabold text-neutral-400 uppercase tracking-[2px] mb-2.5">Tier Journey</p>
-                                    <div className="grid grid-cols-4 gap-1.5">
-                                      {TIERS.map((t) => {
-                                        const isCurrent = karma?.tier === t.name;
-                                        const isPast = total >= t.min && !isCurrent;
-                                        const isLocked = total < t.min;
-                                        return (
-                                          <div key={t.name} className={`relative rounded-xl border px-2 py-2.5 text-center overflow-hidden transition-all
-                                            ${isCurrent ? 'border-transparent shadow-md' : isLocked ? 'border-neutral-100 bg-neutral-50/40 opacity-55' : 'border-neutral-100 bg-neutral-50/60'}`}>
-                                            {isCurrent && <div className={`absolute inset-0 bg-gradient-to-br ${t.gradient} opacity-10`} />}
-                                            <div className="relative">
-                                              <div className="text-lg mb-1">{isLocked ? '🔒' : t.icon}</div>
-                                              <div className={`text-[8.5px] font-extrabold leading-tight ${isCurrent ? 'text-neutral-800' : 'text-neutral-500'}`}>{t.name}</div>
-                                              <div className="text-[7px] text-neutral-400 font-medium mt-0.5 leading-tight">{t.range}</div>
-                                              {isCurrent && (
-                                                <div className={`mt-1.5 text-[7px] font-extrabold text-white px-1.5 py-0.5 rounded-full bg-gradient-to-r ${t.gradient} inline-block`}>You</div>
-                                              )}
-                                              {!isCurrent && (
-                                                <div className="text-[6.5px] text-neutral-400 mt-1.5 leading-tight">{t.unlocks}</div>
-                                              )}
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
                                     </div>
                                   </div>
                                 );
