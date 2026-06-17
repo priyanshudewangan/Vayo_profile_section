@@ -1,6 +1,9 @@
 import React from "react";
+import dynamic from "next/dynamic";
 import { CalendarPlus, Plus, Calendar, MapPin, Trash2, Users, CheckCircle2 } from "lucide-react";
 import { HOST_OPTIONS, CATEGORY_OPTIONS, IMAGE_PRESETS } from "../lib/constants";
+
+const LocationPicker = dynamic(() => import("@/components/LocationPicker"), { ssr: false });
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +26,8 @@ export const EventCatalog = ({
   eventDate, setEventDate,
   eventCity, setEventCity,
   eventVenue, setEventVenue,
+  eventLatitude, setEventLatitude,
+  eventLongitude, setEventLongitude,
   eventCategory, setEventCategory,
   eventTags, setEventTags,
   eventMinKarma, setEventMinKarma,
@@ -30,7 +35,13 @@ export const EventCatalog = ({
   eventMaxParticipants, setEventMaxParticipants,
   imagePreset, setImagePreset,
   customImageUrl, setCustomImageUrl,
-  eventHostId, setEventHostId
+  eventHostId, setEventHostId,
+  // Image upload props
+  imageFile,
+  imagePreview,
+  uploadingImage,
+  handleImageUpload,
+  handleRemoveImage
 }) => {
   return (
     <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-10 items-start animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 md:pb-0">
@@ -125,6 +136,20 @@ export const EventCatalog = ({
             </div>
           </div>
 
+          <div className="space-y-1.5 md:space-y-2">
+            <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Map Location Pin *</Label>
+            <LocationPicker
+              initialLat={eventLatitude}
+              initialLng={eventLongitude}
+              initialVenue={eventVenue}
+              onChange={({ venue, lat, lng }) => {
+                setEventVenue(venue);
+                setEventLatitude(lat);
+                setEventLongitude(lng);
+              }}
+            />
+          </div>
+
           <div className="grid grid-cols-3 gap-2 md:gap-3">
             <div className="space-y-1.5 md:space-y-2">
               <Label className="text-[8px] md:text-[9px] text-slate-400 font-black uppercase tracking-[1px] block text-center">Karma</Label>
@@ -171,6 +196,121 @@ export const EventCatalog = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Mixer Cover Image *</Label>
+            
+            {/* Toggle tabs to choose Preset vs Upload */}
+            <div className="flex bg-vayo-alice/60 p-1.5 rounded-xl border border-vayo-sky/20 gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setImagePreset("/assets/events/something.jpg");
+                  setCustomImageUrl("");
+                }}
+                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-center cursor-pointer transition-all duration-300 ${
+                  imagePreset !== "custom" ? "bg-vayo-blue text-white shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Use Preset
+              </button>
+              <button
+                type="button"
+                onClick={() => setImagePreset("custom")}
+                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-center cursor-pointer transition-all duration-300 ${
+                  imagePreset === "custom" ? "bg-vayo-blue text-white shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Upload Poster
+              </button>
+            </div>
+
+            {/* Render Preset Selector if Use Preset active */}
+            {imagePreset !== "custom" && (
+              <div className="space-y-1.5 animate-in fade-in duration-300">
+                <Select value={imagePreset} onValueChange={setImagePreset}>
+                  <SelectTrigger className="w-full bg-vayo-alice/40 border-2 border-vayo-sky/50 rounded-xl md:rounded-2xl px-4 md:px-5 py-6 md:py-7 text-xs md:text-sm text-slate-800 focus:border-vayo-blue transition-all shadow-inner h-auto">
+                    <SelectValue placeholder="Select preset image" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-vayo-sky shadow-xl">
+                    {IMAGE_PRESETS.filter(opt => opt.value !== "custom").map(opt => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-[10px] md:text-xs font-bold py-2 md:py-3 focus:bg-vayo-alice focus:text-vayo-blue transition-colors cursor-pointer">{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Render File Uploader if Upload Poster active */}
+            {imagePreset === "custom" && (
+              <div className="space-y-2.5 animate-in fade-in duration-300">
+                {imagePreview ? (
+                  <div className="relative border-2 border-vayo-sky/50 bg-vayo-alice/20 rounded-2xl p-4 flex items-center justify-between shadow-inner">
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-xl overflow-hidden border border-vayo-sky/30 shadow-sm shrink-0">
+                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-slate-700 block truncate">{imageFile?.name || "Uploaded Image"}</span>
+                        <span className="text-[8.5px] text-slate-400 font-semibold uppercase tracking-wider block mt-0.5">Custom Poster Selected</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-600 hover:bg-rose-500 hover:text-white rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-full border-2 border-dashed border-vayo-sky/60 hover:border-vayo-blue bg-vayo-alice/30 rounded-2xl p-5 text-center flex flex-col items-center justify-center gap-2.5 transition-all duration-300 relative group/dropzone">
+                    <div className="w-9 h-9 rounded-full bg-vayo-blue/10 border border-vayo-sky/30 flex items-center justify-center text-vayo-blue shrink-0">
+                      <Plus className="w-4 h-4 group-hover/dropzone:rotate-90 transition-transform duration-300" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-700">
+                        {uploadingImage ? "Uploading poster image..." : "Upload custom event poster image"}
+                      </p>
+                      <label className="text-[9.5px] text-vayo-blue font-black hover:underline cursor-pointer block mt-1">
+                        Browse poster file
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) handleImageUpload(e.target.files[0]);
+                          }}
+                          className="hidden"
+                          disabled={uploadingImage}
+                        />
+                      </label>
+                    </div>
+                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wide">Max Size: 5MB (PNG, JPG, JPEG)</p>
+                  </div>
+                )}
+                
+                {/* Fallback Custom Image URL Input */}
+                <div className="space-y-1">
+                  <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider pl-1">Or paste cover image URL:</span>
+                  <Input
+                    type="url"
+                    placeholder="https://example.com/poster.jpg"
+                    value={customImageUrl}
+                    onChange={(e) => {
+                      setCustomImageUrl(e.target.value);
+                      setImagePreset("custom");
+                      if (e.target.value) {
+                        setImagePreview(e.target.value);
+                      } else {
+                        setImagePreview("");
+                      }
+                    }}
+                    className="w-full bg-vayo-alice/40 border-2 border-vayo-sky/50 rounded-xl px-4 py-4 text-xs text-slate-800 placeholder:text-slate-300 focus:border-vayo-blue transition-all"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <Button

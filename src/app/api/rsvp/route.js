@@ -56,7 +56,112 @@ export async function GET(request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ rsvps: data || [] }, { status: 200 });
+    // Enrich tickets with coordinates from events table
+    const enrichedTickets = [];
+    if (data && data.length > 0) {
+      const eventIds = data.map(r => r.event_id).filter(Boolean);
+      
+      let eventsMap = {};
+      let eventsTableExists = false;
+      
+      // 1. Try querying details from the Python backend (local Postgres database)
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+      for (const eventId of eventIds) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 800);
+          const response = await fetch(`${backendUrl}/api/v1/events/${eventId}`, { 
+            signal: controller.signal 
+          });
+          clearTimeout(timeoutId);
+          if (response.ok) {
+            const evt = await response.json();
+            eventsMap[eventId] = {
+              lat: evt.latitude !== undefined && evt.latitude !== null ? evt.latitude : evt.lat,
+              lng: evt.longitude !== undefined && evt.longitude !== null ? evt.longitude : evt.lng,
+              venue: evt.venue,
+              status: evt.status
+            };
+            eventsTableExists = true; // A valid events database source is active
+          }
+        } catch (err) {
+          // Ignore and fall back to Supabase / JSON file
+        }
+      }
+
+      // 2. Try querying details from Supabase events table for any missing events
+      const missingFromBackend = eventIds.filter(id => !eventsMap[id]);
+      if (missingFromBackend.length > 0) {
+        try {
+          const { data: eventsData, error: eventsError } = await supabase
+            .from("events")
+            .select("event_id, lat, lng, latitude, longitude, venue, status")
+            .in("event_id", missingFromBackend);
+            
+          if (!eventsError) {
+            eventsTableExists = true;
+            if (eventsData) {
+              eventsData.forEach(evt => {
+                eventsMap[evt.event_id] = {
+                  lat: evt.lat !== undefined && evt.lat !== null ? evt.lat : evt.latitude,
+                  lng: evt.lng !== undefined && evt.lng !== null ? evt.lng : evt.longitude,
+                  venue: evt.venue,
+                  status: evt.status
+                };
+              });
+            }
+          }
+        } catch (err) {
+          // Ignore table errors
+        }
+      }
+
+      // 3. Try querying details from the local JSON file for any remaining missing events
+      const stillMissing = eventIds.filter(id => !eventsMap[id]);
+      if (stillMissing.length > 0) {
+        try {
+          const fs = require("fs");
+          const path = require("path");
+          const localDbPath = path.resolve(process.cwd(), "scratch/events_db.json");
+          if (fs.existsSync(localDbPath)) {
+            const fileData = fs.readFileSync(localDbPath, "utf8");
+            const localEvents = JSON.parse(fileData) || [];
+            localEvents.forEach(evt => {
+              if (stillMissing.includes(evt.event_id)) {
+                eventsMap[evt.event_id] = {
+                  lat: evt.lat !== undefined && evt.lat !== null ? evt.lat : evt.latitude,
+                  lng: evt.lng !== undefined && evt.lng !== null ? evt.lng : evt.longitude,
+                  venue: evt.venue,
+                  status: evt.status
+                };
+              }
+            });
+            eventsTableExists = true;
+          }
+        } catch (err) {
+          console.error("Failed to read local JSON database for ticket lookup:", err);
+        }
+      }
+
+      data.forEach(tkt => {
+        const evtCoords = eventsMap[tkt.event_id];
+        // Strict Filter: Skip RSVP ticket if the event is not found or is cancelled
+        if (!evtCoords || evtCoords.status === "cancelled") {
+          return;
+        }
+        
+        enrichedTickets.push({
+          ...tkt,
+          lat: evtCoords.lat !== undefined && evtCoords.lat !== null ? evtCoords.lat : 12.9716, // Default Bangalore fallback
+          lng: evtCoords.lng !== undefined && evtCoords.lng !== null ? evtCoords.lng : 77.6212, // Default Bangalore fallback
+          event_location: evtCoords.venue || tkt.event_location
+        });
+      });
+    } else {
+      return NextResponse.json({ rsvps: [] }, { status: 200 });
+    }
+
+    return NextResponse.json({ rsvps: enrichedTickets }, { status: 200 });
   } catch (error) {
     console.error("Fetch RSVPs Error:", error);
     return NextResponse.json({ error: "Failed to fetch your tickets." }, { status: 500 });

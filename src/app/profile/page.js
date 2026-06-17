@@ -1,8 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+
+const LocationMap = dynamic(() => import("@/components/LocationMap"), { ssr: false });
+import { QRCodeSVG } from 'qrcode.react';
 import {
   ShieldCheck,
   Briefcase,
@@ -17,8 +21,6 @@ import {
   Bell,
   Settings,
   User,
-  LayoutGrid,
-  FileText,
   X,
   ChevronRight,
   UserPlus,
@@ -42,6 +44,7 @@ const danielPersona = "/assets/daniel_persona.png";
 const elenaPersona = "/assets/elena_persona.png";
 const vayoLogo = "/assets/vayo-logo.png";
 const newBg = "/assets/new_bg.jpg";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
 
 const staticEvents = [
   {
@@ -114,7 +117,7 @@ const basePersonas = [
       { name: "Friday Board Game Night", date: "June 08, 7:00 PM", status: "Applied" }
     ],
     activeTickets: [
-      { name: "Cozy Coding & Coffee", date: "June 05, 6:00 PM", countdown: "3 days left", locationPin: "Third Wave Coffee, Koramangala", organizer: "Vikas (Host)", qrCode: "VAYO-TKT-MAX05" }
+      { name: "Cozy Coding & Coffee", date: "June 05, 6:00 PM", countdown: "3 days left", locationPin: "Third Wave Coffee, Koramangala", organizer: "Vikas (Host)", qrCode: "VAYO-TKT-MAX05", lat: 12.9343, lng: 77.6210 }
     ],
     pastTimeline: [
       { name: "Lofi Beats Study Session", date: "May 28, 2026", category: "Social Mixer", friendsMet: 3 },
@@ -188,7 +191,7 @@ const basePersonas = [
       { name: "Pottery & Mocktails", date: "June 06, 4:00 PM", status: "Approved & Ticket Generated" }
     ],
     activeTickets: [
-      { name: "Pottery & Mocktails", date: "June 06, 4:00 PM", countdown: "4 days left", locationPin: "Clay Station, HSR Layout", organizer: "Ritu (Host)", qrCode: "VAYO-TKT-SAR06" }
+      { name: "Pottery & Mocktails", date: "June 06, 4:00 PM", countdown: "4 days left", locationPin: "Clay Station, HSR Layout", organizer: "Ritu (Host)", qrCode: "VAYO-TKT-SAR06", lat: 12.9100, lng: 77.6380 }
     ],
     pastTimeline: [
       { name: "Indiranagar Cafe Crawl", date: "May 29, 2026", category: "Social Mixer", friendsMet: 5 },
@@ -263,7 +266,7 @@ const basePersonas = [
       { name: "Beer & Trivia Night", date: "June 09, 8:30 PM", status: "Approved & Ticket Generated" }
     ],
     activeTickets: [
-      { name: "Beer & Trivia Night", date: "June 09, 8:30 PM", countdown: "7 days left", locationPin: "Toit Brewery, Indiranagar", organizer: "Rohan (Trivia Master)", qrCode: "VAYO-TKT-DAN09" }
+      { name: "Beer & Trivia Night", date: "June 09, 8:30 PM", countdown: "7 days left", locationPin: "Toit Brewery, Indiranagar", organizer: "Rohan (Trivia Master)", qrCode: "VAYO-TKT-DAN09", lat: 12.9791, lng: 77.6406 }
     ],
     pastTimeline: [
       { name: "Sunset Run at Agara Lake", date: "May 30, 2026", category: "Active Mixer", friendsMet: 6 },
@@ -337,7 +340,7 @@ const basePersonas = [
       { name: "Modern Art Gallery Tour", date: "June 07, 11:00 AM", status: "Approved & Ticket Generated" }
     ],
     activeTickets: [
-      { name: "Modern Art Gallery Tour", date: "June 07, 11:00 AM", countdown: "5 days left", locationPin: "NGMA, Palace Road", organizer: "Meera (Art Historian)", qrCode: "VAYO-TKT-ELE07" }
+      { name: "Modern Art Gallery Tour", date: "June 07, 11:00 AM", countdown: "5 days left", locationPin: "NGMA, Palace Road", organizer: "Meera (Art Historian)", qrCode: "VAYO-TKT-ELE07", lat: 12.9904, lng: 77.5885 }
     ],
     pastTimeline: [
       { name: "Creative Writing Circle", date: "May 27, 2026", category: "Writing Workshop", friendsMet: 4 },
@@ -445,13 +448,8 @@ const makeUserPersona = (user, fastApiProfile = null) => {
         status: (user.status === "Joined" || user.status === "Approved" || user.status === "Sent") ? "Approved" : "Under Review"
       }
     ],
-    activeTickets: (user.status === "Joined") ? [
-      { name: "VAYO Welcome Social", date: "June 20, 7:00 PM", countdown: "7 days", locationPin: "Indiranagar Hub", organizer: "VAYO Host", qrCode: `VAYO-TKT-${(user.name || 'MEMBER').slice(0, 3).toUpperCase()}99` }
-    ] : [],
-    pastTimeline: [
-      { name: "Application Submitted", date: user.created_at ? new Date(user.created_at).toLocaleDateString() : "Just now", category: "Milestone", friendsMet: 0 },
-      { name: "Identity Verified", date: (user.status === "Sent" || user.status === "Joined") ? "Confirmed" : "In Progress", category: "Milestone", friendsMet: 0 }
-    ],
+    activeTickets: [],
+    pastTimeline: [],
     bffCrew: [
       { name: "Vayo Explorers Crew", members: 124, type: "Community Group", emoji: "🌐", lastActive: "1 day ago", nextEvent: "Soon" }
     ],
@@ -512,8 +510,23 @@ function useCountdown(dateStr) {
   useEffect(() => {
     let target;
     try {
-      const parts = dateStr.split(',').map(s => s.trim());
-      target = new Date(`${parts[0]} 2026 ${parts[1] || ''}`);
+      // Try parsing directly first
+      target = new Date(dateStr);
+      
+      // If invalid (likely missing year), attempt custom parse
+      if (isNaN(target.getTime())) {
+        const parts = dateStr.split(',').map(s => s.trim());
+        const currentYear = new Date().getFullYear();
+        // Assuming parts[0] is Month Day and parts[1] is Time
+        target = new Date(`${parts[0]} ${currentYear} ${parts[1] || ''}`);
+      }
+
+      // If still invalid, try to handle other formats like "24, Jan - 2024"
+      if (isNaN(target.getTime())) {
+        const cleaned = dateStr.replace(/-/g, ' ').replace(/,/g, ' ');
+        target = new Date(cleaned);
+      }
+
       if (isNaN(target.getTime())) return;
     } catch {
       return;
@@ -588,6 +601,7 @@ function ProfileContent() {
   const [deletedMomentIdxs, setDeletedMomentIdxs] = useState({});
   const [currentEventIdx, setCurrentEventIdx] = useState(0);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [isEventsLoading, setIsEventsLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
@@ -618,15 +632,17 @@ function ProfileContent() {
         // Update persona state to show these tickets
         setPersonaOverrides(prev => ({
           ...prev,
-          ['user-profile']: {
-            ...prev['user-profile'],
+          [currentPersona.id]: {
+            ...prev[currentPersona.id],
             activeTickets: (data.rsvps || []).map(t => ({
               id: t.event_id,
               name: t.event_title,
               date: t.event_date,
               locationPin: t.event_location,
               organizer: "VAYO Host",
-              qrCode: `VAYO-TKT-${t.event_id.toString().slice(-4).toUpperCase()}`
+              qrCode: `VAYO-TKT-${t.event_id.toString().slice(-4).toUpperCase()}`,
+              lat: t.lat,
+              lng: t.lng
             }))
           }
         }));
@@ -852,7 +868,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!email || !token) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/notifications/${encodeURIComponent(email)}`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/notifications/${encodeURIComponent(email)}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -868,7 +884,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!token) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/notifications/${encodeURIComponent(notificationId)}/read`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/notifications/${encodeURIComponent(notificationId)}/read`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -886,7 +902,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (!email || !token) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/notifications/user/${encodeURIComponent(email)}/read-all`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/notifications/user/${encodeURIComponent(email)}/read-all`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -992,7 +1008,7 @@ function ProfileContent() {
     const token = localStorage.getItem("vayo_jwt_token");
     if (token) {
       try {
-        await fetch(`http://127.0.0.1:8000/api/v1/users/me/bio/${activeMode}`, {
+        await fetch(`${BACKEND_URL}/api/v1/users/me/bio/${activeMode}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -1211,7 +1227,7 @@ function ProfileContent() {
             let fastApiProfile = null;
             if (token) {
               try {
-                const fastApiRes = await fetch(`http://127.0.0.1:8000/api/v1/users/${encodeURIComponent(data.user.email)}/profile`, {
+                const fastApiRes = await fetch(`${BACKEND_URL}/api/v1/users/${encodeURIComponent(data.user.email)}/profile`, {
                   headers: {
                     "Authorization": `Bearer ${token}`
                   }
@@ -1250,40 +1266,45 @@ function ProfileContent() {
   }, [emailParam]);
 
   const fetchEvents = async () => {
+    setIsEventsLoading(true);
     try {
-      // 1. Try local Python backend first (if running)
+      // 1. Try unified Next.js API first (Supabase / Local persistent file)
+      const sbRes = await fetch("/api/events");
+      if (sbRes.ok) {
+        const data = await sbRes.json();
+        if (data.events && Array.isArray(data.events)) {
+          setUpcomingEvents(formatEventData(data.events));
+          setIsEventsLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.log("Supabase fetch failed, trying local Python backend...");
+    }
+
+    try {
+      // 2. Fallback to local Python backend (if running)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1500);
-      const localRes = await fetch("http://127.0.0.1:8000/api/v1/events?limit=20", { signal: controller.signal });
+      const localRes = await fetch(`${BACKEND_URL}/api/v1/events?limit=20`, { signal: controller.signal });
       clearTimeout(timeoutId);
 
       if (localRes.ok) {
         const data = await localRes.json();
-        if (data.events?.length > 0) {
+        if (data.events && Array.isArray(data.events) && data.events.length > 0) {
           setUpcomingEvents(formatEventData(data.events));
+          setIsEventsLoading(false);
           return;
         }
       }
     } catch (err) {
-      console.log("Local backend offline, trying Supabase...");
+      console.warn("Local backend offline, showing demo events.");
+      setUpcomingEvents(staticEvents);
+      setIsEventsLoading(false);
+      return;
     }
 
-    try {
-      // 2. Fallback to Supabase API
-      const sbRes = await fetch("/api/events");
-      if (sbRes.ok) {
-        const data = await sbRes.json();
-        if (data.events?.length > 0) {
-          setUpcomingEvents(formatEventData(data.events));
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn("Supabase fetch failed, showing demo events.");
-    }
-
-    // 3. Last resort: Static Demo Data
-    setUpcomingEvents(staticEvents);
+    setIsEventsLoading(false);
   };
 
   const formatEventData = (events) => {
@@ -1324,7 +1345,7 @@ function ProfileContent() {
   const theme = modeColors[activeMode] || modeColors.social;
 
   return (
-    <div className="min-h-screen relative overflow-hidden text-[#1f2937] font-sans antialiased py-12 px-4 md:px-8 lg:px-12 selection:bg-sky-100">
+    <div className="min-h-screen relative overflow-hidden text-[#1f2937] font-sans antialiased pt-12 pb-28 md:py-12 px-4 md:px-8 lg:px-12 selection:bg-sky-100">
       
       {/* Universal Loading Shield to prevent Demo Flash */}
       {isMounted && isLoadingUser && (
@@ -1498,7 +1519,7 @@ function ProfileContent() {
         )}
 
         {/* ═══ HEADER ═══ */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between border border-white/50 bg-white/30 backdrop-blur-md rounded-3xl py-3 px-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] mb-6 gap-4 relative z-20">
+        <header className="flex items-center justify-between border border-white/50 bg-white/30 backdrop-blur-md rounded-3xl py-3 px-4 md:px-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] mb-6 gap-2 md:gap-4 relative z-20">
           <div className="flex items-center gap-3">
             <div className="text-neutral-800 flex items-center">
               <img src="/assets/vayo-logo.png" className="h-7 w-auto select-none" alt="VAYO" />
@@ -1507,7 +1528,7 @@ function ProfileContent() {
             <span className="text-[8.5px] text-neutral-400 font-bold uppercase tracking-wider hidden sm:block border-l border-neutral-300 pl-3 leading-none h-3 flex items-center mt-1">Community Hub</span>
           </div>
 
-          <div className="flex bg-white/25 backdrop-blur-sm p-1 rounded-full border border-white/30 shadow-sm gap-1 self-center">
+          <div className="hidden md:flex bg-white/25 backdrop-blur-sm p-1 rounded-full border border-white/30 shadow-sm gap-1">
             {['social'].map(mode => {
               const isActive = activeMode === mode;
               const modeTheme = modeColors[mode];
@@ -1528,7 +1549,7 @@ function ProfileContent() {
                   const token = localStorage.getItem("vayo_jwt_token");
                   if (token) {
                     try {
-                      await fetch("http://127.0.0.1:8000/api/v1/users/me/mode", {
+                      await fetch(`${BACKEND_URL}/api/v1/users/me/mode`, {
                         method: "PATCH",
                         headers: {
                           "Content-Type": "application/json",
@@ -1548,7 +1569,7 @@ function ProfileContent() {
             })}
           </div>
 
-          <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
+          <div className="flex items-center justify-end gap-3 w-auto">
             <div className="flex items-center gap-2 relative">
               <div className={`w-9 h-9 rounded-full overflow-hidden border-2 bg-neutral-900 shadow-sm`} style={{ borderColor: theme.accent }}>
                 <img src={currentPersona.image} alt={currentPersona.name} className="w-full h-full object-cover" />
@@ -1634,17 +1655,15 @@ function ProfileContent() {
         <div className="bg-white/30 backdrop-blur-md rounded-[32px] border border-white/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] overflow-hidden mb-12">
 
           {/* Card Header */}
-          <div className="px-6 py-4 flex items-center justify-between border-b border-white/30 bg-white/10">
-            <div className="w-6 h-6 rounded bg-white/30 flex items-center justify-center text-neutral-600/70 border border-white/20"><LayoutGrid className="w-3.5 h-3.5" /></div>
+          <div className="px-6 py-4 flex items-center justify-center border-b border-white/30 bg-white/10">
             <h2 className="text-sm font-extrabold text-neutral-800 tracking-wider uppercase font-sans">Profile Dashboard</h2>
-            <div className="w-6 h-6 rounded bg-white/30 flex items-center justify-center text-neutral-600/70 border border-white/20"><FileText className="w-3.5 h-3.5" /></div>
           </div>
 
           {/* Two-Column Layout */}
           <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-6 p-4 md:p-6 min-w-0 w-full">
 
             {/* ── SIDEBAR ── */}
-            <aside className="w-full min-w-0 overflow-hidden md:space-y-2">
+            <aside className="hidden md:block w-full min-w-0 overflow-hidden md:space-y-2">
               <div className="bg-white/40 backdrop-blur-sm rounded-2xl border border-white/40 p-2 md:p-3 shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-1.5 md:gap-1 scrollbar-none whitespace-nowrap w-full">
                 {[
                   { key: 'profile', label: 'Vibe Profile', icon: <User className="w-4 h-4" /> },
@@ -1916,13 +1935,26 @@ function ProfileContent() {
                     {(() => {
                       const event = upcomingEvents[currentEventIdx];
                       
-                      if (!event) {
+                      if (isEventsLoading) {
                         return (
                           <div className="space-y-4">
                             <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Upcoming Events</h5>
                             <div className="relative w-full h-[220px] sm:h-[280px] rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-lg border border-neutral-100 bg-neutral-900 flex flex-col items-center justify-center gap-3">
                               <span className="w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
                               <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider animate-pulse">Syncing mixers…</span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (!event) {
+                        return (
+                          <div className="space-y-4">
+                            <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Upcoming Events</h5>
+                            <div className="relative w-full h-[220px] sm:h-[280px] rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-lg border-2 border-dashed border-neutral-100 bg-neutral-50 flex flex-col items-center justify-center gap-2 text-center px-6">
+                              <Calendar className="w-8 h-8 text-neutral-200" />
+                              <div className="text-xs font-bold text-neutral-400">No Events Scheduled</div>
+                              <p className="text-[10px] text-neutral-300 max-w-[180px]">Check back later or follow us on social media for event updates.</p>
                             </div>
                           </div>
                         );
@@ -2147,7 +2179,7 @@ function ProfileContent() {
 
                     {/* ── Top row: Next-up card (left) + glassmorphic calendar (right) ── */}
                     {(() => {
-                      const now = new Date(2026, 5, 1);
+                      const now = new Date();
                       const year = now.getFullYear(); const month = now.getMonth();
                       const monthName = now.toLocaleString('default', { month: 'long' });
                       const firstDay = new Date(year, month, 1).getDay();
@@ -2158,7 +2190,7 @@ function ProfileContent() {
                       allEvents.forEach(e => { const d = parseDay(e.date); if (d && d <= daysInMonth) { if (!eventDays.has(d)) eventDays.set(d, []); eventDays.get(d).push(e.name); } });
                       const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
                       while (cells.length % 7 !== 0) cells.push(null);
-                      const today = 11;
+                      const today = now.getDate();
                       const nextTkt = displayPersona.activeTickets ? displayPersona.activeTickets[0] : null;
                       return (
                         <div className="flex flex-col sm:flex-row items-stretch gap-3">
@@ -2258,57 +2290,67 @@ function ProfileContent() {
                         Live Tickets <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                       </h5>
                       <div className="space-y-4">
-                        {(displayPersona.activeTickets || []).map((tkt, i) => (
-                          <div key={i} className="border border-neutral-200 rounded-2xl overflow-hidden flex flex-col md:flex-row bg-neutral-50/50 shadow-sm">
-                            {/* Left Stub */}
-                            <div className="flex-1 p-5 space-y-4 border-r border-dashed border-neutral-200 relative">
-                              <div className="absolute right-[-6px] top-[-6px] w-3 h-3 rounded-full bg-white border border-neutral-200 hidden md:block" />
-                              <div className="absolute right-[-6px] bottom-[-6px] w-3 h-3 rounded-full bg-white border border-neutral-200 hidden md:block" />
-                              <div className="space-y-0.5">
-                                <div className={`text-[9px] font-extrabold uppercase tracking-wider ${theme.textAccent}`}>Upcoming Event Ticket</div>
-                                <h4 className="text-sm font-extrabold text-neutral-800 leading-snug">{tkt.name}</h4>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3 text-xs">
-                                <div className="space-y-0.5">
-                                  <span className="text-neutral-400 font-bold block text-[9px] uppercase tracking-wider">Date & Time</span>
-                                  <span className="font-bold text-neutral-700 flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-neutral-400" />{tkt.date.split(',')[0]}</span>
-                                  <span className="text-[10px] text-neutral-400 block pl-5">{tkt.date.split(',')[1]}</span>
-                                </div>
-                                <div className="space-y-0.5">
-                                  <span className="text-neutral-400 font-bold block text-[9px] uppercase tracking-wider">Venue Location</span>
-                                  <span className="font-bold text-neutral-700 flex items-center gap-1 max-w-[170px] truncate" title={tkt.locationPin}><MapPin className="w-3.5 h-3.5 text-neutral-400" />{tkt.locationPin}</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between text-xs pt-1">
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-6 h-6 rounded-full bg-neutral-200 border border-neutral-300 flex items-center justify-center text-[9px] font-bold text-neutral-600 uppercase">{tkt.organizer.charAt(0)}</div>
-                                  <div className="leading-tight">
-                                    <span className="text-[8.5px] text-neutral-400 block">Host Organizer</span>
-                                    <span className="font-bold text-neutral-700">{tkt.organizer}</span>
+                        {displayPersona.activeTickets && displayPersona.activeTickets.length > 0 ? (
+                          displayPersona.activeTickets.map((tkt, i) => (
+                            <div key={i} className="space-y-3">
+                              <div className="border border-neutral-200 rounded-2xl overflow-hidden flex flex-col md:flex-row bg-neutral-50/50 shadow-sm">
+                                {/* Left Stub */}
+                                <div className="flex-1 p-5 space-y-4 border-r border-dashed border-neutral-200 relative">
+                                  <div className="absolute right-[-6px] top-[-6px] w-3 h-3 rounded-full bg-white border border-neutral-200 hidden md:block" />
+                                  <div className="absolute right-[-6px] bottom-[-6px] w-3 h-3 rounded-full bg-white border border-neutral-200 hidden md:block" />
+                                  <div className="space-y-0.5">
+                                    <div className={`text-[9px] font-extrabold uppercase tracking-wider ${theme.textAccent}`}>Upcoming Event Ticket</div>
+                                    <h4 className="text-sm font-extrabold text-neutral-800 leading-snug">{tkt.name}</h4>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div className="space-y-0.5">
+                                      <span className="text-neutral-400 font-bold block text-[9px] uppercase tracking-wider">Date & Time</span>
+                                      <span className="font-bold text-neutral-700 flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-neutral-400" />{tkt.date.split(',')[0]}</span>
+                                      <span className="text-[10px] text-neutral-400 block pl-5">{tkt.date.split(',')[1]}</span>
+                                    </div>
+                                    <div className="space-y-0.5">
+                                      <span className="text-neutral-400 font-bold block text-[9px] uppercase tracking-wider">Venue Location</span>
+                                      <span className="font-bold text-neutral-700 flex items-center gap-1 max-w-[170px] truncate" title={tkt.locationPin}><MapPin className="w-3.5 h-3.5 text-neutral-400" />{tkt.locationPin}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs pt-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="w-6 h-6 rounded-full bg-neutral-200 border border-neutral-300 flex items-center justify-center text-[9px] font-bold text-neutral-600 uppercase">{tkt.organizer.charAt(0)}</div>
+                                      <div className="leading-tight">
+                                        <span className="text-[8.5px] text-neutral-400 block">Host Organizer</span>
+                                        <span className="font-bold text-neutral-700">{tkt.organizer}</span>
+                                      </div>
+                                    </div>
+                                    {/* LIVE COUNTDOWN */}
+                                    <TicketCountdown date={tkt.date} />
                                   </div>
                                 </div>
-                                {/* LIVE COUNTDOWN */}
-                                <TicketCountdown date={tkt.date} />
+                                {/* Right QR Stub */}
+                                <div className="w-full md:w-[130px] p-4 flex flex-col items-center justify-center bg-white shrink-0 border-l border-neutral-100">
+                                  <div className="p-1 border border-neutral-200 rounded-lg shadow-sm bg-neutral-50/50">
+                                    <QRCodeSVG 
+                                      value={tkt.qrCode || `VAYO-TKT-${tkt.id}`} 
+                                      size={64}
+                                      level="M"
+                                      includeMargin={false}
+                                    />
+                                  </div>
+                                  <span className="text-[8.5px] font-bold text-neutral-500 uppercase tracking-widest mt-2">{tkt.qrCode}</span>
+                                  <button onClick={() => triggerToast('Showing full-screen ticket for verification!')} className={`mt-1.5 text-[9px] font-bold ${theme.textAccent} hover:underline cursor-pointer`}>Show Full QR</button>
+                                </div>
                               </div>
+                              {tkt.lat && tkt.lng && (
+                                <LocationMap lat={tkt.lat} lng={tkt.lng} venue={tkt.locationPin} />
+                              )}
                             </div>
-                            {/* Right QR Stub */}
-                            <div className="w-full md:w-[130px] p-4 flex flex-col items-center justify-center bg-white shrink-0 border-l border-neutral-100">
-                              <div className="p-1 border border-neutral-200 rounded-lg shadow-sm bg-neutral-50/50">
-                                <svg className="w-16 h-16 text-neutral-800" viewBox="0 0 100 100">
-                                  <rect width="100" height="100" fill="none" />
-                                  <rect x="0" y="0" width="30" height="30" fill="currentColor" /><rect x="5" y="5" width="20" height="20" fill="white" /><rect x="10" y="10" width="10" height="10" fill="currentColor" />
-                                  <rect x="70" y="0" width="30" height="30" fill="currentColor" /><rect x="75" y="5" width="20" height="20" fill="white" /><rect x="80" y="10" width="10" height="10" fill="currentColor" />
-                                  <rect x="0" y="70" width="30" height="30" fill="currentColor" /><rect x="5" y="75" width="20" height="20" fill="white" /><rect x="10" y="80" width="10" height="10" fill="currentColor" />
-                                  <rect x="40" y="10" width="10" height="25" fill="currentColor" /><rect x="50" y="5" width="10" height="10" fill="currentColor" />
-                                  <rect x="45" y="45" width="15" height="15" fill="currentColor" /><rect x="15" y="45" width="15" height="15" fill="currentColor" />
-                                  <rect x="70" y="45" width="20" height="15" fill="currentColor" /><rect x="45" y="75" width="15" height="15" fill="currentColor" /><rect x="75" y="75" width="15" height="15" fill="currentColor" />
-                                </svg>
-                              </div>
-                              <span className="text-[8.5px] font-bold text-neutral-500 uppercase tracking-widest mt-2">{tkt.qrCode}</span>
-                              <button onClick={() => triggerToast('Showing full-screen ticket for verification!')} className={`mt-1.5 text-[9px] font-bold ${theme.textAccent} hover:underline cursor-pointer`}>Show Full QR</button>
-                            </div>
+                          ))
+                        ) : (
+                          <div className="py-10 border-2 border-dashed border-neutral-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-2 bg-neutral-50/30">
+                            <Zap className="w-8 h-8 text-neutral-200" />
+                            <div className="text-xs font-bold text-neutral-400">No Active Tickets</div>
+                            <p className="text-[10px] text-neutral-300 max-w-[200px]">Once you RSVP to an event and it's approved, your live ticket will appear here.</p>
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
 
@@ -2512,6 +2554,36 @@ function ProfileContent() {
         </div>
 
         <div className="border-t border-white/30 w-full pt-4 mb-16" />
+
+        {/* ═══ MOBILE BOTTOM NAVIGATION ═══ */}
+        <div className="md:hidden fixed bottom-5 left-4 right-4 z-40 bg-white/80 backdrop-blur-lg border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.08)] rounded-3xl px-3 py-2 flex items-center justify-around">
+          {[
+            { key: 'profile', label: 'Vibe Profile', icon: <User className="w-5 h-5" /> },
+            { key: 'mixers', label: 'Event Stage', icon: <Calendar className="w-5 h-5" /> },
+            { key: 'security', label: 'Security', icon: <Lock className="w-5 h-5" /> },
+          ].map(item => {
+            const isActive = activeSidebarTab === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setActiveSidebarTab(item.key)}
+                className="flex flex-col items-center justify-center gap-1 py-1 px-3 text-[10px] font-extrabold transition-all duration-200 active:scale-95 cursor-pointer text-neutral-500 hover:text-neutral-800"
+              >
+                <span className={isActive ? theme.textAccent : 'text-neutral-400'}>{item.icon}</span>
+                <span className={isActive ? 'text-neutral-800 font-extrabold' : 'text-neutral-400 font-bold'}>{item.label}</span>
+              </button>
+            );
+          })}
+          
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="flex flex-col items-center justify-center gap-1 py-1 px-3 text-[10px] font-extrabold text-rose-500/80 active:scale-95 cursor-pointer transition-all duration-200"
+          >
+            <svg className="w-5 h-5 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+            <span className="text-rose-400 font-bold">Log out</span>
+          </button>
+        </div>
 
       </div>
     </div>
