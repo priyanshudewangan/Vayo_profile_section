@@ -257,6 +257,11 @@ function InviteFormContent() {
 
       const result = await response.json();
       if (!response.ok) {
+        // If email is already on the waitlist, treat as success and move to the next step
+        if (response.status === 409) {
+          router.push(`/askvayo/vayo?email=${encodeURIComponent(email)}`);
+          return;
+        }
         throw new Error(result.error || "Failed to submit waitlist registration.");
       }
 

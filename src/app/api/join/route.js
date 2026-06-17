@@ -7,7 +7,7 @@ import { BACKEND_URL } from "@/lib/constants";
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { email, name, phone, birthdate, instagram, interests, selfie_url } = body;
+    let { email, name, phone, birthdate, instagram, interests, selfie_url } = body;
 
     // Simple backend email format validation
     if (!email || typeof email !== "string" || !email.includes("@")) {
@@ -16,6 +16,9 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    // Normalize email for consistency
+    email = email.trim().toLowerCase();
 
     // Insert details into the waitlist table
     const { data, error } = await supabase
