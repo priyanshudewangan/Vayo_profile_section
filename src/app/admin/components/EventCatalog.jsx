@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
-import { CalendarPlus, Plus, Calendar, MapPin, Trash2, Users, CheckCircle2 } from "lucide-react";
+import { CalendarPlus, Plus, Calendar, MapPin, Trash2, Users, CheckCircle2, Clock } from "lucide-react";
 
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), { ssr: false });
 import { HOST_OPTIONS, CATEGORY_OPTIONS, IMAGE_PRESETS } from "../lib/constants";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 
 export const EventCatalog = ({
   events,
+  pastEvents = [],
   isLoadingEvents,
   handleCreateEventSubmit,
   handleCancelEvent,
@@ -383,9 +384,21 @@ export const EventCatalog = ({
                     </div>
 
                     <div className="flex items-center justify-center sm:justify-start gap-1.5 md:gap-2 mt-1.5 md:mt-2 flex-wrap">
+                      {evt.is_live && (
+                        <span className="flex items-center gap-1 px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-rose-500 text-white text-[9px] md:text-[10px] font-black tracking-widest shadow-sm animate-pulse">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                          LIVE
+                        </span>
+                      )}
                       <span className="px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-amber-50 text-amber-700 border-2 border-amber-100 text-[9px] md:text-[10px] font-black tracking-widest shadow-sm">
                         {evt.participant_count || 0} RSVPs
                       </span>
+                      {evt.checked_in_count > 0 && (
+                        <span className="flex items-center gap-1 px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-teal-50 text-teal-700 border-2 border-teal-100 text-[9px] md:text-[10px] font-black tracking-widest shadow-sm">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {evt.checked_in_count} Attended
+                        </span>
+                      )}
                       <span className="px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-emerald-50 text-emerald-700 border-2 border-emerald-100 text-[9px] md:text-[10px] font-black tracking-widest shadow-sm">
                         {evt.entry_fee === 0 ? "FREE" : `\u20B9${evt.entry_fee}`}
                       </span>
@@ -443,6 +456,49 @@ export const EventCatalog = ({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Past Events */}
+        {pastEvents.length > 0 && (
+          <div className="space-y-4 md:space-y-5 mt-6 md:mt-8">
+            <div className="flex items-center gap-3 px-1">
+              <Clock className="w-4 h-4 text-slate-400" />
+              <h3 className="text-base md:text-lg font-bold text-white/70 tracking-tight">Past Events</h3>
+              <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/50 text-[9px] font-black tracking-widest uppercase">{pastEvents.length}</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:gap-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-vayo px-2 md:px-0">
+              {pastEvents.map((evt) => {
+                const dateObj = new Date(evt.event_date);
+                const formattedDate = dateObj.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) + " • " + dateObj.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                const attendanceRate = evt.participant_count > 0
+                  ? Math.round((evt.checked_in_count / evt.participant_count) * 100)
+                  : 0;
+                return (
+                  <div key={evt.event_id} className="bg-white/10 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-5 flex flex-col sm:flex-row gap-4 items-center opacity-80 hover:opacity-100 transition-opacity duration-300">
+                    <div className="w-full sm:w-16 sm:h-16 rounded-xl md:rounded-2xl overflow-hidden shrink-0 bg-white/10 aspect-video sm:aspect-square">
+                      <img src={evt.cover_image_url || "/assets/events/something.jpg"} alt={evt.title} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col gap-1.5 text-center sm:text-left">
+                      <h4 className="font-black text-white truncate text-sm md:text-base tracking-tight">{evt.title}</h4>
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 text-[9px] text-white/50 font-bold uppercase tracking-wider">
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formattedDate}</span>
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{evt.city || 'Bangalore'}</span>
+                      </div>
+                      <div className="flex items-center justify-center sm:justify-start gap-1.5 flex-wrap mt-1">
+                        <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/60 border border-white/10 text-[9px] font-black tracking-widest">
+                          {evt.participant_count || 0} RSVPs
+                        </span>
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/20 text-[9px] font-black tracking-widest">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {evt.checked_in_count || 0} Attended ({attendanceRate}%)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

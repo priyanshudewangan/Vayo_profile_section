@@ -3,6 +3,7 @@ import { BACKEND_URL, HOST_OPTIONS } from "../lib/constants";
 
 export const useEvents = (password, addToast) => {
   const [events, setEvents] = useState([]);
+  const [pastEvents, setPastEvents] = useState([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
   const [createdEventData, setCreatedEventData] = useState(null);
@@ -40,11 +41,18 @@ export const useEvents = (password, addToast) => {
         console.log("Note: Python backend is currently offline.");
       }
 
-      // Fallback to Supabase
-      const sbRes = await fetch("/api/events");
+      // Fallback to Supabase — fetch live/upcoming and past in parallel
+      const [sbRes, pastRes] = await Promise.all([
+        fetch("/api/events"),
+        fetch("/api/events?past=true"),
+      ]);
       if (sbRes.ok) {
         const data = await sbRes.json();
         setEvents(data.events || []);
+      }
+      if (pastRes.ok) {
+        const data = await pastRes.json();
+        setPastEvents(data.events || []);
       }
     } catch (err) {
       console.warn("Could not load events:", err);
@@ -179,6 +187,7 @@ export const useEvents = (password, addToast) => {
 
   return {
     events,
+    pastEvents,
     isLoadingEvents,
     fetchEvents,
     handleCreateEventSubmit,

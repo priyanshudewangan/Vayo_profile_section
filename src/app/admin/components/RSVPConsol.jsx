@@ -1,7 +1,13 @@
 import React from "react";
-import { RefreshCw, CalendarPlus, Check, Mail } from "lucide-react";
+import { RefreshCw, CalendarPlus, Check, Mail, MapPin } from "lucide-react";
 import { getAvatarGradient, getEmailInitials } from "../lib/utils";
 import { Button } from "@/components/ui/button";
+
+function formatCheckinTime(ts) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
 
 export const RSVPConsol = ({ 
   rsvps, 
@@ -13,7 +19,7 @@ export const RSVPConsol = ({
 }) => {
   return (
     <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 md:pb-0">
-      <div className="bg-white border border-vayo-sky rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-[0_8px_40px_rgba(72,147,198,0.08)] flex flex-col gap-6 md:gap-8 transition-all duration-300">
+      <div className="bg-white border border-vayo-sky rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-[0_8px_40px_rgba(72,147,198,0.08)] flex flex-col gap-6 md:gap-8 transition-colors duration-300">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
@@ -31,7 +37,7 @@ export const RSVPConsol = ({
             size="icon"
             onClick={() => fetchRSVPs(password)}
             disabled={isLoadingRSVPs}
-            className="rounded-xl md:rounded-2xl bg-vayo-alice/60 hover:bg-vayo-light/15 border-vayo-sky transition-all duration-300 shadow-sm w-10 h-10 md:w-11 md:h-11"
+            className="rounded-xl md:rounded-2xl bg-vayo-alice/60 hover:bg-vayo-light/15 border-vayo-sky transition-colors duration-300 shadow-sm w-10 h-10 md:w-11 md:h-11"
           >
             <RefreshCw className={`w-4 h-4 ${isLoadingRSVPs ? "animate-spin" : ""}`} />
           </Button>
@@ -63,11 +69,12 @@ export const RSVPConsol = ({
               const isUpdating = updatingRSVPMap[`${rsvp.user_email}-${rsvp.event_id}`];
               const status = rsvp.status?.toLowerCase() || "registered";
               return (
-                <div key={`${rsvp.user_email}-${rsvp.event_id}`} className="bg-white border border-vayo-sky/60 rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 md:gap-8 group hover:border-vayo-pale hover:shadow-lg transition-all duration-500 overflow-hidden relative">
+                <div key={`${rsvp.user_email}-${rsvp.event_id}`} className="bg-white border border-vayo-sky/60 rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 md:gap-8 group hover:border-vayo-pale hover:shadow-lg transition-colors duration-500 overflow-hidden relative">
                   
-                  {/* Status Indicator Bar */}
+                  {/* Status Indicator Bar — teal if GPS attended, else follows RSVP status */}
                   <div className={`absolute top-0 bottom-0 left-0 w-1 md:w-1.5 transition-colors duration-500 ${
-                    status === 'confirmed' ? 'bg-emerald-500' : 
+                    rsvp.attendance_status ? 'bg-teal-400' :
+                    status === 'confirmed' ? 'bg-emerald-500' :
                     status === 'processing' ? 'bg-amber-500' : 'bg-indigo-500'
                   }`} />
 
@@ -79,6 +86,23 @@ export const RSVPConsol = ({
                       <h4 className="text-sm md:text-base font-extrabold text-slate-800 truncate tracking-tight">{rsvp.user_email}</h4>
                       <div className="flex items-center gap-1.5 overflow-hidden">
                         <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-vayo-blue truncate">{rsvp.event_title}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        {rsvp.attendance_status ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[8px] font-extrabold uppercase tracking-widest">
+                            <MapPin className="w-2.5 h-2.5" />
+                            GPS Attended
+                            {rsvp.checkin_timestamp && (
+                              <span className="text-emerald-500 font-medium normal-case tracking-normal ml-0.5">
+                                · {formatCheckinTime(rsvp.checkin_timestamp)}
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200 text-slate-400 text-[8px] font-extrabold uppercase tracking-widest">
+                            Not checked in
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -97,7 +121,7 @@ export const RSVPConsol = ({
                           variant="ghost"
                           onClick={() => handleUpdateRSVPStatus(rsvp.user_email, rsvp.event_id, s)}
                           disabled={isUpdating || status === s}
-                          className={`flex-1 sm:flex-none px-3 md:px-4 py-2 h-9 md:h-10 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-[1.5px] md:tracking-[2px] transition-all duration-300 border ${status === s
+                          className={`flex-1 sm:flex-none px-3 md:px-4 py-2 h-9 md:h-10 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-[1.5px] md:tracking-[2px] transition-colors duration-300 border ${status === s
                             ? s === 'confirmed' ? "bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm" :
                               s === 'processing' ? "bg-amber-50 border-amber-300 text-amber-700 shadow-sm" :
                                 "bg-vayo-blue/10 border-vayo-blue/30 text-vayo-blue shadow-sm"

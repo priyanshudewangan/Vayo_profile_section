@@ -43,7 +43,7 @@ export default function AdminDashboard() {
   } = useWaitlist(password, addToast);
 
   const {
-    events, isLoadingEvents, fetchEvents,
+    events, pastEvents, isLoadingEvents, fetchEvents,
     handleCreateEventSubmit, handleCancelEvent,
     isSubmittingEvent, createdEventData, setCreatedEventData,
     ...eventFormProps
@@ -173,6 +173,7 @@ export default function AdminDashboard() {
         {currentSection === "events" && (
           <EventCatalog
             events={events}
+            pastEvents={pastEvents}
             isLoadingEvents={isLoadingEvents}
             handleCreateEventSubmit={handleCreateEventSubmit}
             handleCancelEvent={handleCancelEvent}

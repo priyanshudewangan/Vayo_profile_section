@@ -496,7 +496,7 @@ function SegmentedProgress({ percentage, color, showMilestones = false }) {
           else if (color === 'green') { activeBg = 'bg-[#84cc16]'; inactiveBg = 'bg-[#f4fbe9]' }
           else { activeBg = 'bg-[#0d9488]'; inactiveBg = 'bg-teal-50' }
           return (
-            <div key={i} className={`h-full flex-1 rounded-full transition-all duration-500 ${isActive ? activeBg : inactiveBg}`} />
+            <div key={i} className={`h-full flex-1 rounded-full transition-colors duration-500 ${isActive ? activeBg : inactiveBg}`} />
           )
         })}
       </div>
@@ -515,14 +515,8 @@ function SegmentedProgress({ percentage, color, showMilestones = false }) {
 function useCountdown(dateStr) {
   const [timeLeft, setTimeLeft] = useState('Soon');
   useEffect(() => {
-    let target;
-    try {
-      const parts = dateStr.split(',').map(s => s.trim());
-      target = new Date(`${parts[0]} 2026 ${parts[1] || ''}`);
-      if (isNaN(target.getTime())) return;
-    } catch {
-      return;
-    }
+    const target = parseTicketDate(dateStr);
+    if (!target) return;
     const update = () => {
       const diff = target.getTime() - Date.now();
       if (diff <= 0) { setTimeLeft('Starting now!'); return; }
@@ -591,6 +585,43 @@ const formatTimeAgo = (dateStr) => {
   }
 };
 
+const CHECKIN_RADIUS_METERS = 200;
+
+function parseTicketDate(dateStr) {
+  if (!dateStr) return null;
+  let d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d;
+  const cleaned = dateStr.replace(/ - /g, ' ').replace(/,/g, '').replace(/\s+/g, ' ').trim();
+  d = new Date(cleaned);
+  if (!isNaN(d.getTime())) return d;
+  const parts = dateStr.split(',').map(s => s.trim());
+  d = new Date(`${parts[0]} 2026 ${parts[1] || ''}`);
+  if (!isNaN(d.getTime())) return d;
+  return null;
+}
+
+function formatTicketDateDisplay(dateStr) {
+  const d = parseTicketDate(dateStr);
+  if (!d) {
+    const parts = (dateStr || '').split(',').map(s => s.trim());
+    return { line1: parts[0] || dateStr, line2: parts[1] || '' };
+  }
+  const day = d.getDate();
+  const month = d.toLocaleString('en-US', { month: 'short' });
+  const year = d.getFullYear();
+  const time = d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return { line1: `${day} ${month}`, line2: `${year} · ${time}` };
+}
+
+function getAttendanceWindowState(eventDateStr) {
+  const target = parseTicketDate(eventDateStr);
+  if (!target) return 'future';
+  const now = Date.now();
+  if (now < target.getTime()) return 'future';
+  if (now > target.getTime() + 10_800_000) return 'past';
+  return 'active';
+}
+
 function ProfileContent() {
   const searchParams = useSearchParams();
   const emailParam = searchParams.get("email");
@@ -628,6 +659,8 @@ function ProfileContent() {
   const [dbMoments, setDbMoments] = useState([]);
   const [karmaData, setKarmaData] = useState(null);
   const [isKarmaLoading, setIsKarmaLoading] = useState(false);
+  const [checkinStates, setCheckinStates] = useState({});
+  const [checkinErrors, setCheckinErrors] = useState({});
 
   const fetchUserTickets = async (email) => {
     if (!email) return;
@@ -649,7 +682,8 @@ function ProfileContent() {
               date: t.event_date,
               locationPin: t.event_location,
               organizer: "VAYO Host",
-              qrCode: `VAYO-TKT-${t.event_id.toString().slice(-4).toUpperCase()}`
+              qrCode: `VAYO-TKT-${t.event_id.toString().slice(-4).toUpperCase()}`,
+              attendance_status: t.attendance_status,
             }))
           }
         }));
@@ -1153,6 +1187,66 @@ function ProfileContent() {
     setTimeout(() => setShowToast(null), 3000);
   };
 
+  const handleCheckin = (tkt) => {
+    const sessionEmail = typeof window !== 'undefined' ? localStorage.getItem("vayo_user_email") : null;
+    const email = emailParam || sessionEmail;
+    const ticketKey = tkt.id;
+
+    if (!email) {
+      triggerToast("Please sign in to mark attendance.");
+      return;
+    }
+    if (!navigator.geolocation) {
+      triggerToast("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setCheckinStates(prev => ({ ...prev, [ticketKey]: 'loading' }));
+    setCheckinErrors(prev => ({ ...prev, [ticketKey]: null }));
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude: userLat, longitude: userLng } = position.coords;
+        try {
+          const res = await fetch("/api/checkin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, eventId: tkt.id, userLat, userLng }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            setCheckinStates(prev => ({ ...prev, [ticketKey]: 'success' }));
+            triggerToast(data.message || "Attendance marked!");
+            fetchUserTickets(email);
+            fetchKarma(email);
+          } else {
+            const errorType =
+              res.status === 409 ? 'already_checked_in'
+              : (data.distance_meters && data.distance_meters > CHECKIN_RADIUS_METERS) ? 'too_far'
+              : 'error';
+            setCheckinStates(prev => ({ ...prev, [ticketKey]: errorType }));
+            setCheckinErrors(prev => ({ ...prev, [ticketKey]: data }));
+            triggerToast(data.error || "Check-in failed.");
+          }
+        } catch {
+          setCheckinStates(prev => ({ ...prev, [ticketKey]: 'error' }));
+          setCheckinErrors(prev => ({ ...prev, [ticketKey]: { message: "Network error. Try again." } }));
+          triggerToast("Network error during check-in.");
+        }
+      },
+      (geoError) => {
+        const msg =
+          geoError.code === 1 ? "Location access denied. Go to Settings → Safari/Chrome → Location and allow access."
+          : geoError.code === 2 ? "GPS is off or unavailable. Enable Location Services on your device and try again."
+          : "Location request timed out. Try moving outdoors or to an open area.";
+        setCheckinStates(prev => ({ ...prev, [ticketKey]: 'error' }));
+        setCheckinErrors(prev => ({ ...prev, [ticketKey]: { message: msg } }));
+        triggerToast(msg);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   const getRandomGradient = () => {
     const g = ['from-violet-500 to-purple-600', 'from-amber-400 to-orange-500', 'from-teal-400 to-emerald-600', 'from-pink-500 to-rose-600', 'from-sky-400 to-blue-500'];
     return g[Math.floor(Math.random() * g.length)];
@@ -1541,7 +1635,7 @@ function ProfileContent() {
               <span className="w-2 h-2 bg-sky-500 rounded-full animate-pulse shrink-0" />
               <span>Viewing in **Demo Mode** (Previewing profiles). Connect an approved waitlist email to view your personal dashboard.</span>
             </div>
-            <Link href="/" className="px-4 py-1.5 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 font-bold rounded-xl transition-all shadow-sm">
+            <Link href="/" className="px-4 py-1.5 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 font-bold rounded-xl transition-colors shadow-sm">
               Sign In / Apply ↗
             </Link>
           </div>
@@ -1591,7 +1685,7 @@ function ProfileContent() {
                     }
                   }
                 }}
-                  className={`px-3.5 py-1.5 text-[11px] font-bold rounded-full transition-all duration-300 cursor-pointer ${isActive ? `${modeTheme.bgAccent} text-white shadow-sm scale-[1.02]` : 'text-neutral-500 hover:text-neutral-700 hover:bg-white/40'}`}>
+                  className={`px-3.5 py-1.5 text-[11px] font-bold rounded-full transition-colors duration-300 cursor-pointer ${isActive ? `${modeTheme.bgAccent} text-white shadow-sm scale-[1.02]` : 'text-neutral-500 hover:text-neutral-700 hover:bg-white/40'}`}>
                   {mode === 'bizz' ? 'Bizz (Work)' : mode === 'bff' ? 'BFF (Hobbies)' : 'Social (Vibe)'}
                 </button>
               )
@@ -1734,7 +1828,7 @@ function ProfileContent() {
                     const isActive = activeSidebarTab === item.key;
                     return (
                       <button key={item.key} onClick={() => setActiveSidebarTab(item.key)}
-                        className={`flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shrink-0 w-auto md:w-full ${isActive ? 'bg-white/80 text-neutral-800 shadow-sm border border-neutral-100/50' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white/25'}`}>
+                        className={`flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold transition-colors duration-200 cursor-pointer shrink-0 w-auto md:w-full ${isActive ? 'bg-white/80 text-neutral-800 shadow-sm border border-neutral-100/50' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white/25'}`}>
                         <span className={isActive ? theme.textAccent : 'text-neutral-400'}>{item.icon}</span>
                         <span>{item.label}</span>
                       </button>
@@ -1742,7 +1836,7 @@ function ProfileContent() {
                   })}
                 <div className="hidden md:block border-t border-white/20 my-2" />
                 <div className="md:hidden w-px h-6 bg-white/20 self-center mx-1 shrink-0" />
-                <button onClick={handleLogout} className="flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold text-rose-500/80 hover:text-rose-600 hover:bg-rose-500/10 transition-all duration-200 cursor-pointer shrink-0 w-auto md:w-full">
+                <button onClick={handleLogout} className="flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold text-rose-500/80 hover:text-rose-600 hover:bg-rose-500/10 transition-colors duration-200 cursor-pointer shrink-0 w-auto md:w-full">
                   <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
                   <span>Log out</span>
                 </button>
@@ -1773,7 +1867,7 @@ function ProfileContent() {
                   </div>
                 ) : activeSidebarTab === 'profile' ? (
                   <button onClick={startEdit}
-                    className="flex items-center gap-1.5 bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition-all hover:bg-neutral-50 cursor-pointer">
+                    className="flex items-center gap-1.5 bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition-colors hover:bg-neutral-50 cursor-pointer">
                     <svg className="w-3.5 h-3.5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z" /></svg>
                     <span>Edit</span>
                   </button>
@@ -1931,7 +2025,7 @@ function ProfileContent() {
                             <circle cx="28" cy="28" r="22" fill="none" stroke={theme.accent} strokeWidth="4.5"
                               strokeDasharray={`${2 * Math.PI * 22}`}
                               strokeDashoffset={`${2 * Math.PI * 22 * (1 - completenessScore / 100)}`}
-                              strokeLinecap="round" className="transition-all duration-700" />
+                              strokeLinecap="round" className="transition-colors duration-700" />
                           </svg>
                           <div className="absolute inset-0 flex items-center justify-center">
                             <span className={`text-[12px] font-extrabold ${theme.textAccent}`}>{completenessScore}%</span>
@@ -2092,14 +2186,14 @@ function ProfileContent() {
                               <div className="relative z-10 flex gap-4 items-center justify-center pb-1">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handlePrev(); }}
-                                  className="w-8 h-8 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-all duration-200 cursor-pointer"
+                                  className="w-8 h-8 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-colors duration-200 cursor-pointer"
                                   aria-label="Previous event"
                                 >
                                   <ArrowLeft className="w-3.5 h-3.5 text-neutral-600" />
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleNext(); }}
-                                  className="w-8 h-8 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-all duration-200 cursor-pointer"
+                                  className="w-8 h-8 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-colors duration-200 cursor-pointer"
                                   aria-label="Next event"
                                 >
                                   <ArrowRight className="w-3.5 h-3.5 text-neutral-600" />
@@ -2177,7 +2271,7 @@ function ProfileContent() {
                                       <circle cx="24" cy="24" r="19" fill="none" stroke="white" strokeWidth="4"
                                         strokeDasharray={`${2 * Math.PI * 19}`}
                                         strokeDashoffset={`${2 * Math.PI * 19 * (1 - Math.min(1, (karma?.total ?? 0) / 84))}`}
-                                        strokeLinecap="round" className="transition-all duration-700" />
+                                        strokeLinecap="round" className="transition-colors duration-700" />
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                                       <span className="text-[8px] font-extrabold text-white leading-none">{Math.min(84, Math.round(karma?.total ?? 0))}</span>
@@ -2189,7 +2283,7 @@ function ProfileContent() {
                                 {karma?.nextTier && (
                                   <div className="relative px-5 pb-4 space-y-1">
                                     <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
-                                      <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+                                      <div className="h-full bg-white rounded-full transition-colors duration-700" style={{ width: `${pct}%` }} />
                                     </div>
                                     <div className="flex justify-between text-[8.5px] font-bold text-white/60">
                                       <span>{karma.tier}</span>
@@ -2232,7 +2326,7 @@ function ProfileContent() {
                                 return (
                                   <details className="group">
                                     <summary className="list-none cursor-pointer select-none">
-                                      <div className={`flex items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-3 transition-all duration-200
+                                      <div className={`flex items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-3 transition-colors duration-200
                                         ${alreadyUnlocked
                                           ? 'border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50'
                                           : 'border-neutral-200 bg-neutral-50/60 hover:border-sky-200 hover:bg-sky-50/40'
@@ -2275,7 +2369,7 @@ function ProfileContent() {
                                           </div>
                                           <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                                             <div
-                                              className="h-full bg-gradient-to-r from-sky-400 to-violet-500 rounded-full transition-all duration-700"
+                                              className="h-full bg-gradient-to-r from-sky-400 to-violet-500 rounded-full transition-colors duration-700"
                                               style={{ width: `${Math.min(100, ((karma?.total ?? 0) / UNLOCK_AT) * 100)}%` }}
                                             />
                                           </div>
@@ -2363,7 +2457,7 @@ function ProfileContent() {
                             <button
                               key={evt.id}
                               onClick={() => !isRegistered && setSelectedEvent(evt)}
-                              className={`w-full flex items-center gap-3 p-2.5 rounded-xl border transition-all text-left ${isRegistered ? 'border-emerald-100 bg-emerald-50/40 cursor-default' : selectedEvent?.id === evt.id ? 'border-blue-300 bg-blue-50/60 cursor-pointer' : 'border-neutral-100 bg-white/70 hover:border-blue-200 hover:bg-blue-50/30 cursor-pointer'}`}
+                              className={`w-full flex items-center gap-3 p-2.5 rounded-xl border transition-colors text-left ${isRegistered ? 'border-emerald-100 bg-emerald-50/40 cursor-default' : selectedEvent?.id === evt.id ? 'border-blue-300 bg-blue-50/60 cursor-pointer' : 'border-neutral-100 bg-white/70 hover:border-blue-200 hover:bg-blue-50/30 cursor-pointer'}`}
                             >
                               <img src={evt.image} alt={evt.title} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-neutral-100" />
                               <div className="min-w-0 flex-1">
@@ -2448,8 +2542,7 @@ function ProfileContent() {
                                 <div className="text-[12.5px] font-extrabold text-neutral-800 leading-tight">{nextTkt.name}</div>
                                 <div className="flex items-center gap-1 text-[9.5px] text-neutral-500 font-medium">
                                   <Clock className="w-3 h-3 shrink-0" style={{ color: theme.accent }} />
-                                  {nextTkt.date.split(',')[0]}
-                                  {nextTkt.date.split(',')[1] && <span className="text-neutral-400">{nextTkt.date.split(',')[1]}</span>}
+                                  {(() => { const { line1, line2 } = formatTicketDateDisplay(nextTkt.date); return <><span>{line1}</span>{line2 && <span className="text-neutral-400">{line2}</span>}</>; })()}
                                 </div>
                                 <div className="flex items-center gap-1 text-[9.5px] text-neutral-500 font-medium">
                                   <MapPin className="w-3 h-3 shrink-0" style={{ color: theme.accent }} />
@@ -2552,8 +2645,10 @@ function ProfileContent() {
                               <div className="grid grid-cols-2 gap-3 text-xs">
                                 <div className="space-y-0.5">
                                   <span className="text-neutral-400 font-bold block text-[9px] uppercase tracking-wider">Date & Time</span>
-                                  <span className="font-bold text-neutral-700 flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-neutral-400" />{tkt.date.split(',')[0]}</span>
-                                  <span className="text-[10px] text-neutral-400 block pl-5">{tkt.date.split(',')[1]}</span>
+                                  {(() => { const { line1, line2 } = formatTicketDateDisplay(tkt.date); return (<>
+                                  <span className="font-bold text-neutral-700 flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-neutral-400" />{line1}</span>
+                                  <span className="text-[10px] text-neutral-400 block pl-5">{line2}</span>
+                                  </>); })()}
                                 </div>
                                 <div className="space-y-0.5">
                                   <span className="text-neutral-400 font-bold block text-[9px] uppercase tracking-wider">Venue Location</span>
@@ -2571,6 +2666,74 @@ function ProfileContent() {
                                 {/* LIVE COUNTDOWN */}
                                 <TicketCountdown date={tkt.date} />
                               </div>
+                              {/* ── ATTENDANCE BLOCK ── */}
+                              {(() => {
+                                if (!tkt.id) return null; // static demo persona — skip
+                                const ticketKey = tkt.id;
+                                const state = checkinStates[ticketKey] || 'idle';
+                                const errData = checkinErrors[ticketKey];
+
+                                if (tkt.attendance_status === true || state === 'success' || state === 'already_checked_in') {
+                                  return (
+                                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-neutral-100">
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-extrabold">
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        Attended
+                                      </span>
+                                      <span className="text-[9.5px] text-neutral-400 font-medium">GPS check-in confirmed</span>
+                                    </div>
+                                  );
+                                }
+
+                                const windowState = getAttendanceWindowState(tkt.date);
+
+                                if (windowState === 'past') {
+                                  return (
+                                    <div className="mt-3 pt-3 border-t border-neutral-100">
+                                      <span className="text-[9.5px] text-neutral-400 font-medium">Check-in window has closed</span>
+                                    </div>
+                                  );
+                                }
+
+                                if (windowState === 'future') return null;
+
+                                // windowState === 'active': event is live
+                                return (
+                                  <div className="mt-3 pt-3 border-t border-neutral-100 space-y-1.5">
+                                    <button
+                                      disabled={state === 'loading'}
+                                      onClick={() => handleCheckin(tkt)}
+                                      className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[11px] font-extrabold transition-colors cursor-pointer
+                                        ${state === 'loading'
+                                          ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                                          : state === 'too_far'
+                                          ? 'bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100'
+                                          : 'bg-sky-500 text-white hover:bg-sky-600 shadow-sm'
+                                        }`}
+                                    >
+                                      {state === 'loading' ? (
+                                        <>
+                                          <span className="w-3.5 h-3.5 border-2 border-neutral-300 border-t-neutral-500 rounded-full animate-spin" />
+                                          Getting location…
+                                        </>
+                                      ) : state === 'too_far' ? (
+                                        <>
+                                          <MapPin className="w-3.5 h-3.5" />
+                                          Retry — You&apos;re {errData?.distance_meters}m away
+                                        </>
+                                      ) : (
+                                        <>
+                                          <MapPin className="w-3.5 h-3.5" />
+                                          Mark Attendance
+                                        </>
+                                      )}
+                                    </button>
+                                    {state === 'error' && errData?.message && (
+                                      <p className="text-[9.5px] text-rose-500 font-medium text-center">{errData.message}</p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               {tktLat && tktLng && (
                                 <LocationMap lat={tktLat} lng={tktLng} venue={tkt.locationPin} />
                               )}
@@ -2627,7 +2790,7 @@ function ProfileContent() {
                                 {/* Stepper display */}
                                 <div className="flex items-center justify-between relative px-2 pt-1">
                                   <div className="absolute top-[13px] left-8 right-8 h-0.5 bg-neutral-100 z-0">
-                                    <div className="h-full transition-all duration-500"
+                                    <div className="h-full transition-colors duration-500"
                                       style={{
                                         width: stepIdx === 2 ? '100%' : stepIdx === 1 ? '50%' : '0%',
                                         backgroundColor: accentColor
@@ -2639,7 +2802,7 @@ function ProfileContent() {
                                     const isDone = step <= stepIdx;
                                     return (
                                       <div key={step} className="flex flex-col items-center relative z-10">
-                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-bold transition-all duration-300 bg-white ${isDone ? '' : 'border-neutral-200 text-neutral-400'}`}
+                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-bold transition-colors duration-300 bg-white ${isDone ? '' : 'border-neutral-200 text-neutral-400'}`}
                                           style={isDone ? { borderColor: accentColor, backgroundColor: accentColor, color: '#fff' } : isCurrent ? { borderColor: accentColor, color: accentColor } : {}}>
                                           {isDone ? '✓' : step + 1}
                                         </div>
@@ -2706,7 +2869,7 @@ function ProfileContent() {
                         </button>
                       </div>
 
-                      <div className={`p-4 space-y-3 transition-all ${showChangePwd ? 'block' : 'hidden'}`}>
+                      <div className={`p-4 space-y-3 transition-colors ${showChangePwd ? 'block' : 'hidden'}`}>
                         {[
                           { key: 'current', label: 'Current Password', placeholder: 'Enter current password' },
                           { key: 'next', label: 'New Password', placeholder: 'Minimum 8 characters' },

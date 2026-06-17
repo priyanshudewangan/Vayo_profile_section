@@ -3,17 +3,19 @@ export const runtime = 'edge';
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase";
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const [eventsRes, rsvpsRes] = await Promise.all([
-      supabase
-        .from("events")
-        .select("*")
-        .gte("event_date", new Date().toISOString())
-        .order("event_date", { ascending: true }),
-      supabase
-        .from("rsvps")
-        .select("event_id")
+    const { searchParams } = new URL(request.url);
+    const past = searchParams.get("past") === "true";
+
+    const windowStart = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+
+    const [eventsRes, rsvpsRes, checkinRes] = await Promise.all([
+      past
+        ? supabase.from("events").select("*").lt("event_date", windowStart).order("event_date", { ascending: false })
+        : supabase.from("events").select("*").gte("event_date", windowStart).order("event_date", { ascending: true }),
+      supabase.from("rsvps").select("event_id"),
+      supabase.from("rsvps").select("event_id").eq("attendance_status", true),
     ]);
 
     if (eventsRes.error) {
@@ -21,18 +23,27 @@ export async function GET() {
       return NextResponse.json({ events: [] }, { status: 200 });
     }
 
-    // Count RSVPs per event_id
-    const countMap = {};
+    const rsvpMap = {};
     for (const row of rsvpsRes.data || []) {
-      countMap[row.event_id] = (countMap[row.event_id] || 0) + 1;
+      rsvpMap[row.event_id] = (rsvpMap[row.event_id] || 0) + 1;
+    }
+    const checkinMap = {};
+    for (const row of checkinRes.data || []) {
+      checkinMap[row.event_id] = (checkinMap[row.event_id] || 0) + 1;
     }
 
-    const events = (eventsRes.data || []).map(evt => ({
-      ...evt,
-      participant_count: countMap[evt.event_id] ?? 0,
-    }));
+    const now = Date.now();
+    const events = (eventsRes.data || []).map(evt => {
+      const evtMs = new Date(evt.event_date).getTime();
+      const isLive = now >= evtMs && now <= evtMs + 3 * 60 * 60 * 1000;
+      return {
+        ...evt,
+        participant_count: rsvpMap[evt.event_id] ?? 0,
+        checked_in_count: checkinMap[evt.event_id] ?? 0,
+        is_live: isLive,
+      };
+    });
 
-    console.log("Supabase events returned:", events.length, "rows");
     return NextResponse.json({ events }, { status: 200 });
   } catch (error) {
     console.error("Fetch Supabase Events Error:", error);
@@ -57,6 +68,27 @@ export async function PATCH(request) {
   } catch (error) {
     console.error("Update location error:", error);
     return NextResponse.json({ error: "Failed to update location." }, { status: 500 });
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    const adminPassword = process.env.ADMIN_PASSWORD || "vayo_admin_secure";
+    if (!authHeader || authHeader !== adminPassword) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+    const { event_id } = await request.json();
+    if (!event_id) return NextResponse.json({ error: "event_id required" }, { status: 400 });
+
+    await supabase.from("rsvps").delete().eq("event_id", event_id);
+    const { error } = await supabase.from("events").delete().eq("event_id", event_id);
+    if (error) throw error;
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("Delete Event Error:", error);
+    return NextResponse.json({ error: "Failed to delete event." }, { status: 500 });
   }
 }
 
