@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "pages:build": "npx @cloudflare/next-on-pages",
     "deploy": "mv .git temp_git && npx vercel --prod --yes && mv temp_git .git"
   },
   "dependencies": {
