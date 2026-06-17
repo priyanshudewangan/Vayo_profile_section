@@ -20,6 +20,16 @@ export async function POST(request) {
     // Normalize email for consistency
     email = email.trim().toLowerCase();
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || supabaseUrl.includes("placeholder") || !supabaseAnonKey || supabaseAnonKey.includes("placeholder")) {
+      return NextResponse.json(
+        { error: "Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY) are missing or misconfigured in your deployment environment." },
+        { status: 500 }
+      );
+    }
+
     // Insert details into the waitlist table
     const { data, error } = await supabase
       .from("waitlist")
@@ -69,7 +79,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Supabase Database API error:", error);
     return NextResponse.json(
-      { error: "Error joining waitlist. Please try again." },
+      { error: `Error joining waitlist: ${error.message || error}` },
       { status: 500 }
     );
   }

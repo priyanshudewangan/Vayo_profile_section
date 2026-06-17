@@ -85,7 +85,7 @@ function HomeContent() {
       }
     } catch (error) {
       console.error("Error checking waitlist status:", error);
-      alert("Something went wrong checking status. Please try again.");
+      alert(error.message || "Something went wrong checking status. Please try again.");
       setIsNavigating(false);
     }
   };
