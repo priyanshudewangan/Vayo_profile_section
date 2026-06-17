@@ -36,6 +36,30 @@ export default function LocationPicker({ onChange, initialLat, initialLng, initi
     iconAnchor: [16, 32],
   });
 
+  const updateCoordinates = async (lat, lng) => {
+    setCoordinates({ lat, lng });
+    if (mapRef.current) {
+      mapRef.current.panTo([lat, lng]);
+    }
+    
+    // Reverse Geocode using Nominatim API to get address details
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const addressName = data.display_name;
+        setSelectedVenue(addressName);
+        onChange({ venue: addressName, lat, lng });
+      }
+    } catch (err) {
+      console.error("Reverse geocoding error:", err);
+      // Even if geocoding fails, trigger state update with empty venue
+      onChange({ venue: selectedVenue || `Coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}`, lat, lng });
+    }
+  };
+
   // Initialize Map
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return;
@@ -90,30 +114,6 @@ export default function LocationPicker({ onChange, initialLat, initialLng, initi
       }
     };
   }, []);
-
-  const updateCoordinates = async (lat, lng) => {
-    setCoordinates({ lat, lng });
-    if (mapRef.current) {
-      mapRef.current.panTo([lat, lng]);
-    }
-    
-    // Reverse Geocode using Nominatim API to get address details
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        const addressName = data.display_name;
-        setSelectedVenue(addressName);
-        onChange({ venue: addressName, lat, lng });
-      }
-    } catch (err) {
-      console.error("Reverse geocoding error:", err);
-      // Even if geocoding fails, trigger state update with empty venue
-      onChange({ venue: selectedVenue || `Coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}`, lat, lng });
-    }
-  };
 
   const handleSearch = async (e) => {
     if (e && e.preventDefault) e.preventDefault();

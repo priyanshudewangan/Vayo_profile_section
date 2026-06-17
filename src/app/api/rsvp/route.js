@@ -64,55 +64,57 @@ export async function GET(request) {
       let eventsMap = {};
       let eventsTableExists = false;
       
-      // 1. Try querying details from the Python backend (local Postgres database)
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
-      for (const eventId of eventIds) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 800);
-          const response = await fetch(`${backendUrl}/api/v1/events/${eventId}`, { 
-            signal: controller.signal 
-          });
-          clearTimeout(timeoutId);
-          if (response.ok) {
-            const evt = await response.json();
-            eventsMap[eventId] = {
-              lat: evt.latitude !== undefined && evt.latitude !== null ? evt.latitude : evt.lat,
-              lng: evt.longitude !== undefined && evt.longitude !== null ? evt.longitude : evt.lng,
-              venue: evt.venue,
-              status: evt.status
-            };
-            eventsTableExists = true; // A valid events database source is active
+      // 1. Try querying details from Supabase events table first (primary database)
+      try {
+        const { data: eventsData, error: eventsError } = await supabase
+          .from("events")
+          .select("event_id, lat, lng, latitude, longitude, venue, status, cover_image_url")
+          .in("event_id", eventIds);
+          
+        if (!eventsError) {
+          eventsTableExists = true;
+          if (eventsData) {
+            eventsData.forEach(evt => {
+              eventsMap[evt.event_id] = {
+                lat: evt.lat !== undefined && evt.lat !== null ? evt.lat : evt.latitude,
+                lng: evt.lng !== undefined && evt.lng !== null ? evt.lng : evt.longitude,
+                venue: evt.venue,
+                status: evt.status,
+                image: evt.cover_image_url
+              };
+            });
           }
-        } catch (err) {
-          // Ignore and fall back to Supabase / JSON file
         }
+      } catch (err) {
+        // Ignore table errors
       }
 
-      // 2. Try querying details from Supabase events table for any missing events
-      const missingFromBackend = eventIds.filter(id => !eventsMap[id]);
-      if (missingFromBackend.length > 0) {
-        try {
-          const { data: eventsData, error: eventsError } = await supabase
-            .from("events")
-            .select("event_id, lat, lng, latitude, longitude, venue, status")
-            .in("event_id", missingFromBackend);
-            
-          if (!eventsError) {
-            eventsTableExists = true;
-            if (eventsData) {
-              eventsData.forEach(evt => {
-                eventsMap[evt.event_id] = {
-                  lat: evt.lat !== undefined && evt.lat !== null ? evt.lat : evt.latitude,
-                  lng: evt.lng !== undefined && evt.lng !== null ? evt.lng : evt.longitude,
-                  venue: evt.venue,
-                  status: evt.status
-                };
-              });
+      // 2. Try querying details from the Python backend (local Postgres database) for any missing events
+      const missingFromSupabase = eventIds.filter(id => !eventsMap[id]);
+      if (missingFromSupabase.length > 0) {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+        for (const eventId of missingFromSupabase) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 800);
+            const response = await fetch(`${backendUrl}/api/v1/events/${eventId}`, { 
+              signal: controller.signal 
+            });
+            clearTimeout(timeoutId);
+            if (response.ok) {
+              const evt = await response.json();
+              eventsMap[eventId] = {
+                lat: evt.latitude !== undefined && evt.latitude !== null ? evt.latitude : evt.lat,
+                lng: evt.longitude !== undefined && evt.longitude !== null ? evt.longitude : evt.lng,
+                venue: evt.venue,
+                status: evt.status,
+                image: evt.cover_image_url || evt.image
+              };
+              eventsTableExists = true; // A valid events database source is active
             }
+          } catch (err) {
+            // Ignore and fall back to JSON file
           }
-        } catch (err) {
-          // Ignore table errors
         }
       }
 
@@ -132,7 +134,8 @@ export async function GET(request) {
                   lat: evt.lat !== undefined && evt.lat !== null ? evt.lat : evt.latitude,
                   lng: evt.lng !== undefined && evt.lng !== null ? evt.lng : evt.longitude,
                   venue: evt.venue,
-                  status: evt.status
+                  status: evt.status,
+                  image: evt.cover_image_url || evt.image
                 };
               }
             });
@@ -154,7 +157,8 @@ export async function GET(request) {
           ...tkt,
           lat: evtCoords.lat !== undefined && evtCoords.lat !== null ? evtCoords.lat : 12.9716, // Default Bangalore fallback
           lng: evtCoords.lng !== undefined && evtCoords.lng !== null ? evtCoords.lng : 77.6212, // Default Bangalore fallback
-          event_location: evtCoords.venue || tkt.event_location
+          event_location: evtCoords.venue || tkt.event_location,
+          image: evtCoords.image || "/assets/events/something.jpg"
         });
       });
     } else {

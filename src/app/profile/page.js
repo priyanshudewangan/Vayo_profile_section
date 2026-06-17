@@ -35,7 +35,11 @@ import {
   Zap,
   Check,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Phone,
+  Mail,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 
 const maximPersona = "/assets/maxim_persona.png";
@@ -117,7 +121,7 @@ const basePersonas = [
       { name: "Friday Board Game Night", date: "June 08, 7:00 PM", status: "Applied" }
     ],
     activeTickets: [
-      { name: "Cozy Coding & Coffee", date: "June 05, 6:00 PM", countdown: "3 days left", locationPin: "Third Wave Coffee, Koramangala", organizer: "Vikas (Host)", qrCode: "VAYO-TKT-MAX05", lat: 12.9343, lng: 77.6210 }
+      { name: "Cozy Coding & Coffee", date: "June 05, 6:00 PM", countdown: "3 days left", locationPin: "Third Wave Coffee, Koramangala", organizer: "Vikas (Host)", qrCode: "VAYO-TKT-MAX05", lat: 12.9343, lng: 77.6210, image: "/assets/events/something.jpg" }
     ],
     pastTimeline: [
       { name: "Lofi Beats Study Session", date: "May 28, 2026", category: "Social Mixer", friendsMet: 3 },
@@ -191,7 +195,7 @@ const basePersonas = [
       { name: "Pottery & Mocktails", date: "June 06, 4:00 PM", status: "Approved & Ticket Generated" }
     ],
     activeTickets: [
-      { name: "Pottery & Mocktails", date: "June 06, 4:00 PM", countdown: "4 days left", locationPin: "Clay Station, HSR Layout", organizer: "Ritu (Host)", qrCode: "VAYO-TKT-SAR06", lat: 12.9100, lng: 77.6380 }
+      { name: "Pottery & Mocktails", date: "June 06, 4:00 PM", countdown: "4 days left", locationPin: "Clay Station, HSR Layout", organizer: "Ritu (Host)", qrCode: "VAYO-TKT-SAR06", lat: 12.9100, lng: 77.6380, image: "/assets/events/cards.jpg" }
     ],
     pastTimeline: [
       { name: "Indiranagar Cafe Crawl", date: "May 29, 2026", category: "Social Mixer", friendsMet: 5 },
@@ -266,7 +270,7 @@ const basePersonas = [
       { name: "Beer & Trivia Night", date: "June 09, 8:30 PM", status: "Approved & Ticket Generated" }
     ],
     activeTickets: [
-      { name: "Beer & Trivia Night", date: "June 09, 8:30 PM", countdown: "7 days left", locationPin: "Toit Brewery, Indiranagar", organizer: "Rohan (Trivia Master)", qrCode: "VAYO-TKT-DAN09", lat: 12.9791, lng: 77.6406 }
+      { name: "Beer & Trivia Night", date: "June 09, 8:30 PM", countdown: "7 days left", locationPin: "Toit Brewery, Indiranagar", organizer: "Rohan (Trivia Master)", qrCode: "VAYO-TKT-DAN09", lat: 12.9791, lng: 77.6406, image: "/assets/events/holi.jpg" }
     ],
     pastTimeline: [
       { name: "Sunset Run at Agara Lake", date: "May 30, 2026", category: "Active Mixer", friendsMet: 6 },
@@ -340,7 +344,7 @@ const basePersonas = [
       { name: "Modern Art Gallery Tour", date: "June 07, 11:00 AM", status: "Approved & Ticket Generated" }
     ],
     activeTickets: [
-      { name: "Modern Art Gallery Tour", date: "June 07, 11:00 AM", countdown: "5 days left", locationPin: "NGMA, Palace Road", organizer: "Meera (Art Historian)", qrCode: "VAYO-TKT-ELE07", lat: 12.9904, lng: 77.5885 }
+      { name: "Modern Art Gallery Tour", date: "June 07, 11:00 AM", countdown: "5 days left", locationPin: "NGMA, Palace Road", organizer: "Meera (Art Historian)", qrCode: "VAYO-TKT-ELE07", lat: 12.9904, lng: 77.5885, image: "/assets/events/something.jpg" }
     ],
     pastTimeline: [
       { name: "Creative Writing Circle", date: "May 27, 2026", category: "Writing Workshop", friendsMet: 4 },
@@ -551,8 +555,8 @@ function useCountdown(dateStr) {
 function TicketCountdown({ date }) {
   const t = useCountdown(date);
   return (
-    <span className="inline-flex items-center gap-1.5 text-[9.5px] font-bold px-2.5 py-1 rounded-lg bg-neutral-900 text-emerald-400 font-mono tabular-nums">
-      <Clock className="w-2.5 h-2.5" />
+    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold px-2.5 py-1.5 rounded-xl bg-neutral-900 text-emerald-400 font-mono tabular-nums">
+      <Clock className="w-3 h-3" />
       {t}
     </span>
   );
@@ -587,6 +591,8 @@ const getStepperIdx = (status) => {
 function ProfileContent() {
   const searchParams = useSearchParams();
   const emailParam = searchParams.get("email");
+  const sessionEmail = typeof window !== "undefined" ? localStorage.getItem("vayo_user_email") : null;
+  const email = emailParam || sessionEmail;
 
   const [personas, setPersonas] = useState(basePersonas);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -603,7 +609,134 @@ function ProfileContent() {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [isEventsLoading, setIsEventsLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [checkInModalEvent, setCheckInModalEvent] = useState(null);
+  const [isVerifyingLocation, setIsVerifyingLocation] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNowMs(Date.now()), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Helper: Check if event is within 10-minute check-in window
+  const getCheckInStatus = (dateStr) => {
+    if (!dateStr) return { available: false, timeToStart: 'Unknown', diffMins: 999 };
+    
+    try {
+      let eventDate = new Date(dateStr);
+      
+      // 1. Try parsing custom format "DD, MMM - YYYY" (e.g. "17, Jun - 2026")
+      if (isNaN(eventDate.getTime())) {
+        const customMatch = dateStr.match(/(\d{1,2})\s*,\s*([A-Za-z]{3,})\s*-\s*(\d{4})/);
+        if (customMatch) {
+          const [_, day, month, year] = customMatch;
+          eventDate = new Date(`${month} ${day}, ${year}`);
+        }
+      }
+
+      // 2. If invalid (likely "June 20, 7:00 PM" format without year), attempt custom parse
+      if (isNaN(eventDate.getTime())) {
+        const parts = dateStr.split(',').map(s => s.trim());
+        const currentYear = new Date().getFullYear();
+        if (parts.length > 1) {
+          eventDate = new Date(`${parts[0]} ${currentYear} ${parts[1]}`);
+        } else {
+          // If no comma, try splitting by space (e.g. "20 Jun 7:00 PM")
+          const spaceParts = dateStr.split(' ');
+          if (spaceParts.length >= 2) {
+             eventDate = new Date(`${spaceParts[0]} ${spaceParts[1]} ${currentYear} ${spaceParts.slice(2).join(' ')}`);
+          }
+        }
+      }
+
+      // 3. If still invalid, clean up spacing/dashes/commas and collapse duplicate spaces
+      if (isNaN(eventDate.getTime())) {
+        const cleaned = dateStr.replace(/-/g, ' ').replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+        eventDate = new Date(cleaned);
+      }
+      
+      if (isNaN(eventDate.getTime())) return { available: false, timeToStart: 'Unknown', diffMins: 999 };
+
+      const now = nowMs ? new Date(nowMs) : new Date();
+      // diffMs is positive if event is in future, negative if in past
+      const diffMs = eventDate.getTime() - now.getTime();
+      const diffMins = diffMs / (1000 * 60);
+
+      if (isNaN(diffMins)) return { available: false, timeToStart: 'Unknown', diffMins: 999 };
+
+      // Available from 15 mins before till 4 hours after start
+      // e.g. -240 <= diffMins <= 15
+      const isAvailable = diffMins <= 15 && diffMins >= -240; 
+      
+      let timeLabel = "";
+      if (diffMins > 1440) timeLabel = `Starts in ${Math.round(diffMins/1440)} days`;
+      else if (diffMins > 60) timeLabel = `Starts in ${Math.round(diffMins/60)}h`;
+      else if (diffMins > 15) timeLabel = `Starts in ${Math.round(diffMins)}m`;
+      else if (diffMins < -240) timeLabel = "Event Ended";
+      else timeLabel = "Active Now";
+
+      return { available: isAvailable, timeToStart: timeLabel, diffMins };
+    } catch (e) {
+      return { available: false, timeToStart: 'Unknown', diffMins: 999 };
+    }
+  };
+
+  const handleCheckIn = async (event, sessionEmail) => {
+    if (isVerifyingLocation) return;
+    
+    setIsVerifyingLocation(true);
+    triggerToast("📡 Accessing GPS satellites...");
+
+    if (!navigator.geolocation) {
+      triggerToast("GPS not supported on this device.");
+      setIsVerifyingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        try {
+          const response = await fetch("/api/rsvp/check-in", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: sessionEmail,
+              eventId: event.id || event.event_id,
+              userLat: latitude,
+              userLng: longitude
+            })
+          });
+
+          const data = await response.json();
+          
+          if (response.ok && data.success) {
+            triggerToast(data.message || "Attendance Verified! +20 Karma");
+            setCheckInModalEvent(null); // Close modal on success
+            fetchUserTickets(sessionEmail); // Refresh ticket status
+          } else {
+            // Show custom error (too far) with directions option
+            setCheckInModalEvent({ ...event, error: data.error, distance: data.distance });
+            triggerToast(data.error || "Verification failed.");
+          }
+        } catch (err) {
+          triggerToast("Network error. Please try again.");
+        } finally {
+          setIsVerifyingLocation(false);
+        }
+      },
+      (error) => {
+        let msg = "Location access denied.";
+        if (error.code === 2) msg = "GPS signal lost. Try moving outdoors.";
+        if (error.code === 3) msg = "GPS request timed out.";
+        triggerToast(msg);
+        setIsVerifyingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
   const [showShareCard, setShowShareCard] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
@@ -642,7 +775,8 @@ function ProfileContent() {
               organizer: "VAYO Host",
               qrCode: `VAYO-TKT-${t.event_id.toString().slice(-4).toUpperCase()}`,
               lat: t.lat,
-              lng: t.lng
+              lng: t.lng,
+              image: t.image
             }))
           }
         }));
@@ -702,7 +836,8 @@ function ProfileContent() {
 
   const formatTimeAgo = (dateStr) => {
     try {
-      const diffMs = Date.now() - new Date(dateStr).getTime();
+      const currentMs = nowMs || 1780058264000;
+      const diffMs = currentMs - new Date(dateStr).getTime();
       const diffMins = Math.floor(diffMs / 60000);
       if (diffMins < 1) return 'Just now';
       if (diffMins < 60) return `${diffMins}m ago`;
@@ -917,14 +1052,22 @@ function ProfileContent() {
 
   useEffect(() => {
     if (!isUserLoaded) return;
-    fetchNotifications();
+    const t = setTimeout(() => {
+      fetchNotifications();
+    }, 0);
     const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(t);
+      clearInterval(interval);
+    };
   }, [isUserLoaded]);
 
   useEffect(() => {
     if (showNotifications) {
-      fetchNotifications();
+      const t = setTimeout(() => {
+        fetchNotifications();
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [showNotifications]);
 
@@ -1273,7 +1416,8 @@ function ProfileContent() {
       if (sbRes.ok) {
         const data = await sbRes.json();
         if (data.events && Array.isArray(data.events)) {
-          setUpcomingEvents(formatEventData(data.events));
+          const activeEvents = data.events.filter(evt => evt.status !== "cancelled");
+          setUpcomingEvents(formatEventData(activeEvents));
           setIsEventsLoading(false);
           return;
         }
@@ -1292,7 +1436,8 @@ function ProfileContent() {
       if (localRes.ok) {
         const data = await localRes.json();
         if (data.events && Array.isArray(data.events) && data.events.length > 0) {
-          setUpcomingEvents(formatEventData(data.events));
+          const activeEvents = data.events.filter(evt => evt.status !== "cancelled");
+          setUpcomingEvents(formatEventData(activeEvents));
           setIsEventsLoading(false);
           return;
         }
@@ -1308,7 +1453,12 @@ function ProfileContent() {
   };
 
   const formatEventData = (events) => {
-    return events.map((evt) => {
+    return events
+      .filter(evt => {
+        const status = (evt.status || "").toLowerCase();
+        return status !== 'cancelled' && status !== 'canceled';
+      })
+      .map((evt) => {
       let formattedDate = evt.event_date;
       try {
         const d = new Date(evt.event_date);
@@ -1331,14 +1481,20 @@ function ProfileContent() {
   };
 
   useEffect(() => {
-    fetchEvents();
+    const t = setTimeout(() => {
+      fetchEvents();
+    }, 0);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
     if (currentPersona && currentPersona.id === 'user-profile') {
       const sessionEmail = localStorage.getItem("vayo_user_email");
       const email = emailParam || sessionEmail;
-      fetchUserTickets(email);
+      const t = setTimeout(() => {
+        fetchUserTickets(email);
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [activeIdx, isUserLoaded]);
 
@@ -1454,7 +1610,7 @@ function ProfileContent() {
                 </div>
                 <div className="pb-0.5">
                   <div className="text-white font-extrabold text-sm">{currentPersona.name}, {currentPersona.age}</div>
-                  <div className="text-white/50 text-[9px] font-bold uppercase tracking-wider">{currentPersona.role}</div>
+                  <div className="text-white/60 text-[10px] font-bold uppercase tracking-wider">{currentPersona.role}</div>
                 </div>
               </div>
               <button onClick={() => setShowShareCard(false)} className="absolute top-3 right-3 text-white/50 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
@@ -1462,12 +1618,12 @@ function ProfileContent() {
             <div className="bg-white p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Profile Status</div>
+                  <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Profile Status</div>
                   <div className={`text-sm font-extrabold ${theme.textAccent}`}>{completenessScore}% Complete</div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {(currentPersona.socialTags || []).slice(0, 2).map(tag => (
-                    <span key={tag} className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>{tag}</span>
+                    <span key={tag} className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>{tag}</span>
                   ))}
                 </div>
               </div>
@@ -1525,7 +1681,7 @@ function ProfileContent() {
               <img src="/assets/vayo-logo.png" className="h-7 w-auto select-none" alt="VAYO" />
               <span className="w-1.5 h-1.5 bg-[#0ea5e9] rounded-full inline-block ml-1 animate-pulse" />
             </div>
-            <span className="text-[8.5px] text-neutral-400 font-bold uppercase tracking-wider hidden sm:block border-l border-neutral-300 pl-3 leading-none h-3 flex items-center mt-1">Community Hub</span>
+            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider hidden sm:block border-l border-neutral-300 pl-3 leading-none h-3 flex items-center mt-1">Community Hub</span>
           </div>
 
           <div className="hidden md:flex bg-white/25 backdrop-blur-sm p-1 rounded-full border border-white/30 shadow-sm gap-1">
@@ -1587,14 +1743,14 @@ function ProfileContent() {
               {showNotifications && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                  <div className="absolute top-full right-0 mt-2 z-50 w-80 rounded-2xl border border-neutral-200 shadow-2xl overflow-hidden bg-white" onClick={e => e.stopPropagation()}>
+                  <div className="absolute top-full right-[-8px] sm:right-0 mt-2 z-50 w-[calc(100vw-32px)] sm:w-80 rounded-2xl border border-neutral-200 shadow-2xl overflow-hidden bg-white" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-800">Notifications</span>
                         {unreadCount > 0 && currentPersona.id === 'user-profile' && (
-                          <button onClick={markAllNotificationsAsRead} className="text-[9px] text-blue-600 hover:underline font-bold cursor-pointer">Mark all read</button>
+                          <button onClick={markAllNotificationsAsRead} className="text-[10.5px] text-blue-600 hover:underline font-bold cursor-pointer">Mark all read</button>
                         )}
-                        <span className={`text-[8.5px] font-extrabold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>
                           {activeMode === 'social' ? '🌐 Social' : activeMode === 'bff' ? '💚 BFF' : '💼 Bizz'}
                         </span>
                       </div>
@@ -1610,7 +1766,7 @@ function ProfileContent() {
                             <span className="text-lg shrink-0 mt-0.5">{n.icon}</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-semibold leading-snug text-neutral-700">{n.msg}</p>
-                              <p className="text-[9.5px] text-neutral-400 font-medium mt-0.5">{n.time}</p>
+                              <p className="text-[10.5px] text-neutral-500 font-medium mt-0.5">{n.time}</p>
                             </div>
                             {n.unread && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
                           </div>
@@ -1622,7 +1778,7 @@ function ProfileContent() {
                                   await acceptRequest(n.reference_id, n.msg.split(' ')[0] || 'Member');
                                   await markNotificationAsRead(n.id);
                                 }}
-                                className="text-[9px] font-bold px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm cursor-pointer">
+                                className="text-[10.5px] font-bold px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm cursor-pointer">
                                 Accept
                               </button>
                               <button
@@ -1631,7 +1787,7 @@ function ProfileContent() {
                                   await declineRequest(n.reference_id, n.msg.split(' ')[0] || 'Member');
                                   await markNotificationAsRead(n.id);
                                 }}
-                                className="text-[9px] font-bold px-3 py-1 rounded bg-neutral-100 text-neutral-650 hover:bg-neutral-200 border border-neutral-200 transition-colors shadow-sm cursor-pointer">
+                                className="text-[10.5px] font-bold px-3 py-1 rounded bg-neutral-100 text-neutral-650 hover:bg-neutral-200 border border-neutral-200 transition-colors shadow-sm cursor-pointer">
                                 Ignore
                               </button>
                             </div>
@@ -1724,13 +1880,13 @@ function ProfileContent() {
 
                 {/* ════════════════════ PROFILE TAB ════════════════════ */}
                 {activeSidebarTab === 'profile' && (
-                  <div className="space-y-6 animate-fade-in">
+                  <div className="space-y-4 sm:space-y-6 animate-fade-in">
 
                     {/* Avatar + Info */}
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6">
                       {/* GRADIENT RING AVATAR */}
                       <div className="relative shrink-0">
-                        <div className={`w-28 h-28 rounded-full p-[3px] bg-gradient-to-br ${theme.gradient} shadow-xl`}>
+                        <div className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full p-[2.5px] sm:p-[3px] bg-gradient-to-br ${theme.gradient} shadow-xl`}>
                           <div className="w-full h-full rounded-full overflow-hidden bg-neutral-900 border-2 border-white/80">
                             <img src={currentPersona.image} alt={currentPersona.name} className="w-full h-full object-cover" />
                           </div>
@@ -1738,122 +1894,133 @@ function ProfileContent() {
                         <div className="absolute inset-[-4px] rounded-full border-2 opacity-25 transition-colors duration-500" style={{ borderColor: theme.accent }} />
                       </div>
 
-                      <div className="flex-1 text-center sm:text-left space-y-2 min-w-0">
+                      <div className="flex-1 text-center sm:text-left space-y-2 min-w-0 w-full">
                         <div className="flex flex-col sm:flex-row items-center gap-2 justify-center sm:justify-start">
-                          <h4 className="text-xl font-extrabold text-neutral-800 tracking-tight">{currentPersona.name}, {currentPersona.age}</h4>
-                          <span className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                            <span className="inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                            Active
-                          </span>
-                          <span className={`flex items-center gap-1 text-[9.5px] font-extrabold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>
-                            {activeMode === 'social' ? '🌐' : activeMode === 'bff' ? '💚' : '💼'}
-                            {activeMode === 'social' ? 'Social' : activeMode === 'bff' ? 'BFF' : 'Bizz'}
-                          </span>
+                          <h4 className="text-lg sm:text-xl font-extrabold text-neutral-800 tracking-tight leading-tight">{currentPersona.name}, {currentPersona.age}</h4>
+                          <div className="flex flex-wrap items-center gap-1.5 justify-center sm:justify-start">
+                            <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-800 text-[10px] sm:text-[11px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/20">
+                              <span className="inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500 animate-pulse" />
+                              Active
+                            </span>
+                            <span className={`flex items-center gap-1 text-[10px] sm:text-[11px] font-extrabold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>
+                              {activeMode === 'social' ? '🌐' : activeMode === 'bff' ? '💚' : '💼'}
+                              {activeMode === 'social' ? 'Social' : activeMode === 'bff' ? 'BFF' : 'Bizz'}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="text-xs text-neutral-500 space-y-1">
-                          <div>+91 9845{currentPersona.id === 'maxim' ? '0 1202' : currentPersona.id === 'sarah' ? '1 3495' : currentPersona.id === 'daniel' ? '2 8593' : currentPersona.id === 'user-profile' ? '4 8392' : '3 9204'}</div>
-                          <div className="text-blue-600 font-semibold hover:underline cursor-pointer">{currentPersona.name.toLowerCase()}@vayo.community</div>
-                          <div className="flex items-center justify-center sm:justify-start gap-1 text-neutral-400">
-                            <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        {/* Responsive Info Grid */}
+                        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-1.5 text-xs text-neutral-500 pt-2 border-t border-neutral-100 sm:border-t-0 mt-1">
+                          <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                            <Phone className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                            <span className="font-semibold">+91 9845{currentPersona.id === 'maxim' ? '0 1202' : currentPersona.id === 'sarah' ? '1 3495' : currentPersona.id === 'daniel' ? '2 8593' : currentPersona.id === 'user-profile' ? '4 8392' : '3 9204'}</span>
+                          </div>
+                          <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                            <Mail className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                            <span className="text-blue-600 font-bold truncate max-w-[200px] hover:underline cursor-pointer">{currentPersona.name.toLowerCase()}@vayo.community</span>
+                          </div>
+                          <div className="flex items-center justify-center sm:justify-start gap-1.5 text-neutral-500">
+                            <MapPin className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
                             <span>{currentPersona.location}</span>
                           </div>
-                          {isEditing ? (
-                            <div className="space-y-1.5 pt-1 max-w-sm">
-                              <div className="grid grid-cols-2 gap-1.5">
-                                {[['instagram', 'ig'], ['linkedin', 'li'], ['twitter', 'tw'], ['github', 'gh']].map(([key, short]) => (
-                                  <div key={key} className="flex items-center gap-1 border rounded-lg px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
-                                    <span className="text-[8.5px] font-extrabold uppercase text-neutral-400 w-5">{short}</span>
-                                    <input value={editDraft[key]}
-                                      onChange={e => setEditDraft(p => ({ ...p, [key]: e.target.value }))}
-                                      className="text-[10.5px] flex-1 outline-none bg-transparent min-w-0" placeholder={`@handle`} />
-                                  </div>
-                                ))}
-                              </div>
-                              {activeMode === 'bizz' && (
-                                <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                                  <div className="flex items-center gap-1 border rounded-lg px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
-                                    <span className="text-[8.5px] font-extrabold uppercase text-neutral-400 w-10">Role</span>
-                                    <input value={editDraft.bizzRole}
-                                      onChange={e => setEditDraft(p => ({ ...p, bizzRole: e.target.value }))}
-                                      className="text-[10.5px] flex-1 outline-none bg-transparent min-w-0" placeholder={`Job Role`} />
-                                  </div>
-                                  <div className="flex items-center gap-1 border rounded-lg px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
-                                    <span className="text-[8.5px] font-extrabold uppercase text-neutral-400 w-12">Company</span>
-                                    <input value={editDraft.bizzCompany}
-                                      onChange={e => setEditDraft(p => ({ ...p, bizzCompany: e.target.value }))}
-                                      className="text-[10.5px] flex-1 outline-none bg-transparent min-w-0" placeholder={`Company`} />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ) : Object.keys(displayPersona.socialLinks || {}).length > 0 && (
-                            <div className="flex items-center justify-center sm:justify-start gap-1.5 pt-0.5">
-                              {displayPersona.socialLinks.instagram && (
-                                <a 
-                                  href={`https://instagram.com/${displayPersona.socialLinks.instagram.replace('@', '')}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  title={`@${displayPersona.socialLinks.instagram}`}
-                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
-                                  </svg>
-                                </a>
-                              )}
-                              {displayPersona.socialLinks.linkedin && (
-                                <a 
-                                  href={`https://linkedin.com/in/${displayPersona.socialLinks.linkedin}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  title={displayPersona.socialLinks.linkedin}
-                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" /><circle cx="4" cy="4" r="2" />
-                                  </svg>
-                                </a>
-                              )}
-                              {displayPersona.socialLinks.twitter && (
-                                <a 
-                                  href={`https://twitter.com/${displayPersona.socialLinks.twitter.replace('@', '')}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  title={`@${displayPersona.socialLinks.twitter}`}
-                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                                  </svg>
-                                </a>
-                              )}
-                              {displayPersona.socialLinks.github && (
-                                <a 
-                                  href={`https://github.com/${displayPersona.socialLinks.github}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  title={displayPersona.socialLinks.github}
-                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-                                  </svg>
-                                </a>
-                              )}
-                            </div>
-                          )}
                         </div>
+
+                        {isEditing ? (
+                          <div className="space-y-1.5 pt-1 max-w-sm text-left">
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {[['instagram', 'ig'], ['linkedin', 'li'], ['twitter', 'tw'], ['github', 'gh']].map(([key, short]) => (
+                                <div key={key} className="flex items-center gap-1 border rounded-xl px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
+                                  <span className="text-[10px] font-extrabold uppercase text-neutral-500 w-5">{short}</span>
+                                  <input value={editDraft[key]}
+                                    onChange={e => setEditDraft(p => ({ ...p, [key]: e.target.value }))}
+                                    className="text-[10.5px] flex-1 outline-none bg-transparent min-w-0" placeholder={`@handle`} />
+                                </div>
+                              ))}
+                            </div>
+                            {activeMode === 'bizz' && (
+                              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                                <div className="flex items-center gap-1 border rounded-xl px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
+                                  <span className="text-[10px] font-extrabold uppercase text-neutral-500 w-10">Role</span>
+                                  <input value={editDraft.bizzRole}
+                                    onChange={e => setEditDraft(p => ({ ...p, bizzRole: e.target.value }))}
+                                    className="text-[10.5px] flex-1 outline-none bg-transparent min-w-0" placeholder={`Job Role`} />
+                                </div>
+                                <div className="flex items-center gap-1 border rounded-xl px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
+                                  <span className="text-[10px] font-extrabold uppercase text-neutral-500 w-12">Company</span>
+                                  <input value={editDraft.bizzCompany}
+                                    onChange={e => setEditDraft(p => ({ ...p, bizzCompany: e.target.value }))}
+                                    className="text-[10.5px] flex-1 outline-none bg-transparent min-w-0" placeholder={`Company`} />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : Object.keys(displayPersona.socialLinks || {}).length > 0 && (
+                          <div className="flex items-center justify-center sm:justify-start gap-1.5 pt-1">
+                            <span className="text-[10px] text-neutral-500 font-black uppercase tracking-wider">Socials:</span>
+                            {displayPersona.socialLinks.instagram && (
+                              <a 
+                                href={`https://instagram.com/${displayPersona.socialLinks.instagram.replace('@', '')}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                title={`@${displayPersona.socialLinks.instagram}`}
+                                className={`w-6 h-6 rounded-xl flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
+                                </svg>
+                              </a>
+                            )}
+                            {displayPersona.socialLinks.linkedin && (
+                              <a 
+                                href={`https://linkedin.com/in/${displayPersona.socialLinks.linkedin}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                title={displayPersona.socialLinks.linkedin}
+                                className={`w-6 h-6 rounded-xl flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" /><circle cx="4" cy="4" r="2" />
+                                </svg>
+                              </a>
+                            )}
+                            {displayPersona.socialLinks.twitter && (
+                              <a 
+                                href={`https://twitter.com/${displayPersona.socialLinks.twitter.replace('@', '')}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                title={`@${displayPersona.socialLinks.twitter}`}
+                                className={`w-6 h-6 rounded-xl flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                </svg>
+                              </a>
+                            )}
+                            {displayPersona.socialLinks.github && (
+                              <a 
+                                href={`https://github.com/${displayPersona.socialLinks.github}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                title={displayPersona.socialLinks.github}
+                                className={`w-6 h-6 rounded-xl flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                                </svg>
+                              </a>
+                            )}
+                          </div>
+                        )}
 
                         {isEditing ? (
                           <textarea value={editDraft.bio} onChange={e => setEditDraft(p => ({ ...p, bio: e.target.value }))} rows={3}
                             className={`w-full text-xs border rounded-xl px-3 py-2 mt-1 resize-none focus:outline-none focus:ring-2 bg-white ${theme.cardBorder}`}
                             placeholder="Write your bio…" />
                         ) : (
-                          <p className="text-xs text-neutral-600 italic font-medium pt-1 max-w-xl">
+                          <p className="text-xs text-neutral-650 italic font-medium pt-1 max-w-xl text-center sm:text-left leading-relaxed">
                             &ldquo;{activeMode === 'social' ? displayPersona.socialBio : activeMode === 'bff' ? displayPersona.bffBio : displayPersona.bizzBio}&rdquo;
                           </p>
                         )}
                       </div>
 
                       {/* Profile completeness donut */}
-                      <div className="shrink-0 flex flex-col items-center gap-1.5 self-center sm:self-start sm:pt-1">
+                      <div className="hidden sm:flex shrink-0 flex-col items-center gap-1.5 self-center sm:self-start sm:pt-1">
                         <div className="relative w-14 h-14 group cursor-default">
                           <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
                             <circle cx="28" cy="28" r="22" fill="none" stroke="#e5e7eb" strokeWidth="4.5" />
@@ -1866,7 +2033,7 @@ function ProfileContent() {
                             <span className={`text-[12px] font-extrabold ${theme.textAccent}`}>{completenessScore}%</span>
                           </div>
                           <div className="absolute top-0 right-full mr-3 w-44 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                            <div className={`text-[9px] font-extrabold uppercase tracking-wider mb-2 ${theme.textAccent}`}>Profile Checklist</div>
+                            <div className={`text-[10px] font-extrabold uppercase tracking-wider mb-2 ${theme.textAccent}`}>Profile Checklist</div>
                             <div className="space-y-1">
                               {completenessItems.map(item => (
                                 <div key={item.label} className="flex items-center gap-1.5">
@@ -1877,7 +2044,19 @@ function ProfileContent() {
                             </div>
                           </div>
                         </div>
-                        <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Complete</span>
+                        <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Complete</span>
+                      </div>
+                    </div>
+
+                    {/* Mobile Profile Completeness Progress Bar */}
+                    <div className="sm:hidden w-full bg-neutral-50/50 border border-neutral-100 rounded-2xl p-4 flex items-center justify-between gap-4">
+                      <div className="space-y-0.5 animate-fade-in">
+                        <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block">Profile Completeness</span>
+                        <span className={`text-[12px] font-black ${theme.textAccent}`}>{completenessScore}% Complete</span>
+                      </div>
+                      <div className="flex-1 max-w-[130px] bg-neutral-200/50 h-2 rounded-full overflow-hidden relative border border-neutral-200/30">
+                        <div className="h-full rounded-full transition-all duration-750 ease-out" 
+                          style={{ width: `${completenessScore}%`, backgroundColor: theme.accent }} />
                       </div>
                     </div>
 
@@ -1898,7 +2077,7 @@ function ProfileContent() {
                       ]).map((s, i, arr) => (
                         <div key={i} className={`flex-1 py-3 text-center ${i < arr.length - 1 ? 'border-r border-neutral-200/50' : ''}`}>
                           <div className={`text-lg font-black tracking-tight ${theme.textAccent}`}>{s.value}</div>
-                          <div className="text-[9px] text-neutral-450 font-bold uppercase tracking-wider mt-0.5">{s.label}</div>
+                          <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-0.5">{s.label}</div>
                         </div>
                       ))}
                     </div>
@@ -1908,20 +2087,20 @@ function ProfileContent() {
                     {/* Internal Info */}
                     <div>
                       <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest mb-3">Internal Status</h5>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-2 text-center sm:text-left">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-2 text-left">
                         <div>
-                          <div className="text-[9.5px] text-neutral-400 font-bold uppercase tracking-wider">User Type</div>
+                          <div className="text-[10.5px] text-neutral-500 font-bold uppercase tracking-wider">User Type</div>
                           <div className="text-xs font-bold text-neutral-700 mt-0.5">
                             {activeMode === 'bizz' ? 'Founder / Builder' : activeMode === 'bff' ? 'Hobbyist Mixer' : 'Social Connector'}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[9.5px] text-neutral-400 font-bold uppercase tracking-wider">Association</div>
+                          <div className="text-[10.5px] text-neutral-500 font-bold uppercase tracking-wider">Association</div>
                           <div className="text-xs font-bold text-neutral-700 mt-0.5">Vayo Offline Hub (Bangalore)</div>
                         </div>
                         <div className="col-span-2 sm:col-span-1">
-                          <div className="text-[9.5px] text-neutral-400 font-bold uppercase tracking-wider">Source / Verification</div>
-                          <div className="text-xs font-bold text-neutral-700 mt-0.5 flex items-center gap-1 justify-center sm:justify-start">
+                          <div className="text-[10.5px] text-neutral-500 font-bold uppercase tracking-wider">Source / Verification</div>
+                          <div className="text-xs font-bold text-neutral-700 mt-0.5 flex items-center gap-1 justify-start">
                             {currentPersona.selfieVerified && <ShieldCheck className="w-3.5 h-3.5 text-sky-600 inline shrink-0" />}
                             <span>{currentPersona.selfieVerified ? 'Selfie Verified' : 'Standard'}</span>
                           </div>
@@ -1992,14 +2171,14 @@ function ProfileContent() {
                               <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
 
                               {/* "Upcoming Event" Badge */}
-                              <span className="absolute top-4 left-4 z-20 bg-blue-600 text-white text-[9px] sm:text-[10px] font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
+                              <span className="absolute top-4 left-4 z-20 bg-blue-600 text-white text-[10px] sm:text-[11px] font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
                                 Upcoming Event
                               </span>
 
                               {/* Event details container */}
                               <div className="absolute bottom-6 left-5 right-5 z-20 flex flex-col gap-2.5 text-left max-w-[calc(100%-40px)] md:max-w-[70%]">
                                 {/* Date pill */}
-                                <div className="flex items-center gap-1.5 bg-black/45 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] text-white font-bold tracking-wide w-fit">
+                                <div className="flex items-center gap-1.5 bg-black/45 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] text-white font-bold tracking-wide w-fit">
                                   <Calendar className="w-3.5 h-3.5 text-white" />
                                   <span>{event.date}</span>
                                 </div>
@@ -2058,7 +2237,7 @@ function ProfileContent() {
                     {/* Vibe Profile Tags Section */}
                     <div>
                       <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest mb-3">Vibe Profile Tags</h5>
-                      <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                      <div className="flex flex-wrap gap-1.5 justify-start">
                         {(activeMode === 'social' ? currentPersona.socialTags : activeMode === 'bff' ? currentPersona.bffTags : currentPersona.bizzTags).map((tag, i) => (
                           <span key={i} className={`text-[10.5px] font-bold px-2.5 py-1 rounded-xl border ${theme.badgeBg}`}>
                             {tag}
@@ -2128,7 +2307,7 @@ function ProfileContent() {
                           </div>
                           
                           <div className="space-y-1 min-w-0 flex-1">
-                            <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-blue-600">Apply for RSVP</span>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">Apply for RSVP</span>
                             <h4 className="text-sm font-extrabold text-neutral-800 leading-snug truncate">{selectedEvent.title}</h4>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-neutral-500 font-medium">
                               <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-neutral-400" />{selectedEvent.date}</span>
@@ -2196,53 +2375,53 @@ function ProfileContent() {
                         <div className="flex flex-col sm:flex-row items-stretch gap-3">
                           {/* Left: section label + next-up card */}
                           <div className="flex-1 min-w-0 flex flex-col gap-2">
-                            <h5 className={`text-[11px] font-bold uppercase tracking-widest ${theme.textAccent} font-sans`}>Event Stage</h5>
+                            <h5 className={`text-[12px] font-bold uppercase tracking-widest ${theme.textAccent} font-sans`}>Event Stage</h5>
                             {nextTkt ? (
-                              <div className="flex-1 rounded-xl p-3 border border-neutral-100 bg-white/70 shadow-sm space-y-2" style={{ backdropFilter: 'blur(8px)' }}>
-                                <span className="text-[8px] font-extrabold uppercase tracking-widest text-neutral-400">Next Up</span>
-                                <div className="text-[12.5px] font-extrabold text-neutral-800 leading-tight">{nextTkt.name}</div>
-                                <div className="flex items-center gap-1 text-[9.5px] text-neutral-500 font-medium">
-                                  <Clock className="w-3 h-3 shrink-0" style={{ color: theme.accent }} />
+                              <div className="flex-1 rounded-xl p-4 border border-neutral-100 bg-white/80 shadow-sm space-y-2.5" style={{ backdropFilter: 'blur(8px)' }}>
+                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-neutral-500">Next Up</span>
+                                <div className="text-[14px] font-extrabold text-neutral-800 leading-tight">{nextTkt.name}</div>
+                                <div className="flex items-center gap-1.5 text-[11px] text-neutral-600 font-medium">
+                                  <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: theme.accent }} />
                                   {nextTkt.date.split(',')[0]}
-                                  {nextTkt.date.split(',')[1] && <span className="text-neutral-400">{nextTkt.date.split(',')[1]}</span>}
+                                  {nextTkt.date.split(',')[1] && <span className="text-neutral-500">{nextTkt.date.split(',')[1]}</span>}
                                 </div>
-                                <div className="flex items-center gap-1 text-[9.5px] text-neutral-500 font-medium">
-                                  <MapPin className="w-3 h-3 shrink-0" style={{ color: theme.accent }} />
+                                <div className="flex items-center gap-1.5 text-[11px] text-neutral-600 font-medium">
+                                  <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: theme.accent }} />
                                   <span className="truncate">{nextTkt.locationPin}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 text-[8.5px] font-bold text-emerald-600 pt-0.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 pt-0.5">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                   {nextTkt.organizer}
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex-1 rounded-xl p-3 border border-neutral-100 bg-white/70 shadow-sm flex items-center justify-center text-xs text-neutral-400">
+                              <div className="flex-1 rounded-xl p-4 border border-neutral-100 bg-white/70 shadow-sm flex items-center justify-center text-sm text-neutral-500">
                                 No upcoming tickets
                               </div>
                             )}
                           </div>
                           {/* Right: glassmorphic mini-calendar */}
-                          <div className="w-full sm:w-[160px] shrink-0 rounded-xl relative self-stretch"
+                          <div className="w-full sm:w-[180px] shrink-0 rounded-xl relative self-stretch"
                             style={{
                               background: `linear-gradient(145deg, ${theme.accent}28 0%, ${theme.accent}0a 100%)`,
-                              border: `1px solid rgba(255,255,255,0.6)`,
+                              border: `1px solid rgba(255,255,255,0.7)`,
                               boxShadow: `0 4px 24px ${theme.accent}1a, 0 1px 3px rgba(0,0,0,0.05)`
                             }}>
-                            <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.10) 100%)' }} />
-                            <div className="relative z-10 p-2.5 h-full flex flex-col" style={{ backdropFilter: 'blur(14px)' }}>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-2.5 h-2.5" style={{ color: theme.accent }} />
-                                  <span className="text-[9.5px] font-extrabold text-neutral-700">{monthName.slice(0, 3)} &apos;{String(year).slice(2)}</span>
+                            <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) 100%)' }} />
+                            <div className="relative z-10 p-3 h-full flex flex-col" style={{ backdropFilter: 'blur(14px)' }}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="w-3 h-3" style={{ color: theme.accent }} />
+                                  <span className="text-[11px] font-extrabold text-neutral-800">{monthName.slice(0, 3)} &apos;{String(year).slice(2)}</span>
                                 </div>
-                                <span className="text-[7.5px] font-bold px-1.5 py-[2px] rounded-full"
-                                  style={{ background: `${theme.accent}20`, color: theme.accent }}>
-                                  {eventDays.size} ev
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                  style={{ background: `${theme.accent}30`, color: theme.accent }}>
+                                  {eventDays.size} events
                                 </span>
                               </div>
-                              <div className="grid grid-cols-7 mb-[3px]">
+                              <div className="grid grid-cols-7 mb-[4px]">
                                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                                  <div key={i} className="text-center text-[7px] font-extrabold text-neutral-400 leading-none pb-[2px]">{d}</div>
+                                  <div key={i} className="text-center text-[10px] font-extrabold text-neutral-500 leading-none pb-[3px]">{d}</div>
                                 ))}
                               </div>
                               <div className="grid grid-cols-7 flex-1">
@@ -2252,22 +2431,28 @@ function ProfileContent() {
                                   const col = i % 7;
                                   const tipAnchor = col <= 2 ? 'left-0' : col >= 5 ? 'right-0' : 'left-1/2 -translate-x-1/2';
                                   return (
-                                    <div key={i} className="relative flex flex-col items-center justify-start py-[1px] group">
+                                    <div key={i} className="relative flex flex-col items-center justify-start py-[2px] group cursor-default">
                                       {day && (
                                         <>
-                                          <span className="text-[8px] font-bold w-[17px] h-[17px] flex items-center justify-center rounded-full leading-none"
-                                            style={isToday ? { background: theme.accent, color: '#fff', boxShadow: `0 0 0 2px ${theme.accent}35` }
-                                              : events ? { background: `${theme.accent}22`, color: theme.accent }
-                                                : { color: '#b0b8c8' }}>
+                                          <span 
+                                            onClick={() => {
+                                              if (events) {
+                                                triggerToast(`Events on ${monthName} ${day}: ${events.join(', ')}`);
+                                              }
+                                            }}
+                                            className={`text-[10px] font-bold w-[24px] h-[24px] flex items-center justify-center rounded-full leading-none transition-all duration-300 ${events ? 'cursor-pointer hover:scale-110 active:scale-95' : ''}`}
+                                            style={isToday ? { background: theme.accent, color: '#fff', boxShadow: `0 0 0 2px ${theme.accent}35`, zIndex: 5 }
+                                              : events ? { background: `${theme.accent}25`, color: theme.accent, fontWeight: '900' }
+                                                : { color: '#64748b' }}>
                                             {day}
                                           </span>
                                           {events
-                                            ? <span className="w-[3px] h-[3px] rounded-full mt-0.5" style={{ background: theme.accent }} />
-                                            : <span className="w-[3px] h-[3px] opacity-0 mt-0.5" />}
+                                            ? <span className={`w-1 h-1 rounded-full mt-1 ${isToday ? 'bg-white' : ''}`} style={{ background: isToday ? '#fff' : theme.accent }} />
+                                            : <span className="w-1 h-1 opacity-0 mt-1" />}
                                           {events && (
-                                            <div className={`absolute bottom-full mb-1 z-50 hidden group-hover:block w-28 pointer-events-none ${tipAnchor}`}>
-                                              <div className="rounded-lg px-2 py-1.5 text-[8px] font-semibold text-white shadow-xl"
-                                                style={{ background: `linear-gradient(135deg, ${theme.accent}f0, ${theme.accent}c0)`, backdropFilter: 'blur(8px)' }}>
+                                            <div className={`absolute bottom-full mb-1.5 z-50 hidden group-hover:block group-active:block w-32 pointer-events-none ${tipAnchor}`}>
+                                              <div className="rounded-lg px-2.5 py-2 text-[10px] font-bold text-white shadow-2xl animate-in zoom-in-95 duration-200"
+                                                style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}ee)`, backdropFilter: 'blur(8px)' }}>
                                                 {events.map((ev, j) => <div key={j} className="truncate">• {ev}</div>)}
                                               </div>
                                             </div>
@@ -2286,69 +2471,156 @@ function ProfileContent() {
 
                     {/* ── Live Tickets ── */}
                     <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-1.5 font-sans">
-                        Live Tickets <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                      </h5>
-                      <div className="space-y-4">
+                      <div className="flex items-center justify-between mb-4 px-1">
+                        <h5 className="text-[12px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2 font-sans">
+                          Live Tickets <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                        </h5>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              fetchUserTickets(sessionEmail);
+                              triggerToast("Syncing your latest ticket status...");
+                            }}
+                            className="p-1.5 rounded-xl bg-neutral-100 text-neutral-500 hover:bg-neutral-200 transition-colors cursor-pointer group"
+                            title="Refresh Tickets"
+                          >
+                            <Bell className={`w-3.5 h-3.5 ${isTicketsLoading ? 'animate-spin' : 'group-hover:rotate-12'}`} />
+                          </button>
+                          {displayPersona.activeTickets && displayPersona.activeTickets.length > 1 && (
+                            <div className="flex items-center gap-1.5 bg-blue-50/50 px-2 py-1 rounded-full border border-blue-100/50">
+                              <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">Swipe for More</span>
+                              <ArrowRight className="w-2.5 h-2.5 text-blue-500 animate-bounce-x" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="relative">
                         {displayPersona.activeTickets && displayPersona.activeTickets.length > 0 ? (
-                          displayPersona.activeTickets.map((tkt, i) => (
-                            <div key={i} className="space-y-3">
-                              <div className="border border-neutral-200 rounded-2xl overflow-hidden flex flex-col md:flex-row bg-neutral-50/50 shadow-sm">
-                                {/* Left Stub */}
-                                <div className="flex-1 p-5 space-y-4 border-r border-dashed border-neutral-200 relative">
-                                  <div className="absolute right-[-6px] top-[-6px] w-3 h-3 rounded-full bg-white border border-neutral-200 hidden md:block" />
-                                  <div className="absolute right-[-6px] bottom-[-6px] w-3 h-3 rounded-full bg-white border border-neutral-200 hidden md:block" />
-                                  <div className="space-y-0.5">
-                                    <div className={`text-[9px] font-extrabold uppercase tracking-wider ${theme.textAccent}`}>Upcoming Event Ticket</div>
-                                    <h4 className="text-sm font-extrabold text-neutral-800 leading-snug">{tkt.name}</h4>
+                          <div className="flex overflow-x-auto gap-4 pb-4 px-1 snap-x snap-mandatory scrollbar-none no-scrollbar -mx-1">
+                            {displayPersona.activeTickets.map((tkt, i) => {
+                               const isToday = tkt.date && tkt.date.includes(new Date().getDate().toString()) && tkt.date.includes(new Date().toLocaleString('default', { month: 'short' }));
+                               return (
+                              <div key={i} className="min-w-[280px] sm:min-w-[400px] md:min-w-full snap-center space-y-4">
+                                <div className={`border rounded-2xl overflow-hidden flex flex-col md:flex-row bg-white shadow-md transition-all duration-500 hover:shadow-xl ${isToday ? 'border-emerald-200 ring-2 ring-emerald-500/10' : 'border-neutral-200'}`}>
+                                  {/* Event Photo Banner */}
+                                  <div className="w-full md:w-[150px] h-[120px] md:h-auto shrink-0 relative overflow-hidden bg-neutral-105 border-b md:border-b-0 md:border-r border-neutral-200">
+                                    <img 
+                                      src={tkt.image || "/assets/events/something.jpg"} 
+                                      alt={tkt.name} 
+                                      className="w-full h-full object-cover" 
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/40 via-transparent to-transparent" />
                                   </div>
-                                  <div className="grid grid-cols-2 gap-3 text-xs">
-                                    <div className="space-y-0.5">
-                                      <span className="text-neutral-400 font-bold block text-[9px] uppercase tracking-wider">Date & Time</span>
-                                      <span className="font-bold text-neutral-700 flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-neutral-400" />{tkt.date.split(',')[0]}</span>
-                                      <span className="text-[10px] text-neutral-400 block pl-5">{tkt.date.split(',')[1]}</span>
+
+                                  {/* Left Stub */}
+                                  <div className="flex-1 p-5 md:p-6 space-y-5 border-b border-dashed md:border-b-0 md:border-r border-neutral-200 relative">
+                                    {/* Ticket Punch Holes */}
+                                    <div className="absolute left-[-7px] bottom-[-7px] md:left-auto md:bottom-auto md:right-[-7px] md:top-[-7px] w-3.5 h-3.5 rounded-full bg-neutral-50 border border-neutral-200" />
+                                    <div className="absolute right-[-7px] bottom-[-7px] w-3.5 h-3.5 rounded-full bg-neutral-50 border border-neutral-200" />
+                                    <div className="space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <div className={`text-[10px] font-extrabold uppercase tracking-widest ${theme.textAccent}`}>Upcoming Mixer Ticket</div>
+                                        {isToday && <span className="text-[10px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full animate-pulse shadow-sm">Happening Today</span>}
+                                      </div>
+                                      <h4 className="text-base font-extrabold text-neutral-800 leading-tight line-clamp-2 md:line-clamp-none h-10 md:h-auto">{tkt.name}</h4>
                                     </div>
-                                    <div className="space-y-0.5">
-                                      <span className="text-neutral-400 font-bold block text-[9px] uppercase tracking-wider">Venue Location</span>
-                                      <span className="font-bold text-neutral-700 flex items-center gap-1 max-w-[170px] truncate" title={tkt.locationPin}><MapPin className="w-3.5 h-3.5 text-neutral-400" />{tkt.locationPin}</span>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center justify-between text-xs pt-1">
-                                    <div className="flex items-center gap-1.5">
-                                      <div className="w-6 h-6 rounded-full bg-neutral-200 border border-neutral-300 flex items-center justify-center text-[9px] font-bold text-neutral-600 uppercase">{tkt.organizer.charAt(0)}</div>
-                                      <div className="leading-tight">
-                                        <span className="text-[8.5px] text-neutral-400 block">Host Organizer</span>
-                                        <span className="font-bold text-neutral-700">{tkt.organizer}</span>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-sm">
+                                      <div className="space-y-1">
+                                        <span className="text-neutral-400 font-bold block text-[10px] uppercase tracking-widest">Date & Time</span>
+                                        <span className="font-bold text-neutral-700 flex items-center gap-1.5 text-[12px] md:text-sm"><Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-neutral-400 shrink-0" />{tkt.date.split(',')[0]}</span>
+                                        <span className="text-[10px] md:text-[11px] text-neutral-500 block pl-5 md:pl-5.5">{tkt.date.split(',')[1]}</span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <span className="text-neutral-400 font-bold block text-[10px] uppercase tracking-widest">Venue Location</span>
+                                        <span className="font-bold text-neutral-700 flex items-center gap-1.5 text-[12px] md:text-sm max-w-[150px] truncate" title={tkt.locationPin}><MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-neutral-400 shrink-0" />{tkt.locationPin}</span>
+                                        {(tkt.lat || tkt.latitude) && (
+                                          <a 
+                                            href={`https://www.google.com/maps/search/?api=1&query=${tkt.lat || tkt.latitude},${tkt.lng || tkt.longitude}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] font-black text-blue-500 uppercase hover:underline flex items-center gap-0.5 mt-1.5 active:scale-95 transition-transform w-fit"
+                                          >
+                                            Get Directions <ChevronRight className="w-2.5 h-2.5" />
+                                          </a>
+                                        )}
                                       </div>
                                     </div>
-                                    {/* LIVE COUNTDOWN */}
-                                    <TicketCountdown date={tkt.date} />
+                                    <div className="flex items-center justify-between text-sm pt-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-[10px] font-bold text-neutral-600 uppercase shadow-inner">{tkt.organizer.charAt(0)}</div>
+                                        <div className="leading-tight">
+                                          <span className="text-[10px] text-neutral-500 block font-bold uppercase tracking-wider">Host</span>
+                                          <span className="font-bold text-neutral-700 truncate max-w-[80px] block">{tkt.organizer}</span>
+                                        </div>
+                                      </div>
+                                      {/* LIVE COUNTDOWN */}
+                                      <TicketCountdown date={tkt.date} />
+                                    </div>
+                                  </div>
+                                  {/* Right QR Stub */}
+                                  <div className="w-full md:w-[150px] p-5 md:p-6 flex flex-col items-center justify-center bg-neutral-50 shrink-0 border-t md:border-t-0 md:border-l border-neutral-100 relative">
+                                    <div className="p-2 border border-neutral-200 rounded-xl shadow-lg bg-white mb-2 md:mb-3 group-hover:rotate-1 transition-transform">
+                                      <QRCodeSVG 
+                                        value={tkt.qrCode || `VAYO-TKT-${tkt.id}`} 
+                                        size={72}
+                                        level="M"
+                                        includeMargin={false}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] md:text-[11px] font-black text-neutral-500 uppercase tracking-[0.2em] mb-3">{tkt.qrCode}</span>
+                                    {(() => {
+                                      const status = getCheckInStatus(tkt.date);
+                                      const isVerified = tkt.status === "Attended";
+
+                                      if (isVerified) {
+                                        return (
+                                          <div className="w-full py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest border border-emerald-200 flex items-center justify-center gap-1.5 shadow-sm">
+                                            <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+                                          </div>
+                                        );
+                                      }
+
+                                      if (status.available) {
+                                        return (
+                                          <button 
+                                            onClick={() => handleCheckIn(tkt, sessionEmail)} 
+                                            disabled={isVerifyingLocation}
+                                            className={`w-full py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-100 hover:border-blue-300 cursor-pointer transition-all active:scale-95 shadow-sm flex items-center justify-center gap-1.5 ${isVerifyingLocation ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                          >
+                                            {isVerifyingLocation ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
+                                            {isVerifyingLocation ? "Verifying..." : "Check-In Now"}
+                                          </button>
+                                        );
+                                      }
+
+                                      return (
+                                        <button 
+                                          onClick={() => setCheckInModalEvent(tkt)} 
+                                          className={`w-full py-2.5 rounded-xl border border-neutral-200 bg-neutral-100/50 text-[10px] font-black uppercase tracking-widest text-neutral-500 hover:bg-neutral-100 cursor-pointer transition-all active:scale-95 shadow-sm flex flex-col items-center justify-center gap-0.5 leading-tight`}
+                                        >
+                                          <span>Venue Details</span>
+                                          <span className="text-[8px] font-bold opacity-70">
+                                            {status.timeToStart === "Active Now" ? "Check-in is Active" : `Check-in ${status.timeToStart}`}
+                                          </span>
+                                        </button>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
-                                {/* Right QR Stub */}
-                                <div className="w-full md:w-[130px] p-4 flex flex-col items-center justify-center bg-white shrink-0 border-l border-neutral-100">
-                                  <div className="p-1 border border-neutral-200 rounded-lg shadow-sm bg-neutral-50/50">
-                                    <QRCodeSVG 
-                                      value={tkt.qrCode || `VAYO-TKT-${tkt.id}`} 
-                                      size={64}
-                                      level="M"
-                                      includeMargin={false}
-                                    />
-                                  </div>
-                                  <span className="text-[8.5px] font-bold text-neutral-500 uppercase tracking-widest mt-2">{tkt.qrCode}</span>
-                                  <button onClick={() => triggerToast('Showing full-screen ticket for verification!')} className={`mt-1.5 text-[9px] font-bold ${theme.textAccent} hover:underline cursor-pointer`}>Show Full QR</button>
-                                </div>
+                                {tkt.lat && tkt.lng && (
+                                  <LocationMap lat={tkt.lat} lng={tkt.lng} venue={tkt.locationPin} />
+                                )}
                               </div>
-                              {tkt.lat && tkt.lng && (
-                                <LocationMap lat={tkt.lat} lng={tkt.lng} venue={tkt.locationPin} />
-                              )}
-                            </div>
-                          ))
+                            )})}
+                          </div>
                         ) : (
-                          <div className="py-10 border-2 border-dashed border-neutral-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-2 bg-neutral-50/30">
-                            <Zap className="w-8 h-8 text-neutral-200" />
-                            <div className="text-xs font-bold text-neutral-400">No Active Tickets</div>
-                            <p className="text-[10px] text-neutral-300 max-w-[200px]">Once you RSVP to an event and it's approved, your live ticket will appear here.</p>
+                          <div className="py-12 border-2 border-dashed border-neutral-200 rounded-2xl flex flex-col items-center justify-center text-center space-y-3 bg-neutral-50/50">
+                            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm border border-neutral-100">
+                              <Zap className="w-6 h-6 text-neutral-300" />
+                            </div>
+                            <div className="text-sm font-extrabold text-neutral-800">No Active Tickets</div>
+                            <p className="text-[11px] text-neutral-500 max-w-[220px] font-medium leading-relaxed">Once your RSVP is approved, your live entry ticket will appear here.</p>
                           </div>
                         )}
                       </div>
@@ -2358,8 +2630,8 @@ function ProfileContent() {
 
                     {/* Event Journey Stepper */}
                     <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 font-sans">Event Journey</h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <h5 className="text-[12px] font-bold text-blue-600 uppercase tracking-widest mb-4 font-sans">Event Journey</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {userTickets.length > 0 ? (
                           userTickets.slice(0, 2).map((tkt, i) => {
                             const eventStatus = tkt.status || 'Registered';
@@ -2375,49 +2647,74 @@ function ProfileContent() {
                             const accentColor = isConfirmed ? '#10b981' : '#6366f1';
 
                             return (
-                              <div key={i} className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm space-y-4">
+                              <div key={i} className="rounded-2xl border border-neutral-100 bg-white p-5 shadow-sm space-y-5">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-extrabold text-neutral-800 truncate max-w-[150px]">{tkt.event_title}</span>
-                                  <span className="text-[9.5px] text-neutral-400 font-medium">Progress</span>
+                                  <span className="text-[13px] font-extrabold text-neutral-800 truncate max-w-[160px]">{tkt.event_title}</span>
+                                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Status</span>
                                 </div>
 
                                 {/* Stepper display */}
-                                <div className="flex items-center justify-between relative px-2 pt-1">
-                                  <div className="absolute top-[13px] left-8 right-8 h-0.5 bg-neutral-100 z-0">
-                                    <div className="h-full transition-all duration-500"
+                                <div className="flex flex-col gap-5 relative pl-4 py-1.5 sm:hidden">
+                                  <div className="absolute left-[13px] top-3 bottom-3 w-0.5 bg-neutral-100 z-0">
+                                    <div className="h-full transition-all duration-700 ease-out"
                                       style={{
-                                        width: stepIdx === 2 ? '100%' : stepIdx === 1 ? '50%' : '0%',
+                                        height: stepIdx === 2 ? '100%' : stepIdx === 1 ? '50%' : '0%',
                                         backgroundColor: accentColor
                                       }} />
                                   </div>
-
                                   {steps.map((label, step) => {
                                     const isCurrent = step === stepIdx;
                                     const isDone = step <= stepIdx;
                                     return (
-                                      <div key={step} className="flex flex-col items-center relative z-10">
-                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-bold transition-all duration-300 bg-white ${isDone ? '' : 'border-neutral-200 text-neutral-400'}`}
-                                          style={isDone ? { borderColor: accentColor, backgroundColor: accentColor, color: '#fff' } : isCurrent ? { borderColor: accentColor, color: accentColor } : {}}>
+                                      <div key={step} className="flex items-center gap-3.5 relative z-10 text-left">
+                                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-black transition-all duration-500 bg-white shrink-0 ${isDone ? '' : 'border-neutral-200 text-neutral-400'}`}
+                                          style={isDone ? { borderColor: accentColor, backgroundColor: accentColor, color: '#fff' } : isCurrent ? { borderColor: accentColor, color: accentColor, borderWidth: '2px' } : {}}>
                                           {isDone ? '✓' : step + 1}
                                         </div>
-                                        <span className={`text-[7.5px] font-extrabold uppercase tracking-wider mt-1.5 transition-colors duration-300 ${isDone ? 'text-neutral-700' : 'text-neutral-400'}`}>{label}</span>
+                                        <div className="flex flex-col">
+                                          <span className={`text-[10px] font-black uppercase tracking-wider transition-colors duration-500 ${isDone ? 'text-neutral-700' : 'text-neutral-500'}`}>{label}</span>
+                                          {isCurrent && <span className="text-[9px] text-neutral-500 font-bold uppercase mt-0.5">Current Phase</span>}
+                                        </div>
                                       </div>
                                     )
                                   })}
                                 </div>
 
-                                <div className="flex items-center justify-between pt-1">
-                                  <span className="text-[9px] text-neutral-400 font-medium">Latest Status</span>
-                                  <span className="text-[9.5px] font-black uppercase" style={{ color: accentColor }}>{eventStatus}</span>
+                                <div className="hidden sm:flex items-center justify-between relative px-3 pt-1">
+                                  <div className="absolute top-[14px] left-10 right-10 h-0.5 bg-neutral-100 z-0">
+                                    <div className="h-full transition-all duration-700 ease-out"
+                                      style={{
+                                        width: stepIdx === 2 ? '100%' : stepIdx === 1 ? '50%' : '0%',
+                                        backgroundColor: accentColor
+                                      }} />
+                                  </div>
+                                  {steps.map((label, step) => {
+                                    const isCurrent = step === stepIdx;
+                                    const isDone = step <= stepIdx;
+                                    return (
+                                      <div key={step} className="flex flex-col items-center relative z-10">
+                                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-black transition-all duration-500 bg-white ${isDone ? '' : 'border-neutral-200 text-neutral-400'}`}
+                                          style={isDone ? { borderColor: accentColor, backgroundColor: accentColor, color: '#fff' } : isCurrent ? { borderColor: accentColor, color: accentColor, borderWidth: '2px' } : {}}>
+                                          {isDone ? '✓' : step + 1}
+                                        </div>
+                                        <span className={`text-[10px] font-black uppercase tracking-wider mt-2.5 transition-colors duration-500 ${isDone ? 'text-neutral-700' : 'text-neutral-500'}`}>{label}</span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-neutral-50">
+                                  <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Latest Update</span>
+                                  <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: accentColor }}>{eventStatus}</span>
                                 </div>
                               </div>
                             )
                           })
                         ) : (
-                          <div className="col-span-full py-8 border-2 border-dashed border-neutral-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-2">
-                             <Calendar className="w-8 h-8 text-neutral-200" />
-                             <div className="text-xs font-bold text-neutral-400">No Active Event Journey</div>
-                             <p className="text-[10px] text-neutral-300 max-w-[200px]">RSVP to an upcoming mixer to track your ticket status here.</p>
+                          <div className="col-span-full py-10 border-2 border-dashed border-neutral-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-3 bg-neutral-50/20">
+                             <Calendar className="w-10 h-10 text-neutral-200" />
+                             <div className="text-sm font-bold text-neutral-400">No Journey Trackers</div>
+                             <p className="text-[11px] text-neutral-400 max-w-[240px] leading-relaxed">Track the real-time status of your mixer applications and registrations here.</p>
                           </div>
                         )}
                       </div>
@@ -2427,15 +2724,15 @@ function ProfileContent() {
 
                     {/* Past Timeline */}
                     <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 font-sans">Past Timeline</h5>
-                      <div className="relative border-l border-neutral-100/80 ml-2 pl-4 space-y-4 pt-1">
+                      <h5 className="text-[12px] font-bold text-blue-600 uppercase tracking-widest mb-4 font-sans">Past Timeline</h5>
+                      <div className="relative border-l-2 border-neutral-100 ml-2.5 pl-6 space-y-6 pt-1">
                         {(currentPersona.pastTimeline || []).map((past, i) => (
                           <div key={i} className="relative">
-                            <span className="absolute left-[-21px] top-1 w-2.5 h-2.5 rounded-full border border-white shadow-sm" style={{ background: theme.accent }} />
+                            <span className="absolute left-[-32px] top-1 w-3.5 h-3.5 rounded-full border-2 border-white shadow-md transition-transform hover:scale-125" style={{ background: theme.accent }} />
                             <div className="leading-tight">
-                              <span className="text-[9.5px] text-neutral-400 font-medium">{past.date}</span>
-                              <div className="text-xs font-extrabold text-neutral-800 mt-0.5">{past.name}</div>
-                              <div className="flex gap-2 text-[9.5px] text-neutral-400 font-semibold mt-0.5">
+                              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{past.date}</span>
+                              <div className="text-sm font-black text-neutral-800 mt-1">{past.name}</div>
+                              <div className="flex gap-2 text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1 opacity-70">
                                 <span>{past.category}</span>
                               </div>
                             </div>
@@ -2470,7 +2767,7 @@ function ProfileContent() {
                           { key: 'confirm', label: 'Confirm New Password', placeholder: 'Re-enter new password' },
                         ].map((field) => (
                           <div key={field.key} className="space-y-1">
-                            <label className="text-[9.5px] font-bold text-neutral-400 uppercase tracking-wider">{field.label}</label>
+                            <label className="text-[10.5px] font-bold text-neutral-500 uppercase tracking-wider">{field.label}</label>
                             <div className="relative flex items-center">
                               <input
                                 type={showPwd[field.key] ? 'text' : 'password'}
@@ -2515,7 +2812,7 @@ function ProfileContent() {
                           <div key={i} className="flex items-center justify-between px-4 py-3.5">
                             <div className="flex-1 mr-4">
                               <div className="text-[11.5px] font-bold text-neutral-700">{item.label}</div>
-                              <div className="text-[9.5px] text-neutral-400 font-medium mt-0.5">{item.desc}</div>
+                              <div className="text-[10.5px] text-neutral-500 font-medium mt-0.5">{item.desc}</div>
                             </div>
                             <div className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-colors cursor-not-allowed ${item.enabled ? theme.bgAccent : 'bg-neutral-200'}`}>
                               <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${item.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -2534,7 +2831,7 @@ function ProfileContent() {
                       <div className="p-4 flex items-center justify-between gap-4">
                         <div>
                           <div className="text-[11.5px] font-bold text-neutral-700">Deactivate Account</div>
-                          <div className="text-[9.5px] text-neutral-400 font-medium mt-0.5">Temporarily hide your profile from the community</div>
+                          <div className="text-[10.5px] text-neutral-500 font-medium mt-0.5">Temporarily hide your profile from the community</div>
                         </div>
                         <button
                           onClick={() => triggerToast('Account deactivation is disabled in demo mode')}
@@ -2553,7 +2850,8 @@ function ProfileContent() {
           </div>
         </div>
 
-        <div className="border-t border-white/30 w-full pt-4 mb-16" />
+        <div className="border-t border-white/30 w-full pt-4 mb-24 sm:mb-16" />
+        <div className="h-20 sm:hidden" />
 
         {/* ═══ MOBILE BOTTOM NAVIGATION ═══ */}
         <div className="md:hidden fixed bottom-5 left-4 right-4 z-40 bg-white/80 backdrop-blur-lg border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.08)] rounded-3xl px-3 py-2 flex items-center justify-around">
@@ -2584,6 +2882,95 @@ function ProfileContent() {
             <span className="text-rose-400 font-bold">Log out</span>
           </button>
         </div>
+
+        {/* ═══ CHECK-IN / VENUE DETAILS MODAL ═══ */}
+        {checkInModalEvent && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 relative border border-neutral-100">
+              <button 
+                onClick={() => setCheckInModalEvent(null)}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-neutral-100 text-neutral-500 rounded-full hover:bg-neutral-200 transition-colors z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              
+              <div className="p-6 md:p-8 space-y-6">
+                <div className="space-y-2 text-center pt-2">
+                  <div className="w-12 h-12 mx-auto bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shadow-inner mb-4">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-black text-neutral-800 leading-tight">{checkInModalEvent.name || checkInModalEvent.event_title}</h3>
+                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">{checkInModalEvent.date || checkInModalEvent.event_date}</p>
+                </div>
+
+                <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-100 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0">
+                      <MapPin className="w-4 h-4 text-neutral-400" />
+                    </div>
+                    <div className="pt-1">
+                      <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1">Venue Destination</div>
+                      <div className="text-sm font-bold text-neutral-700">{checkInModalEvent.locationPin || checkInModalEvent.venue || "TBD"}</div>
+                    </div>
+                  </div>
+                  {(checkInModalEvent.lat || checkInModalEvent.latitude) && (
+                    <a 
+                      href={`https://www.google.com/maps/search/?api=1&query=${checkInModalEvent.lat || checkInModalEvent.latitude},${checkInModalEvent.lng || checkInModalEvent.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full mt-2 py-3 rounded-xl bg-blue-500 text-white text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm hover:bg-blue-600 transition-colors active:scale-95"
+                    >
+                      Open in Maps <ChevronRight className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+
+                {checkInModalEvent.error && (
+                  <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                    <div className="text-[11px] text-red-600 font-semibold leading-relaxed">
+                      {checkInModalEvent.error}
+                    </div>
+                  </div>
+                )}
+                
+                {(() => {
+                  const status = getCheckInStatus(checkInModalEvent.date || checkInModalEvent.event_date);
+                  if (status.available) {
+                    return (
+                      <button 
+                        onClick={() => handleCheckIn(checkInModalEvent, sessionEmail)}
+                        disabled={isVerifyingLocation}
+                        className={`w-full py-4 rounded-2xl border-2 border-emerald-500 bg-emerald-500 text-white text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 hover:border-emerald-600 cursor-pointer transition-all active:scale-95 ${isVerifyingLocation ? 'opacity-80 cursor-wait' : ''}`}
+                      >
+                        {isVerifyingLocation ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                        {isVerifyingLocation ? "Verifying GPS..." : "Verify Attendance Now"}
+                      </button>
+                    );
+                  }
+                  
+                  if (status.timeToStart === "Event Ended") {
+                    return (
+                      <div className="w-full py-4 rounded-2xl border-2 border-neutral-200 bg-neutral-100 text-neutral-400 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                        Event Has Ended
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="text-center space-y-1 pt-2">
+                      <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                        {status.timeToStart === "Active Now" ? "Check-in is" : "Check-in unlocks in"}
+                      </div>
+                      <div className="text-lg font-black text-neutral-700">{status.timeToStart}</div>
+                    </div>
+                  );
+                })()}
+
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
