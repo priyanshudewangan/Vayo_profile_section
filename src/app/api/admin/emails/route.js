@@ -12,6 +12,16 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized access." }, { status: 401 });
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || supabaseUrl.includes("placeholder") || !supabaseAnonKey || supabaseAnonKey.includes("placeholder")) {
+      return NextResponse.json(
+        { error: "Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY) are missing or misconfigured in your deployment environment." },
+        { status: 500 }
+      );
+    }
+
     // Fetch waitlist details from Supabase
     const { data: waitlistData, error: dbError } = await supabase
       .from("waitlist")
@@ -32,7 +42,7 @@ export async function GET(request) {
   } catch (error) {
     console.error("Admin Fetch Error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch waitlist emails." },
+      { error: `Failed to fetch waitlist emails: ${error.message || error}` },
       { status: 500 }
     );
   }

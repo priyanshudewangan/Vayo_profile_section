@@ -25,7 +25,12 @@ export const useAdminAuth = () => {
         },
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        throw new Error(`Server returned non-JSON response (HTTP ${response.status}).`);
+      }
 
       if (response.ok) {
         setIsAuthenticated(true);
@@ -38,8 +43,8 @@ export const useAdminAuth = () => {
         return false;
       }
     } catch (err) {
-      setAuthError("Failed to connect to database.");
-      addToast("Failed to connect to database.", "error");
+      setAuthError(err.message || "Failed to connect to database.");
+      addToast(err.message || "Failed to connect to database.", "error");
       return false;
     } finally {
       setIsLoading(false);
