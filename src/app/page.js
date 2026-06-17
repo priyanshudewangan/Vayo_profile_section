@@ -2,17 +2,34 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import EventShowcase from "@/components/EventShowcase";
 
 export default function Home() {
+  return (
+    <React.Suspense fallback={null}>
+      <HomeContent />
+    </React.Suspense>
+  );
+}
+
+function HomeContent() {
   const [email, setEmail] = useState("");
   const [bottomEmail, setBottomEmail] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const emailInputRef = useRef(null);
 
   // Navigation loading feedback state
   const [isNavigating, setIsNavigating] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("action") === "login") {
+      emailInputRef.current?.focus();
+      emailInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [searchParams]);
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
 
@@ -193,6 +210,12 @@ export default function Home() {
     router.push("/join");
   };
 
+  const handleLoginClick = (e) => {
+    e.preventDefault();
+    emailInputRef.current?.focus();
+    emailInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   const handleScrollToFeatures = () => {
     document.getElementById("vayo-way")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -206,7 +229,13 @@ export default function Home() {
         <Link href="/" className="flex items-center decoration-none px-3.5 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/8 shadow-lg hover:bg-white/10 hover:border-white/20 transition-all duration-300 group">
           <Image src="/assets/vayo-logo.png" alt="VAYO Logo" width={90} height={24} className="h-5 md:h-6 w-auto group-hover:scale-105 group-hover:brightness-110 transition-all duration-300" priority />
         </Link>
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLoginClick}
+            className="hidden md:flex items-center justify-center px-5 py-2.5 rounded-full bg-white/10 border border-white/20 text-white text-sm font-bold hover:bg-white/20 transition-all duration-300 cursor-pointer"
+          >
+            Login
+          </button>
           <button
             onClick={handleNavJoinClick}
             disabled={isNavigating}
@@ -245,6 +274,7 @@ export default function Home() {
 
           <form onSubmit={handleEmailSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full max-w-[480px] bg-white/5 backdrop-blur-3xl border border-white/10 rounded-2xl sm:rounded-full p-2 sm:p-1 pl-4 sm:pl-5 shadow-[0_16px_40px_rgba(0,0,0,0.4)] transition-all duration-300 focus-within:border-indigo-500/40 focus-within:shadow-[0_16px_40px_rgba(0,0,0,0.4),0_0_20px_rgba(99,102,241,0.15)] mt-4">
             <input
+              ref={emailInputRef}
               type="email"
               placeholder="Enter your email address"
               className="flex-1 bg-transparent border-0 outline-0 text-sm font-normal text-white py-2.5 sm:py-2 w-full placeholder:text-violet-200/40"
