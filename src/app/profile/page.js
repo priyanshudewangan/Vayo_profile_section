@@ -475,9 +475,9 @@ const makeUserPersona = (user, fastApiProfile = null) => {
     ],
     socialLinks: {
       instagram: user.instagram || '',
-      linkedin: '',
-      twitter: '',
-      github: ''
+      linkedin: user.linkedin || '',
+      twitter: user.twitter || '',
+      github: user.github || ''
     },
     bizzSkills: (fastApiProfile && fastApiProfile.bizz_skills) || ['Onboarding', 'Community Build'],
     referral: { code: 'VAYO-WAIT-LIST', referredCount: 0, xpEarned: 0, milestone: 5 }
@@ -1951,9 +1951,57 @@ function ProfileContent() {
                                Active
                             </span>
                           </div>
-                          <p className="text-xs text-neutral-500 font-semibold leading-relaxed">
-                            {activeMode === 'social' ? displayPersona.socialBio : activeMode === 'bff' ? displayPersona.bffBio : displayPersona.bizzBio}
-                          </p>
+                          {isEditing ? (
+                            <div className="space-y-2.5 pt-1">
+                              <div>
+                                <label className="text-[10px] font-extrabold uppercase text-neutral-400 tracking-wider">Bio</label>
+                                <textarea 
+                                  value={editDraft.bio} 
+                                  onChange={e => setEditDraft(p => ({ ...p, bio: e.target.value }))} 
+                                  rows={3}
+                                  className={`w-full text-xs border border-neutral-200/85 rounded-xl px-3 py-2 mt-1 resize-none focus:outline-none focus:ring-1 focus:ring-sky-500/30 bg-neutral-50/30`}
+                                  placeholder="Write your bio…" 
+                                />
+                              </div>
+                              
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-extrabold uppercase text-neutral-400 tracking-wider">Social Channels</label>
+                                <div className="grid grid-cols-1 gap-1.5">
+                                  <div className="flex items-center gap-1.5 border border-neutral-200/85 rounded-xl px-2.5 py-1.5 bg-neutral-50/30">
+                                    <span className="text-[9px] font-extrabold uppercase text-neutral-500 w-16">Instagram</span>
+                                    <input 
+                                      value={editDraft.instagram}
+                                      onChange={e => setEditDraft(p => ({ ...p, instagram: e.target.value }))}
+                                      className="text-xs flex-1 outline-none bg-transparent min-w-0" 
+                                      placeholder="@handle" 
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1.5 border border-neutral-200/85 rounded-xl px-2.5 py-1.5 bg-neutral-50/30">
+                                    <span className="text-[9px] font-extrabold uppercase text-neutral-500 w-16">Twitter / X</span>
+                                    <input 
+                                      value={editDraft.twitter}
+                                      onChange={e => setEditDraft(p => ({ ...p, twitter: e.target.value }))}
+                                      className="text-xs flex-1 outline-none bg-transparent min-w-0" 
+                                      placeholder="@handle" 
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1.5 border border-neutral-200/85 rounded-xl px-2.5 py-1.5 bg-neutral-50/30">
+                                    <span className="text-[9px] font-extrabold uppercase text-neutral-500 w-16">LinkedIn</span>
+                                    <input 
+                                      value={editDraft.linkedin}
+                                      onChange={e => setEditDraft(p => ({ ...p, linkedin: e.target.value }))}
+                                      className="text-xs flex-1 outline-none bg-transparent min-w-0" 
+                                      placeholder="username" 
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-neutral-500 font-semibold leading-relaxed">
+                              {activeMode === 'social' ? displayPersona.socialBio : activeMode === 'bff' ? displayPersona.bffBio : displayPersona.bizzBio}
+                            </p>
+                          )}
                         </div>
 
                         {/* Stats Bar */}
