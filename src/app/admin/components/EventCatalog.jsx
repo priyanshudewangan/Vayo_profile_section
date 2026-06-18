@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+"use client";
+import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { CalendarPlus, Plus, Calendar, MapPin, Trash2, Users, CheckCircle2 } from "lucide-react";
+import { CalendarPlus, Plus, Calendar, MapPin, Trash2, Users, CheckCircle2, UserCheck } from "lucide-react";
+import { getAvatarGradient, getEmailInitials } from "../lib/utils";
 import { HOST_OPTIONS, CATEGORY_OPTIONS, IMAGE_PRESETS } from "../lib/constants";
 
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), { ssr: false });
@@ -46,6 +48,46 @@ export const EventCatalog = ({
 }) => {
   const [hideCancelled, setHideCancelled] = useState(true);
   const displayedEvents = (events || []).filter(evt => !hideCancelled || evt.status !== "cancelled");
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [editingLocationId, setEditingLocationId] = useState(null);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [attendedByEvent, setAttendedByEvent] = useState({});
+
+  useEffect(() => {
+    if (!events || events.filter(e => e.checked_in_count > 0).length === 0) return;
+    fetch("/api/checkins")
+      .then(r => r.ok ? r.json() : { checkins: [] })
+      .then(data => {
+        const map = {};
+        for (const r of (data.checkins || [])) {
+          if (!map[r.event_id]) map[r.event_id] = [];
+          map[r.event_id].push(r);
+        }
+        setAttendedByEvent(map);
+      })
+      .catch(() => {});
+  }, [events]);
+
+  const handleSaveLocation = async (eventId, { venue, lat, lng }) => {
+    setIsSavingLocation(true);
+    try {
+      const res = await fetch("/api/events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId, venue, lat, lng })
+      });
+      if (res.ok) {
+        addToast("Location updated!", "success");
+        setEditingLocationId(null);
+      } else {
+        addToast("Failed to update location", "error");
+      }
+    } catch {
+      addToast("Network error", "error");
+    } finally {
+      setIsSavingLocation(false);
+    }
+  };
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-10 items-start animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 md:pb-0">
@@ -429,8 +471,8 @@ export const EventCatalog = ({
               });
 
               return (
+                <React.Fragment key={evt.event_id}>
                 <div
-                  key={evt.event_id}
                   className={`bg-white border-2 ${isCancelled ? "border-rose-200/50 opacity-80" : "border-vayo-sky/40 hover:border-vayo-blue/60"} rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-6 flex flex-col sm:flex-row gap-5 md:gap-6 items-center shadow-[0_4px_24px_rgba(72,147,198,0.04)] hover:shadow-xl hover:-translate-y-1 transition-all duration-500 relative group/card overflow-hidden`}
                 >
                   <div className="w-full sm:w-24 sm:h-24 rounded-2xl md:rounded-3xl overflow-hidden shrink-0 border-2 border-vayo-sky/30 relative bg-slate-100 shadow-md aspect-video sm:aspect-square">
@@ -509,6 +551,49 @@ export const EventCatalog = ({
                     )}
                   </div>
                 </div>
+
+                {/* GPS Check-in strip — avatar stack + count, click opens modal */}
+                {(attendedByEvent[evt.event_id] || []).length > 0 && (() => {
+                  const attended = attendedByEvent[evt.event_id];
+                  const preview = attended.slice(0, 4);
+                  const extra = attended.length - preview.length;
+                  return (
+                    <button
+                      onClick={() => handleViewAttendees(evt)}
+                      className="w-full flex items-center gap-3 bg-teal-50 border-2 border-t-0 border-teal-200 rounded-b-[2rem] md:rounded-b-[2.5rem] px-5 md:px-6 py-3 -mt-6 hover:bg-teal-100 transition-colors cursor-pointer group"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                      <span className="text-[9px] font-black text-teal-700 uppercase tracking-[2px] shrink-0">GPS Check-ins</span>
+                      <div className="flex items-center -space-x-2 ml-1">
+                        {preview.map(r => (
+                          <div key={r.id} title={r.user_email} className={`w-6 h-6 rounded-full bg-gradient-to-br ${getAvatarGradient(r.user_email)} flex items-center justify-center text-white text-[8px] font-black ring-2 ring-teal-50 shrink-0`}>
+                            {getEmailInitials(r.user_email)}
+                          </div>
+                        ))}
+                        {extra > 0 && (
+                          <div className="w-6 h-6 rounded-full bg-teal-200 flex items-center justify-center text-teal-700 text-[8px] font-black ring-2 ring-teal-50 shrink-0">
+                            +{extra}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[9px] font-bold text-teal-600 ml-1">{attended.length} attended</span>
+                      <span className="ml-auto text-[9px] text-teal-400 font-semibold group-hover:text-teal-600 transition-colors">View →</span>
+                    </button>
+                  );
+                })()}
+
+                {/* Inline Location Editor */}
+                {editingLocationId === evt.event_id && (
+                  <div className="bg-white border-2 border-t-0 border-vayo-sky/40 rounded-b-[2rem] md:rounded-b-[2.5rem] px-5 md:px-6 pb-5 md:pb-6 pt-4 space-y-3 -mt-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-vayo-blue uppercase tracking-[2px]">📍 Update Location</span>
+                      {evt.lat && <span className="text-[9px] text-emerald-600 font-bold">Pinned: {Number(evt.lat).toFixed(4)}, {Number(evt.lng).toFixed(4)}</span>}
+                    </div>
+                    <LocationPicker onChange={(loc) => handleSaveLocation(evt.event_id, loc)} />
+                    {isSavingLocation && <p className="text-[10px] text-vayo-blue font-bold animate-pulse">Saving…</p>}
+                  </div>
+                )}
+                </React.Fragment>
               );
             })}
           </div>

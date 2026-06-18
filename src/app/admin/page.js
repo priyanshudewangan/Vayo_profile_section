@@ -72,6 +72,17 @@ export default function AdminDashboard() {
     }
   }, [isAuthenticated]);
 
+  // Auto-refresh events + RSVPs every 10s when on those sections (picks up live check-ins)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (currentSection !== "events" && currentSection !== "rsvps") return;
+    const id = setInterval(() => {
+      fetchEvents();
+      fetchRSVPs(password);
+    }, 10000);
+    return () => clearInterval(id);
+  }, [isAuthenticated, currentSection]);
+
   // Handle viewing attendees
   const handleViewAttendees = (evt) => {
     setAttendeeModalEvent(evt);
