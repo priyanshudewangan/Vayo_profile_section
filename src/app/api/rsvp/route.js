@@ -68,7 +68,7 @@ export async function GET(request) {
       try {
         const { data: eventsData, error: eventsError } = await supabase
           .from("events")
-          .select("event_id, lat, lng, latitude, longitude, venue, status, cover_image_url")
+          .select("event_id, lat, lng, latitude, longitude, venue, status, cover_image_url, event_date")
           .in("event_id", eventIds);
           
         if (!eventsError) {
@@ -80,7 +80,8 @@ export async function GET(request) {
                 lng: evt.lng !== undefined && evt.lng !== null ? evt.lng : evt.longitude,
                 venue: evt.venue,
                 status: evt.status,
-                image: evt.cover_image_url
+                image: evt.cover_image_url,
+                event_date: evt.event_date
               };
             });
           }
@@ -108,7 +109,8 @@ export async function GET(request) {
                 lng: evt.longitude !== undefined && evt.longitude !== null ? evt.longitude : evt.lng,
                 venue: evt.venue,
                 status: evt.status,
-                image: evt.cover_image_url || evt.image
+                image: evt.cover_image_url || evt.image,
+                event_date: evt.event_date || evt.date
               };
               eventsTableExists = true; // A valid events database source is active
             }
@@ -135,7 +137,8 @@ export async function GET(request) {
                   lng: evt.lng !== undefined && evt.lng !== null ? evt.lng : evt.longitude,
                   venue: evt.venue,
                   status: evt.status,
-                  image: evt.cover_image_url || evt.image
+                  image: evt.cover_image_url || evt.image,
+                  event_date: evt.event_date || evt.date
                 };
               }
             });
@@ -149,7 +152,7 @@ export async function GET(request) {
       data.forEach(tkt => {
         const evtCoords = eventsMap[tkt.event_id];
         // Strict Filter: Skip RSVP ticket if the event is not found or is cancelled
-        if (!evtCoords || evtCoords.status === "cancelled") {
+        if (!evtCoords || (evtCoords.status || "").toLowerCase() === "cancelled" || (evtCoords.status || "").toLowerCase() === "canceled") {
           return;
         }
         
@@ -158,7 +161,8 @@ export async function GET(request) {
           lat: evtCoords.lat !== undefined && evtCoords.lat !== null ? evtCoords.lat : 12.9716, // Default Bangalore fallback
           lng: evtCoords.lng !== undefined && evtCoords.lng !== null ? evtCoords.lng : 77.6212, // Default Bangalore fallback
           event_location: evtCoords.venue || tkt.event_location,
-          image: evtCoords.image || "/assets/events/something.jpg"
+          image: evtCoords.image || "/assets/events/something.jpg",
+          event_date: evtCoords.event_date || tkt.event_date
         });
       });
     } else {

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import { CalendarPlus, Plus, Calendar, MapPin, Trash2, Users, CheckCircle2 } from "lucide-react";
 import { HOST_OPTIONS, CATEGORY_OPTIONS, IMAGE_PRESETS } from "../lib/constants";
@@ -15,6 +15,7 @@ export const EventCatalog = ({
   isLoadingEvents,
   handleCreateEventSubmit,
   handleCancelEvent,
+  handleDeleteEvent,
   isSubmittingEvent,
   createdEventData,
   setCreatedEventData,
@@ -43,6 +44,9 @@ export const EventCatalog = ({
   handleImageUpload,
   handleRemoveImage
 }) => {
+  const [hideCancelled, setHideCancelled] = useState(true);
+  const displayedEvents = (events || []).filter(evt => !hideCancelled || evt.status !== "cancelled");
+
   return (
     <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-10 items-start animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 md:pb-0">
       {/* Left Column: Publish Event Form (Col span 5) */}
@@ -374,8 +378,20 @@ export const EventCatalog = ({
               Manage mixers and track registrant counts.
             </p>
           </div>
-          <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[8px] md:text-[9px] font-black text-white uppercase tracking-[2px] shrink-0">
-             <span className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> DB LIVE
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => setHideCancelled(!hideCancelled)}
+              className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all duration-300 cursor-pointer ${
+                hideCancelled
+                  ? "bg-rose-500/20 border-rose-500/30 text-rose-300 hover:bg-rose-500/35"
+                  : "bg-white/10 border-white/10 text-white/70 hover:bg-white/15"
+              }`}
+            >
+              {hideCancelled ? "Show Cancelled" : "Hide Cancelled"}
+            </button>
+            <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[8px] md:text-[9px] font-black text-white uppercase tracking-[2px]">
+               <span className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> DB LIVE
+            </div>
           </div>
         </div>
 
@@ -389,7 +405,7 @@ export const EventCatalog = ({
             </div>
             <span className="text-[9px] md:text-[10px] text-vayo-alice tracking-[3px] md:tracking-[4px] uppercase font-black animate-pulse opacity-80">Synchronizing</span>
           </div>
-        ) : events.length === 0 ? (
+        ) : displayedEvents.length === 0 ? (
           <div className="py-20 md:py-40 text-center flex flex-col items-center justify-center gap-4 bg-white/5 backdrop-blur-md border-2 border-dashed border-white/10 rounded-[2rem] md:rounded-[3rem] shadow-xl mx-2">
             <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-vayo-sky/20 mb-2">
               <CalendarPlus className="w-8 h-8 md:w-10 md:h-10 opacity-20" />
@@ -401,7 +417,7 @@ export const EventCatalog = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:gap-5 max-h-[700px] md:max-h-[900px] overflow-y-auto pr-2 md:pr-3 scrollbar-vayo px-2 md:px-0">
-            {events.map((evt) => {
+            {displayedEvents.map((evt) => {
               const isCancelled = evt.status === "cancelled";
               const dateObj = new Date(evt.event_date);
               const formattedDate = dateObj.toLocaleDateString(undefined, {
@@ -456,8 +472,19 @@ export const EventCatalog = ({
 
                   <div className="flex flex-row sm:flex-col gap-2 md:gap-3 shrink-0 self-center sm:self-center justify-center w-full sm:w-auto mt-2 md:mt-0 pt-4 md:pt-0 border-t sm:border-t-0 border-slate-100">
                     {isCancelled ? (
-                      <div className="px-4 py-2 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black bg-rose-50 border-2 border-rose-200 text-rose-600 uppercase tracking-[2px] shadow-sm animate-in zoom-in-95">
-                        Cancelled
+                      <div className="flex items-center gap-2">
+                        <div className="px-4 py-2 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black bg-rose-50 border-2 border-rose-200 text-rose-600 uppercase tracking-[2px] shadow-sm animate-in zoom-in-95">
+                          Cancelled
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteEvent(evt.event_id, evt.host_id)}
+                          className="rounded-xl md:rounded-2xl bg-white hover:bg-rose-600 hover:text-white border-slate-200 hover:border-rose-600 transition-all duration-300 shadow-sm flex items-center justify-center p-2 h-9 w-9 text-slate-400 hover:text-white shrink-0 cursor-pointer"
+                          title="Delete Permanently"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        </Button>
                       </div>
                     ) : (
                       <>

@@ -5,6 +5,10 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+import EventStage from "@/components/profile/tabs/EventStage";
+import VibeProfile from "@/components/profile/tabs/VibeProfile";
+import SecurityTab from "@/components/profile/tabs/SecurityTab";
+
 const LocationMap = dynamic(() => import("@/components/LocationMap"), { ssr: false });
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -1808,7 +1812,7 @@ function ProfileContent() {
         </header>
 
         {/* ═══ MAIN CARD ═══ */}
-        <div className="bg-white/30 backdrop-blur-md rounded-[32px] border border-white/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] overflow-hidden mb-12">
+        <div className="bg-white/30 backdrop-blur-md rounded-[24px] sm:rounded-[32px] border border-white/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] overflow-hidden mb-12">
 
           {/* Card Header */}
           <div className="px-6 py-4 flex items-center justify-center border-b border-white/30 bg-white/10">
@@ -1816,7 +1820,7 @@ function ProfileContent() {
           </div>
 
           {/* Two-Column Layout */}
-          <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-6 p-4 md:p-6 min-w-0 w-full">
+          <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-6 p-3 sm:p-6 min-w-0 w-full">
 
             {/* ── SIDEBAR ── */}
             <aside className="hidden md:block w-full min-w-0 overflow-hidden md:space-y-2">
@@ -1845,7 +1849,7 @@ function ProfileContent() {
             </aside>
 
             {/* ── MAIN PANEL ── */}
-            <main className="bg-white border border-white/40 rounded-[32px] shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col min-h-[500px]">
+            <main className="bg-white border border-white/40 rounded-[24px] sm:rounded-[32px] shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col min-h-[500px]">
 
               {/* Panel Header */}
               <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
@@ -1876,58 +1880,141 @@ function ProfileContent() {
               </div>
 
               {/* Panel Body */}
-              <div className="p-6 flex-1">
+              <div className="p-4 sm:p-6 flex-1">
 
                 {/* ════════════════════ PROFILE TAB ════════════════════ */}
                 {activeSidebarTab === 'profile' && (
                   <div className="space-y-4 sm:space-y-6 animate-fade-in">
-
+                    
                     {/* Avatar + Info */}
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6">
-                      {/* GRADIENT RING AVATAR */}
-                      <div className="relative shrink-0">
-                        <div className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full p-[2.5px] sm:p-[3px] bg-gradient-to-br ${theme.gradient} shadow-xl`}>
-                          <div className="w-full h-full rounded-full overflow-hidden bg-neutral-900 border-2 border-white/80">
-                            <img src={currentPersona.image} alt={currentPersona.name} className="w-full h-full object-cover" />
+                    <div className="flex flex-col gap-4 sm:gap-6">
+                      <div className="flex flex-row items-center sm:items-start gap-4 sm:gap-6 text-left">
+                        {/* GRADIENT RING AVATAR */}
+                        <div className="relative shrink-0">
+                          <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-full p-[2px] sm:p-[3px] bg-gradient-to-br ${theme.gradient} shadow-md`}>
+                            <div className="w-full h-full rounded-full overflow-hidden bg-neutral-900 border border-white/80">
+                              <img src={currentPersona.image} alt={currentPersona.name} className="w-full h-full object-cover" />
+                            </div>
                           </div>
                         </div>
-                        <div className="absolute inset-[-4px] rounded-full border-2 opacity-25 transition-colors duration-500" style={{ borderColor: theme.accent }} />
-                      </div>
 
-                      <div className="flex-1 text-center sm:text-left space-y-2 min-w-0 w-full">
-                        <div className="flex flex-col sm:flex-row items-center gap-2 justify-center sm:justify-start">
-                          <h4 className="text-lg sm:text-xl font-extrabold text-neutral-800 tracking-tight leading-tight">{currentPersona.name}, {currentPersona.age}</h4>
-                          <div className="flex flex-wrap items-center gap-1.5 justify-center sm:justify-start">
-                            <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-800 text-[10px] sm:text-[11px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/20">
-                              <span className="inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500 animate-pulse" />
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5 justify-start">
+                            <h4 className="text-base sm:text-xl font-extrabold text-neutral-800 tracking-tight leading-tight">{currentPersona.name}, {currentPersona.age}</h4>
+                            <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-800 text-[9px] sm:text-[11px] font-extrabold px-1.5 py-0.5 rounded-full border border-emerald-500/20 shrink-0">
+                              <span className="inline-flex rounded-full h-1 w-1 bg-emerald-500 animate-pulse" />
                               Active
                             </span>
-                            <span className={`flex items-center gap-1 text-[10px] sm:text-[11px] font-extrabold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>
+                            <span className={`flex items-center gap-1 text-[9px] sm:text-[11px] font-extrabold px-1.5 py-0.5 rounded-full border ${theme.badgeBg}`}>
                               {activeMode === 'social' ? '🌐' : activeMode === 'bff' ? '💚' : '💼'}
                               {activeMode === 'social' ? 'Social' : activeMode === 'bff' ? 'BFF' : 'Bizz'}
                             </span>
                           </div>
+
+                          {!isEditing && Object.keys(displayPersona.socialLinks || {}).length > 0 && (
+                            <div className="flex items-center gap-1.5 pt-0.5">
+                              {displayPersona.socialLinks.instagram && (
+                                <a 
+                                  href={`https://instagram.com/${displayPersona.socialLinks.instagram.replace('@', '')}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  title={`@${displayPersona.socialLinks.instagram}`}
+                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
+                                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
+                                  </svg>
+                                </a>
+                              )}
+                              {displayPersona.socialLinks.linkedin && (
+                                <a 
+                                  href={`https://linkedin.com/in/${displayPersona.socialLinks.linkedin}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  title={displayPersona.socialLinks.linkedin}
+                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
+                                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" /><circle cx="4" cy="4" r="2" />
+                                  </svg>
+                                </a>
+                              )}
+                              {displayPersona.socialLinks.twitter && (
+                                <a 
+                                  href={`https://twitter.com/${displayPersona.socialLinks.twitter.replace('@', '')}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  title={`@${displayPersona.socialLinks.twitter}`}
+                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
+                                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                  </svg>
+                                </a>
+                              )}
+                              {displayPersona.socialLinks.github && (
+                                <a 
+                                  href={`https://github.com/${displayPersona.socialLinks.github}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  title={displayPersona.socialLinks.github}
+                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
+                                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                                  </svg>
+                                </a>
+                              )}
+                            </div>
+                          )}
                         </div>
 
+                        {/* Profile completeness donut (Desktop only) */}
+                        <div className="hidden sm:flex shrink-0 flex-col items-center gap-1.5 self-center sm:self-start sm:pt-1">
+                          <div className="relative w-14 h-14 group cursor-default">
+                            <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+                              <circle cx="28" cy="28" r="22" fill="none" stroke="#e5e7eb" strokeWidth="4.5" />
+                              <circle cx="28" cy="28" r="22" fill="none" stroke={theme.accent} strokeWidth="4.5"
+                                strokeDasharray={`${2 * Math.PI * 22}`}
+                                strokeDashoffset={`${2 * Math.PI * 22 * (1 - completenessScore / 100)}`}
+                                strokeLinecap="round" className="transition-all duration-700" />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className={`text-[12px] font-extrabold ${theme.textAccent}`}>{completenessScore}%</span>
+                            </div>
+                            <div className="absolute top-0 right-full mr-3 w-44 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                              <div className={`text-[10px] font-extrabold uppercase tracking-wider mb-2 ${theme.textAccent}`}>Profile Checklist</div>
+                              <div className="space-y-1">
+                                {completenessItems.map(item => (
+                                  <div key={item.label} className="flex items-center gap-1.5">
+                                    {item.done ? <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" /> : <span className="w-3 h-3 rounded-full border border-neutral-300 shrink-0 inline-block" />}
+                                    <span className={`text-[10px] font-medium ${item.done ? 'text-neutral-700' : 'text-neutral-400'}`}>{item.label}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Complete</span>
+                        </div>
+                      </div>
+
+                      {/* Info grid & bio */}
+                      <div className="space-y-2">
                         {/* Responsive Info Grid */}
-                        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-1.5 text-xs text-neutral-500 pt-2 border-t border-neutral-100 sm:border-t-0 mt-1">
-                          <div className="flex items-center justify-center sm:justify-start gap-1.5">
-                            <Phone className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                            <span className="font-semibold">+91 9845{currentPersona.id === 'maxim' ? '0 1202' : currentPersona.id === 'sarah' ? '1 3495' : currentPersona.id === 'daniel' ? '2 8593' : currentPersona.id === 'user-profile' ? '4 8392' : '3 9204'}</span>
+                        <div className="flex flex-row flex-wrap gap-x-3 gap-y-1.5 text-[11px] text-neutral-500 pt-2 border-t border-neutral-100/60">
+                          <div className="flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-neutral-400 shrink-0" />
+                            <span className="font-semibold text-neutral-700">+91 9845{currentPersona.id === 'maxim' ? '0 1202' : currentPersona.id === 'sarah' ? '1 3495' : currentPersona.id === 'daniel' ? '2 8593' : currentPersona.id === 'user-profile' ? '4 8392' : '3 9204'}</span>
                           </div>
-                          <div className="flex items-center justify-center sm:justify-start gap-1.5">
-                            <Mail className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                            <span className="text-blue-600 font-bold truncate max-w-[200px] hover:underline cursor-pointer">{currentPersona.name.toLowerCase()}@vayo.community</span>
+                          <div className="flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-neutral-400 shrink-0" />
+                            <span className="text-blue-600 font-bold truncate max-w-[150px] hover:underline cursor-pointer">{currentPersona.name.toLowerCase()}@vayo.community</span>
                           </div>
-                          <div className="flex items-center justify-center sm:justify-start gap-1.5 text-neutral-500">
-                            <MapPin className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                            <span>{currentPersona.location}</span>
+                          <div className="flex items-center gap-1 text-neutral-500">
+                            <MapPin className="w-3 h-3 text-neutral-400 shrink-0" />
+                            <span className="text-neutral-700">{currentPersona.location}</span>
                           </div>
                         </div>
 
-                        {isEditing ? (
-                          <div className="space-y-1.5 pt-1 max-w-sm text-left">
-                            <div className="grid grid-cols-2 gap-1.5">
+                        {isEditing && (
+                          <div className="space-y-2 pt-1">
+                            <div className="grid grid-cols-2 gap-1.5 max-w-sm">
                               {[['instagram', 'ig'], ['linkedin', 'li'], ['twitter', 'tw'], ['github', 'gh']].map(([key, short]) => (
                                 <div key={key} className="flex items-center gap-1 border rounded-xl px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
                                   <span className="text-[10px] font-extrabold uppercase text-neutral-500 w-5">{short}</span>
@@ -1938,7 +2025,7 @@ function ProfileContent() {
                               ))}
                             </div>
                             {activeMode === 'bizz' && (
-                              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                              <div className="grid grid-cols-2 gap-1.5 max-w-sm">
                                 <div className="flex items-center gap-1 border rounded-xl px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
                                   <span className="text-[10px] font-extrabold uppercase text-neutral-500 w-10">Role</span>
                                   <input value={editDraft.bizzRole}
@@ -1954,58 +2041,6 @@ function ProfileContent() {
                               </div>
                             )}
                           </div>
-                        ) : Object.keys(displayPersona.socialLinks || {}).length > 0 && (
-                          <div className="flex items-center justify-center sm:justify-start gap-1.5 pt-1">
-                            <span className="text-[10px] text-neutral-500 font-black uppercase tracking-wider">Socials:</span>
-                            {displayPersona.socialLinks.instagram && (
-                              <a 
-                                href={`https://instagram.com/${displayPersona.socialLinks.instagram.replace('@', '')}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                title={`@${displayPersona.socialLinks.instagram}`}
-                                className={`w-6 h-6 rounded-xl flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
-                                </svg>
-                              </a>
-                            )}
-                            {displayPersona.socialLinks.linkedin && (
-                              <a 
-                                href={`https://linkedin.com/in/${displayPersona.socialLinks.linkedin}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                title={displayPersona.socialLinks.linkedin}
-                                className={`w-6 h-6 rounded-xl flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" /><circle cx="4" cy="4" r="2" />
-                                </svg>
-                              </a>
-                            )}
-                            {displayPersona.socialLinks.twitter && (
-                              <a 
-                                href={`https://twitter.com/${displayPersona.socialLinks.twitter.replace('@', '')}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                title={`@${displayPersona.socialLinks.twitter}`}
-                                className={`w-6 h-6 rounded-xl flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                                </svg>
-                              </a>
-                            )}
-                            {displayPersona.socialLinks.github && (
-                              <a 
-                                href={`https://github.com/${displayPersona.socialLinks.github}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                title={displayPersona.socialLinks.github}
-                                className={`w-6 h-6 rounded-xl flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-                                </svg>
-                              </a>
-                            )}
-                          </div>
                         )}
 
                         {isEditing ? (
@@ -2013,38 +2048,10 @@ function ProfileContent() {
                             className={`w-full text-xs border rounded-xl px-3 py-2 mt-1 resize-none focus:outline-none focus:ring-2 bg-white ${theme.cardBorder}`}
                             placeholder="Write your bio…" />
                         ) : (
-                          <p className="text-xs text-neutral-650 italic font-medium pt-1 max-w-xl text-center sm:text-left leading-relaxed">
+                          <p className="text-xs text-neutral-655 italic font-semibold pt-1 max-w-xl text-left leading-relaxed">
                             &ldquo;{activeMode === 'social' ? displayPersona.socialBio : activeMode === 'bff' ? displayPersona.bffBio : displayPersona.bizzBio}&rdquo;
                           </p>
                         )}
-                      </div>
-
-                      {/* Profile completeness donut */}
-                      <div className="hidden sm:flex shrink-0 flex-col items-center gap-1.5 self-center sm:self-start sm:pt-1">
-                        <div className="relative w-14 h-14 group cursor-default">
-                          <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
-                            <circle cx="28" cy="28" r="22" fill="none" stroke="#e5e7eb" strokeWidth="4.5" />
-                            <circle cx="28" cy="28" r="22" fill="none" stroke={theme.accent} strokeWidth="4.5"
-                              strokeDasharray={`${2 * Math.PI * 22}`}
-                              strokeDashoffset={`${2 * Math.PI * 22 * (1 - completenessScore / 100)}`}
-                              strokeLinecap="round" className="transition-all duration-700" />
-                          </svg>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className={`text-[12px] font-extrabold ${theme.textAccent}`}>{completenessScore}%</span>
-                          </div>
-                          <div className="absolute top-0 right-full mr-3 w-44 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                            <div className={`text-[10px] font-extrabold uppercase tracking-wider mb-2 ${theme.textAccent}`}>Profile Checklist</div>
-                            <div className="space-y-1">
-                              {completenessItems.map(item => (
-                                <div key={item.label} className="flex items-center gap-1.5">
-                                  {item.done ? <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" /> : <span className="w-3 h-3 rounded-full border border-neutral-300 shrink-0 inline-block" />}
-                                  <span className={`text-[10px] font-medium ${item.done ? 'text-neutral-700' : 'text-neutral-400'}`}>{item.label}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Complete</span>
                       </div>
                     </div>
 
@@ -2746,102 +2753,12 @@ function ProfileContent() {
 
                 {/* ════════════════════ SECURITY TAB ════════════════════ */}
                 {activeSidebarTab === 'security' && (
-                  <div className="space-y-6 animate-fade-in">
-
-                    {/* Change Password Form */}
-                    <div className="rounded-2xl border border-neutral-100 bg-white shadow-sm overflow-hidden">
-                      <div className={`px-4 py-3 border-b border-neutral-100 ${theme.panelHeader} flex items-center justify-between`}>
-                        <div className="flex items-center gap-2">
-                          <Lock className={`w-3.5 h-3.5 ${theme.textAccent}`} />
-                          <span className="text-[11px] font-extrabold text-neutral-700 uppercase tracking-wider">Change Password</span>
-                        </div>
-                        <button onClick={() => setShowChangePwd(p => !p)} className={`text-[10px] font-bold ${theme.textAccent} hover:underline cursor-pointer`}>
-                          {showChangePwd ? 'Hide' : 'Show'}
-                        </button>
-                      </div>
-
-                      <div className={`p-4 space-y-3 transition-all ${showChangePwd ? 'block' : 'hidden'}`}>
-                        {[
-                          { key: 'current', label: 'Current Password', placeholder: 'Enter current password' },
-                          { key: 'next', label: 'New Password', placeholder: 'Minimum 8 characters' },
-                          { key: 'confirm', label: 'Confirm New Password', placeholder: 'Re-enter new password' },
-                        ].map((field) => (
-                          <div key={field.key} className="space-y-1">
-                            <label className="text-[10.5px] font-bold text-neutral-500 uppercase tracking-wider">{field.label}</label>
-                            <div className="relative flex items-center">
-                              <input
-                                type={showPwd[field.key] ? 'text' : 'password'}
-                                value={pwdForm[field.key]}
-                                onChange={e => setPwdForm(p => ({ ...p, [field.key]: e.target.value }))}
-                                className={`w-full text-xs border rounded-xl pl-3 pr-10 py-2.5 focus:outline-none focus:ring-2 bg-white ${theme.cardBorder}`}
-                                placeholder={field.placeholder}
-                              />
-                              <button
-                                onClick={() => setShowPwd(p => ({ ...p, [field.key]: !p[field.key] }))}
-                                className="absolute right-3 text-neutral-400 hover:text-neutral-600 cursor-pointer">
-                                {showPwd[field.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                        {pwdForm.next && pwdForm.confirm && pwdForm.next !== pwdForm.confirm && (
-                          <p className="text-[10.5px] text-red-500 font-semibold">Passwords do not match</p>
-                        )}
-                        <button
-                          onClick={handleUpdatePassword}
-                          disabled={!pwdForm.current || !pwdForm.next || pwdForm.next !== pwdForm.confirm}
-                          className="w-full py-2.5 rounded-xl text-xs font-extrabold text-white disabled:opacity-40 cursor-pointer mt-1"
-                          style={{ background: theme.accent }}>
-                          Update Password
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Security Settings Switches */}
-                    <div className="rounded-2xl border border-neutral-100 bg-white shadow-sm overflow-hidden">
-                      <div className={`px-4 py-3 border-b border-neutral-100 ${theme.panelHeader} flex items-center gap-2`}>
-                        <ShieldCheck className={`w-3.5 h-3.5 ${theme.textAccent}`} />
-                        <span className="text-[11px] font-extrabold text-neutral-700 uppercase tracking-wider">Security Settings</span>
-                      </div>
-                      <div className="divide-y divide-neutral-100">
-                        {[
-                          { label: 'Two-Factor Authentication', desc: 'Add an extra layer of security to your account', enabled: false },
-                          { label: 'Login Notifications', desc: 'Get notified whenever a new sign-in occurs', enabled: true },
-                          { label: 'Remember Trusted Devices', desc: 'Stay logged in for 30 days on this device', enabled: true },
-                        ].map((item, i) => (
-                          <div key={i} className="flex items-center justify-between px-4 py-3.5">
-                            <div className="flex-1 mr-4">
-                              <div className="text-[11.5px] font-bold text-neutral-700">{item.label}</div>
-                              <div className="text-[10.5px] text-neutral-500 font-medium mt-0.5">{item.desc}</div>
-                            </div>
-                            <div className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-colors cursor-not-allowed ${item.enabled ? theme.bgAccent : 'bg-neutral-200'}`}>
-                              <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${item.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Danger Zone */}
-                    <div className="rounded-2xl border border-red-100 bg-white shadow-sm overflow-hidden">
-                      <div className="px-4 py-3 border-b border-red-100 bg-red-50/50 flex items-center gap-2">
-                        <X className="w-3.5 h-3.5 text-red-400" />
-                        <span className="text-[11px] font-extrabold text-red-500 uppercase tracking-wider">Danger Zone</span>
-                      </div>
-                      <div className="p-4 flex items-center justify-between gap-4">
-                        <div>
-                          <div className="text-[11.5px] font-bold text-neutral-700">Deactivate Account</div>
-                          <div className="text-[10.5px] text-neutral-500 font-medium mt-0.5">Temporarily hide your profile from the community</div>
-                        </div>
-                        <button
-                          onClick={() => triggerToast('Account deactivation is disabled in demo mode')}
-                          className="shrink-0 text-[10px] font-bold px-3 py-2 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                          Deactivate
-                        </button>
-                      </div>
-                    </div>
-
-                  </div>
+                  <SecurityTab 
+                    theme={theme}
+                    emailParam={emailParam}
+                    sessionEmail={sessionEmail}
+                    triggerToast={triggerToast}
+                  />
                 )}
 
               </div>

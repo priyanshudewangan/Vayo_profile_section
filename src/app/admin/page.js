@@ -44,7 +44,7 @@ export default function AdminDashboard() {
 
   const {
     events, isLoadingEvents, fetchEvents,
-    handleCreateEventSubmit, handleCancelEvent,
+    handleCreateEventSubmit, handleCancelEvent, handleDeleteEvent,
     isSubmittingEvent, createdEventData, setCreatedEventData,
     ...eventFormProps
   } = useEvents(password, addToast);
@@ -176,6 +176,7 @@ export default function AdminDashboard() {
             isLoadingEvents={isLoadingEvents}
             handleCreateEventSubmit={handleCreateEventSubmit}
             handleCancelEvent={handleCancelEvent}
+            handleDeleteEvent={handleDeleteEvent}
             isSubmittingEvent={isSubmittingEvent}
             createdEventData={createdEventData}
             setCreatedEventData={setCreatedEventData}

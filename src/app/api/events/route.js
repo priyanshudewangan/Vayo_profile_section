@@ -206,3 +206,58 @@ export async function PATCH(request) {
     return NextResponse.json({ error: error.message || "Failed to update event location." }, { status: 500 });
   }
 }
+
+export async function DELETE(request) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    const adminPassword = process.env.ADMIN_PASSWORD || "vayo_admin_secure";
+
+    if (!authHeader || authHeader !== adminPassword) {
+      return NextResponse.json({ error: "Unauthorized access." }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const eventId = searchParams.get("eventId");
+
+    if (!eventId) {
+      return NextResponse.json({ error: "Event ID is required." }, { status: 400 });
+    }
+
+    // 1. Delete associated RSVPs from Supabase rsvps table
+    const { error: rsvpError } = await supabase
+      .from("rsvps")
+      .delete()
+      .eq("event_id", eventId);
+
+    if (rsvpError) {
+      console.warn("Supabase RSVP delete warning during event deletion:", rsvpError);
+    }
+
+    // 2. Delete the event from Supabase events table
+    const { data, error } = await supabase
+      .from("events")
+      .delete()
+      .eq("event_id", eventId)
+      .select();
+
+    if (error) {
+      console.warn("Supabase delete event error (checking fallback):", error.message, error.code);
+      if (error.code === '42P01' || error.code === 'PGRST116' || (error.message && error.message.includes('does not exist'))) {
+        // Fallback: delete from local JSON file
+        const localEvents = getLocalEvents();
+        const filtered = localEvents.filter(e => e.event_id !== eventId);
+        if (localEvents.length !== filtered.length) {
+          saveLocalEvents(filtered);
+          return NextResponse.json({ success: true, message: "Event deleted from local JSON." }, { status: 200 });
+        }
+        return NextResponse.json({ error: "Event not found locally." }, { status: 404 });
+      }
+      throw error;
+    }
+
+    return NextResponse.json({ success: true, message: "Event and associated RSVPs deleted successfully." }, { status: 200 });
+  } catch (error) {
+    console.error("Delete Event Error:", error);
+    return NextResponse.json({ error: error.message || "Failed to delete event." }, { status: 500 });
+  }
+}

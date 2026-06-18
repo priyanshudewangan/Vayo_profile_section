@@ -261,12 +261,49 @@ export const useEvents = (password, addToast) => {
     }
   };
 
+  const handleDeleteEvent = async (eventId, hostId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this event and all its RSVPs? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      // 1. Delete in Next.js backend (Supabase / local JSON)
+      const nextResponse = await fetch(`/api/events?eventId=${encodeURIComponent(eventId)}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": password
+        }
+      });
+
+      // 2. Try to cancel/delete in Python backend if needed (optional fallback)
+      try {
+        await fetch(`${BACKEND_URL}/api/v1/events/${eventId}`, {
+          method: "DELETE"
+        });
+      } catch (err) {
+        console.warn("Python backend offline or failed during delete sync:", err.message);
+      }
+
+      if (nextResponse.ok) {
+        addToast("Event deleted permanently", "success");
+        fetchEvents();
+      } else {
+        const data = await nextResponse.json();
+        addToast(data.error || "Failed to delete event", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      addToast("Network error occurred during event deletion", "error");
+    }
+  };
+
   return {
     events,
     isLoadingEvents,
     fetchEvents,
     handleCreateEventSubmit,
     handleCancelEvent,
+    handleDeleteEvent,
     isSubmittingEvent,
     createdEventData,
     setCreatedEventData,
