@@ -27,6 +27,7 @@ import {
   User,
   X,
   ChevronRight,
+  Plus,
   UserPlus,
   CalendarPlus,
   ZoomIn,
@@ -1884,9 +1885,245 @@ function ProfileContent() {
 
                 {/* ════════════════════ PROFILE TAB ════════════════════ */}
                 {activeSidebarTab === 'profile' && (
-                  <div className="space-y-4 sm:space-y-6 animate-fade-in">
+                  <div className="space-y-6 animate-fade-in">
                     
-                    {/* Avatar + Info */}
+                    {/* MOBILE LAYOUT (mockup style card, visible only on mobile viewports) */}
+                    <div className="block sm:hidden space-y-5">
+                      {/* 1. Main Profile Card */}
+                      <div className="bg-white rounded-[2rem] border border-neutral-200/80 shadow-md overflow-hidden flex flex-col relative">
+                        {/* Header Banner Background */}
+                        <div className="h-24 bg-gradient-to-r from-sky-200/70 to-blue-200/50 relative overflow-hidden shrink-0">
+                          {/* Decorative cloud-like overlay */}
+                          <div className="absolute inset-0 bg-white/20 backdrop-blur-[1px]" />
+                          
+                          {/* Share Button (Follow+ style action) */}
+                          <button 
+                            onClick={() => setShowShareCard(true)}
+                            className="absolute top-3.5 right-4 px-3.5 py-1.5 rounded-full bg-white/95 text-neutral-800 text-[10px] font-black uppercase tracking-widest hover:bg-neutral-50 active:scale-95 transition-all shadow-sm border border-neutral-200/20 cursor-pointer flex items-center gap-1 z-10"
+                          >
+                            <span>Share</span>
+                            <Plus className="w-3 h-3 text-neutral-600" />
+                          </button>
+                        </div>
+
+                        {/* Avatar & EXP/Karma Row */}
+                        <div className="px-4.5 -mt-8 flex items-end justify-between relative z-10">
+                          {/* White border circle avatar */}
+                          <div className="w-18 h-18 rounded-full border-4 border-white bg-neutral-900 shadow-md overflow-hidden shrink-0">
+                            <img src={currentPersona.image} className="w-full h-full object-cover" alt={currentPersona.name} />
+                          </div>
+                          
+                          {/* Karma EXP bar */}
+                          <div className="flex items-center gap-1.5 pb-2">
+                            <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">karma</span>
+                            <div className="flex gap-[1.5px] items-end h-3.5">
+                              {[...Array(10)].map((_, idx) => {
+                                const scorePerBar = 100;
+                                const barValue = (idx + 1) * scorePerBar;
+                                const isFilled = (currentPersona.karmaBalance || 150) >= barValue;
+                                
+                                const colors = [
+                                  'bg-indigo-500', 'bg-violet-500', 'bg-purple-500', 
+                                  'bg-fuchsia-500', 'bg-pink-500', 'bg-rose-500', 
+                                  'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-emerald-500'
+                                ];
+                                
+                                return (
+                                  <div 
+                                    key={idx} 
+                                    className={`w-[2.5px] rounded-full transition-all duration-300 ${
+                                      isFilled ? colors[idx] : 'bg-neutral-200'
+                                    }`}
+                                    style={{ height: `${4 + idx * 1}px` }} 
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Name and Bio */}
+                        <div className="px-4.5 pt-2 pb-4.5 space-y-1.5 text-left">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-black text-neutral-800 tracking-tight leading-none">{currentPersona.name}</h3>
+                            <span className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-800 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full border border-emerald-500/20 shrink-0">
+                               <span className="inline-flex rounded-full h-1 w-1 bg-emerald-500 animate-pulse" />
+                               Active
+                            </span>
+                          </div>
+                          <p className="text-xs text-neutral-500 font-semibold leading-relaxed">
+                            {activeMode === 'social' ? displayPersona.socialBio : activeMode === 'bff' ? displayPersona.bffBio : displayPersona.bizzBio}
+                          </p>
+                        </div>
+
+                        {/* Stats Bar */}
+                        <div className="border-t border-neutral-100/70 grid grid-cols-3 divide-x divide-neutral-100/70 py-3 bg-neutral-50/50">
+                          <div className="text-center">
+                            <div className={`text-[15px] font-black tracking-tight ${theme.textAccent}`}>
+                              {displayPersona.activeTickets ? displayPersona.activeTickets.length : 0}
+                            </div>
+                            <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-0.5">Mixers</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`text-[15px] font-black tracking-tight ${theme.textAccent}`}>
+                              {displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0}
+                            </div>
+                            <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-0.5">Connections</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`text-[15px] font-black tracking-tight ${theme.textAccent}`}>
+                              {currentPersona.karmaBalance || 0}
+                            </div>
+                            <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-0.5">Karma</div>
+                          </div>
+                        </div>
+
+                        {/* Footer Social Icons */}
+                        <div className="border-t border-neutral-100/70 grid grid-cols-3 divide-x divide-neutral-100/70 bg-white">
+                          <a 
+                            href={displayPersona.socialLinks?.instagram ? `https://instagram.com/${displayPersona.socialLinks.instagram.replace('@', '')}` : '#'} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="py-3 flex items-center justify-center text-neutral-500 hover:text-neutral-800 transition-colors"
+                          >
+                            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
+                            </svg>
+                          </a>
+                          <a 
+                            href={displayPersona.socialLinks?.twitter ? `https://twitter.com/${displayPersona.socialLinks.twitter.replace('@', '')}` : '#'} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="py-3 flex items-center justify-center text-neutral-500 hover:text-neutral-800 transition-colors"
+                          >
+                            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                            </svg>
+                          </a>
+                          <a 
+                            href={displayPersona.socialLinks?.linkedin ? `https://linkedin.com/in/${displayPersona.socialLinks.linkedin}` : '#'} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="py-3 flex items-center justify-center text-neutral-500 hover:text-neutral-800 transition-colors"
+                          >
+                            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" /><circle cx="4" cy="4" r="2" />
+                            </svg>
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* 2. Separate Upcoming Events Container */}
+                      <div className="bg-white/40 backdrop-blur-md border border-white/50 rounded-[2rem] p-4 shadow-sm space-y-4">
+                        {/* Upcoming Events Carousel for Mobile */}
+                        {(() => {
+                          const event = upcomingEvents[currentEventIdx];
+                          
+                          if (isEventsLoading) {
+                            return (
+                              <div className="space-y-4">
+                                <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest text-left">Upcoming Events</h5>
+                                <div className="relative w-full h-[190px] rounded-[24px] overflow-hidden shadow-sm border border-neutral-100 bg-neutral-900 flex flex-col items-center justify-center gap-3">
+                                  <span className="w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+                                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider animate-pulse">Syncing mixers…</span>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          if (!event) {
+                            return (
+                              <div className="space-y-4">
+                                <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest text-left">Upcoming Events</h5>
+                                <div className="relative w-full h-[190px] rounded-[24px] overflow-hidden shadow-sm border-2 border-dashed border-neutral-100 bg-neutral-50 flex flex-col items-center justify-center gap-2 text-center px-6">
+                                  <Calendar className="w-8 h-8 text-neutral-200" />
+                                  <div className="text-xs font-bold text-neutral-400">No Events Scheduled</div>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          const handlePrev = () => {
+                            setCurrentEventIdx(prev => (prev - 1 + upcomingEvents.length) % upcomingEvents.length);
+                          };
+                          const handleNext = () => {
+                            setCurrentEventIdx(prev => (prev + 1) % upcomingEvents.length);
+                          };
+                          return (
+                            <div className="space-y-4">
+                              <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest text-left">Upcoming Events</h5>
+                              <div className="relative w-full h-[190px] rounded-[24px] overflow-hidden shadow-lg border border-neutral-100 bg-neutral-900 group">
+                                <div 
+                                  onClick={() => {
+                                    setSelectedEvent(event);
+                                    setActiveSidebarTab('mixers');
+                                    triggerToast(`Opening registration for: ${event.title}`);
+                                  }}
+                                  className="absolute inset-0 w-full h-full cursor-pointer z-10"
+                                >
+                                  <div className="absolute inset-0 w-full h-full">
+                                    <img
+                                      src={event.image}
+                                      alt={event.title}
+                                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                                    />
+                                  </div>
+                                  
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent" />
+
+                                  <span className="absolute top-3.5 left-3.5 z-20 bg-blue-600 text-white text-[9px] font-extrabold px-2.5 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
+                                    Upcoming Event
+                                  </span>
+
+                                  <div className="absolute bottom-5 left-4 right-4 z-20 flex flex-col gap-1.5 text-left max-w-[calc(100%-32px)]">
+                                    <div className="flex items-center gap-1.5 bg-black/45 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded-full text-[10px] text-white font-bold tracking-wide w-fit">
+                                      <Calendar className="w-3 h-3 text-white" />
+                                      <span>{event.date}</span>
+                                    </div>
+
+                                    <h4 className="text-xs sm:text-sm font-bold text-white leading-snug tracking-tight drop-shadow-md truncate">
+                                      {event.title}
+                                    </h4>
+
+                                    <div className="flex items-center gap-1 text-[9px] text-neutral-300">
+                                      <MapPin className="w-3 h-3 text-sky-400 shrink-0" />
+                                      <span className="truncate">{event.location}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-36 h-9 z-20 flex items-center justify-center">
+                                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 144 36" fill="none" preserveAspectRatio="none">
+                                    <path d="M 0 36 C 16 36, 16 0, 32 0 L 112 0 C 128 0, 128 36, 144 36 Z" fill="#ffffff" />
+                                    <path d="M 0 36 C 16 36, 16 0, 32 0 L 112 0 C 128 0, 128 36, 144 36" stroke="rgba(228, 228, 231, 0.8)" strokeWidth="0.8" />
+                                  </svg>
+
+                                  <div className="relative z-10 flex gap-4 items-center justify-center pb-0.5">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                                      className="w-6.5 h-6.5 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-all duration-200 cursor-pointer"
+                                    >
+                                      <ArrowLeft className="w-3 h-3 text-neutral-600" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                                      className="w-6.5 h-6.5 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-all duration-200 cursor-pointer"
+                                    >
+                                      <ArrowRight className="w-3 h-3 text-neutral-600" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* DESKTOP LAYOUT (hidden sm:block, legacy desktop view) */}
+                    <div className="hidden sm:block space-y-4 sm:space-y-6">
+                      
+                      {/* Avatar + Info */}
                     <div className="flex flex-col gap-4 sm:gap-6">
                       <div className="flex flex-row items-center sm:items-start gap-4 sm:gap-6 text-left">
                         {/* GRADIENT RING AVATAR */}
@@ -2290,6 +2527,7 @@ function ProfileContent() {
                       </>
                     )}
 
+                    </div>
                   </div>
                 )}
 
