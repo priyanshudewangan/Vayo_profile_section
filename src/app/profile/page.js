@@ -1892,9 +1892,14 @@ function ProfileContent() {
                       {/* 1. Main Profile Card */}
                       <div className="bg-white rounded-[2rem] border border-neutral-200/80 shadow-md overflow-hidden flex flex-col relative">
                         {/* Header Banner Background */}
-                        <div className="h-24 bg-gradient-to-r from-sky-200/70 to-blue-200/50 relative overflow-hidden shrink-0">
+                        <div className="h-24 relative overflow-hidden shrink-0">
+                          <img 
+                            src="https://media.istockphoto.com/id/478627080/photo/evening-view-of-ama-dablam.jpg?s=612x612&w=0&k=20&c=GLKvtQt1JVoOB4yR2WI86_fYOmG8WObeZP_QV_gFG_0=" 
+                            alt="AMA DABLAM Banner" 
+                            className="w-full h-full object-cover" 
+                          />
                           {/* Decorative cloud-like overlay */}
-                          <div className="absolute inset-0 bg-white/20 backdrop-blur-[1px]" />
+                          <div className="absolute inset-0 bg-black/10 backdrop-blur-[0.5px]" />
                           
                           {/* Share Button (Follow+ style action) */}
                           <button 
