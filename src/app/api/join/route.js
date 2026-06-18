@@ -1,13 +1,10 @@
-export const runtime = 'edge';
-
 import { NextResponse } from "next/server";
-import { supabaseAdmin as supabase } from "@/lib/supabase";
-import { BACKEND_URL } from "@/lib/constants";
+import { supabase } from "@/lib/supabase";
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    let { email, name, phone, birthdate, instagram, interests, selfie_url } = body;
+    const { email, name, phone, birthdate, instagram, interests, selfie_url } = body;
 
     // Simple backend email format validation
     if (!email || typeof email !== "string" || !email.includes("@")) {
@@ -16,9 +13,6 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
-    // Normalize email for consistency
-    email = email.trim().toLowerCase();
 
     // Insert details into the waitlist table
     const { data, error } = await supabase
@@ -50,7 +44,8 @@ export async function POST(request) {
 
     // Trigger the matching background process on FastAPI backend
     try {
-      await fetch(`${BACKEND_URL}/api/v1/match`, {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+      await fetch(`${backendUrl}/api/v1/match`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -79,7 +79,7 @@ const STEPS = [
   {
     num: "03",
     title: "Receive Invites",
-    desc: "Get personalized notifications and invitations to curated local events.",
+    desc: "Get personalized notifications and invitations to curated local mixers and events.",
   },
   {
     num: "04",
@@ -248,7 +248,7 @@ function JoinFormContent() {
         </h1>
         
         <p className="text-base sm:text-lg text-[#E2EFF6]/85 leading-relaxed max-w-xl mx-auto font-medium">
-          Take a look at the events, activities, and celebrations happening in our community. Join the waitlist below to get vetted.
+          Take a look at the mixers, activities, and celebrations happening in our community. Join the waitlist below to get vetted.
         </p>
       </section>
 
@@ -350,7 +350,7 @@ function JoinFormContent() {
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#E2EFF6]/0 hover:via-[#E2EFF6]/25 to-transparent transition-all duration-500"></div>
 
               <div>
-                <span className="text-[10px] sm:text-xs font-bold text-[#E2EFF6]/70 tracking-wider font-mono">{"//"} {step.num}</span>
+                <span className="text-[10px] sm:text-xs font-bold text-[#E2EFF6]/70 tracking-wider font-mono">{"// "}{step.num}</span>
                 <h3 className="text-base sm:text-lg font-bold text-[#E2EFF6] tracking-tight mt-2 sm:mt-3 mb-1.5 sm:mb-2">
                   {step.title}
                 </h3>

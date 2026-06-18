@@ -1,0 +1,67 @@
+
+> temp-app@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.6:3000
+- Environments: .env.local
+✓ Ready in 784ms
+
+ GET /api/checkins 200 in 866ms
+ GET /api/checkins 200 in 234ms
+ GET /admin 200 in 579ms (next.js: 208ms, application-code: 370ms)
+ GET /api/admin/emails 200 in 357ms
+ GET /api/admin/emails 200 in 228ms
+ GET /api/rsvp/admin 200 in 386ms
+ GET /api/events 200 in 333ms
+ GET /api/events?past=true 200 in 366ms
+ GET /api/checkins 200 in 155ms
+ GET /api/checkins 200 in 158ms
+ GET /admin 200 in 99ms (next.js: 7ms, application-code: 92ms)
+ GET /api/admin/emails 200 in 210ms
+ GET /api/admin/emails 200 in 166ms
+ GET /api/rsvp/admin 200 in 195ms
+ GET /api/events 200 in 195ms
+ GET /api/events?past=true 200 in 204ms
+ GET /api/checkins 200 in 185ms
+ GET /api/checkins 200 in 162ms
+ GET /profile?email=tosaran09%40gmail.com 200 in 585ms (next.js: 156ms, application-code: 429ms)
+ GET /api/check-status?email=tosaran09%40gmail.com 200 in 791ms
+ GET /api/events 200 in 222ms
+ GET /api/rsvp?email=tosaran09%40gmail.com 200 in 1211ms
+ GET /api/moments?email=tosaran09%40gmail.com 500 in 1257ms
+ GET /api/karma?email=tosaran09%40gmail.com 404 in 1344ms
+ GET /api/rsvp?email=tosaran09%40gmail.com 200 in 231ms
+ GET /admin 200 in 235ms (next.js: 19ms, application-code: 216ms)
+ GET /api/admin/emails 200 in 374ms
+ GET /api/admin/emails 200 in 247ms
+ GET /api/rsvp/admin 200 in 355ms
+ GET /api/events?past=true 200 in 274ms
+ GET /api/events 200 in 288ms
+ GET /api/checkins 200 in 176ms
+ GET /api/rsvp/admin 200 in 313ms
+ GET /api/events 200 in 349ms
+ GET /api/events?past=true 200 in 354ms
+ GET /api/checkins 200 in 230ms
+ GET /api/rsvp/admin 200 in 181ms
+ GET /api/events 200 in 281ms
+ GET /api/events?past=true 200 in 287ms
+ GET /api/checkins 200 in 168ms
+ GET /api/rsvp/admin 200 in 223ms
+ GET /api/events 200 in 212ms
+ GET /api/events?past=true 200 in 206ms
+ GET /api/checkins 200 in 155ms
+ GET /api/rsvp/admin 200 in 205ms
+ GET /api/events 200 in 304ms
+ GET /api/events?past=true 200 in 289ms
+ GET /api/checkins 200 in 226ms
+ GET /api/rsvp/admin 200 in 186ms
+ GET /api/events 200 in 235ms
+ GET /api/events?past=true 200 in 249ms
+ GET /api/checkins 200 in 180ms
+ GET /api/rsvp/admin 200 in 246ms
+ GET /api/events 200 in 216ms
+ GET /api/events?past=true 200 in 222ms
+ GET /api/checkins 200 in 166ms
+ GET /api/rsvp/admin 200 in 189ms

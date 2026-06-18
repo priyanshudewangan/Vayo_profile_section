@@ -23,7 +23,7 @@ function ThankYouContent() {
 
   return (
     <div className="min-h-screen w-full text-white relative py-20 px-4 md:px-8 flex flex-col items-center justify-start overflow-hidden font-sans bg-[#050508]">
-      
+
       {/* Background Image */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Image
@@ -46,7 +46,7 @@ function ThankYouContent() {
       <div className="absolute top-10 md:top-20 right-1/4 w-4 h-2.5 bg-[#FF8E9E] -rotate-12 pointer-events-none z-10"></div>
 
       <div className="w-full max-w-4xl text-center z-10 flex flex-col items-center mt-6">
-        
+
         {/* Main Heading with VAYO Image */}
         <h1 className="text-3xl md:text-5xl font-black text-white mb-6 leading-tight tracking-tight flex items-center justify-center flex-wrap gap-x-2.5 md:gap-x-3.5">
           Thank you for joining
@@ -63,14 +63,14 @@ function ThankYouContent() {
           !
         </h1>
 
-        {/* Subtitle */}
         <p className="text-sm md:text-base text-white/70 font-medium max-w-2xl leading-relaxed mb-3 px-4">
-          We appreciate your interest in VAYO, and can&apos;t wait to learn what experiences and vibes you share. We&apos;ll be in touch soon.
+          We appreciate your interest in VAYO, and can&apos;t wait to learn what experiences and vibes you share.
+          We will verify your details and contact you once your registration is approved.
         </p>
 
         {/* Signature */}
         <p className="text-[10px] md:text-xs text-white/40 font-bold tracking-[2.5px] uppercase mb-8">
-          – THE VAYO TEAM
+          – THE TEAM VAYO
         </p>
 
         {/* Registered Email (if any) */}
@@ -82,7 +82,7 @@ function ThankYouContent() {
 
         {/* Browser Mockup Window */}
         <div className="w-full max-w-3xl mx-auto rounded-xl shadow-[0_24px_50px_-12px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden bg-[#0c0c14]/40 backdrop-blur-md mt-2 mb-8">
-          
+
           {/* macOS window controls */}
           <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5 select-none">
             <div className="flex gap-2">
@@ -90,7 +90,7 @@ function ThankYouContent() {
               <span className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]"></span>
               <span className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]"></span>
             </div>
-            
+
             <div className="hidden sm:block text-[10px] text-white/40 bg-white/5 rounded-md py-1 px-12 text-center w-56 border border-white/5 truncate font-mono">
               askvayo.com/vayo
             </div>
@@ -100,8 +100,8 @@ function ThankYouContent() {
           {/* Participant Media Grid */}
           <div className="grid grid-cols-3 gap-2 md:gap-3 p-3 md:p-4 bg-[#050508]/20">
             {eventMedia.map((event, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="relative aspect-video sm:aspect-square md:aspect-video rounded-lg overflow-hidden bg-slate-950 group shadow-sm border border-white/5"
               >
                 {event.isVideo ? (
@@ -121,7 +121,7 @@ function ThankYouContent() {
                     className="w-full h-full object-cover transform scale-100 group-hover:scale-105 transition-transform duration-700 ease-out"
                   />
                 )}
-                
+
                 {/* Meet style Participant Label */}
                 <div className="absolute bottom-1.5 left-1.5 px-2 py-0.5 bg-black/60 rounded text-[8px] md:text-[10px] text-white font-medium backdrop-blur-sm flex items-center gap-1 md:gap-1.5 select-none shadow-sm">
                   <span>{event.icon}</span>
@@ -133,8 +133,8 @@ function ThankYouContent() {
         </div>
 
         {/* Back to Home Button */}
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-white text-slate-950 text-xs md:text-sm font-bold hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_8px_24px_rgba(255,255,255,0.2)] active:translate-y-0 transition-all duration-300 cursor-pointer shadow-md mb-8"
         >
           Back to Home
@@ -150,13 +150,13 @@ export default function ThankYouPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center px-4 h-24 bg-transparent transition-all duration-300 pointer-events-none">
         <div className="pointer-events-auto">
           <Link href="/" className="flex items-center decoration-none px-6 py-3 rounded-full bg-white/[0.03] backdrop-blur-3xl border border-white/[0.08] shadow-lg hover:bg-white/[0.06] hover:border-white/[0.12] transition-all duration-300 group">
-            <Image 
-              src="/assets/vayo-logo.png" 
-              alt="VAYO Logo" 
-              width={90} 
-              height={24} 
-              className="h-5 w-auto opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" 
-              priority 
+            <Image
+              src="/assets/vayo-logo.png"
+              alt="VAYO Logo"
+              width={90}
+              height={24}
+              className="h-5 w-auto opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
+              priority
             />
           </Link>
         </div>

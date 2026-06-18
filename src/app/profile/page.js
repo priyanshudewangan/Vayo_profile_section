@@ -3,11 +3,15 @@
 import React, { useState, useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
-import { BACKEND_URL } from "@/lib/constants";
+import EventStage from "@/components/profile/tabs/EventStage";
+import VibeProfile from "@/components/profile/tabs/VibeProfile";
+import SecurityTab from "@/components/profile/tabs/SecurityTab";
+import { getTierFromScore } from "@/lib/karma";
 
 const LocationMap = dynamic(() => import("@/components/LocationMap"), { ssr: false });
-import { useSearchParams } from "next/navigation";
+import { QRCodeSVG } from 'qrcode.react';
 import {
   ShieldCheck,
   Briefcase,
@@ -22,10 +26,9 @@ import {
   Bell,
   Settings,
   User,
-  LayoutGrid,
-  FileText,
   X,
   ChevronRight,
+  Plus,
   UserPlus,
   CalendarPlus,
   ZoomIn,
@@ -38,7 +41,12 @@ import {
   Zap,
   Check,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Phone,
+  Mail,
+  Loader2,
+  AlertCircle,
+  Flame
 } from "lucide-react";
 
 const maximPersona = "/assets/maxim_persona.png";
@@ -47,6 +55,7 @@ const danielPersona = "/assets/daniel_persona.png";
 const elenaPersona = "/assets/elena_persona.png";
 const vayoLogo = "/assets/vayo-logo.png";
 const newBg = "/assets/new_bg.jpg";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
 
 const staticEvents = [
   {
@@ -119,10 +128,10 @@ const basePersonas = [
       { name: "Friday Board Game Night", date: "June 08, 7:00 PM", status: "Applied" }
     ],
     activeTickets: [
-      { name: "Cozy Coding & Coffee", date: "June 05, 6:00 PM", countdown: "3 days left", locationPin: "Third Wave Coffee, Koramangala", organizer: "Vikas (Host)", qrCode: "VAYO-TKT-MAX05" }
+      { name: "Cozy Coding & Coffee", date: "June 05, 6:00 PM", countdown: "3 days left", locationPin: "Third Wave Coffee, Koramangala", organizer: "Vikas (Host)", qrCode: "VAYO-TKT-MAX05", lat: 12.9343, lng: 77.6210, image: "/assets/events/something.jpg" }
     ],
     pastTimeline: [
-      { name: "Lofi Beats Study Session", date: "May 28, 2026", category: "Social Event", friendsMet: 3 },
+      { name: "Lofi Beats Study Session", date: "May 28, 2026", category: "Social Mixer", friendsMet: 3 },
       { name: "Indie Game Show-and-Tell", date: "May 15, 2026", category: "BFF Squad Meetup", friendsMet: 2 }
     ],
     bffCrew: [
@@ -135,7 +144,7 @@ const basePersonas = [
     ],
     suggestedConnections: [
       { name: "Priya R.", role: "Full Stack Dev", mutualFriends: 4, avatar: "https://picsum.photos/seed/sc1/100/100", reason: "In Koramangala Coders" },
-      { name: "Aryan K.", role: "ML Engineer", mutualFriends: 2, avatar: "https://picsum.photos/seed/sc2/100/100", reason: "Attended same event" },
+      { name: "Aryan K.", role: "ML Engineer", mutualFriends: 2, avatar: "https://picsum.photos/seed/sc2/100/100", reason: "Attended same mixer" },
       { name: "Nisha P.", role: "UX Designer", mutualFriends: 3, avatar: "https://picsum.photos/seed/sc3/100/100", reason: "Friday Boardgamers" },
     ],
     moments: [
@@ -193,10 +202,10 @@ const basePersonas = [
       { name: "Pottery & Mocktails", date: "June 06, 4:00 PM", status: "Approved & Ticket Generated" }
     ],
     activeTickets: [
-      { name: "Pottery & Mocktails", date: "June 06, 4:00 PM", countdown: "4 days left", locationPin: "Clay Station, HSR Layout", organizer: "Ritu (Host)", qrCode: "VAYO-TKT-SAR06" }
+      { name: "Pottery & Mocktails", date: "June 06, 4:00 PM", countdown: "4 days left", locationPin: "Clay Station, HSR Layout", organizer: "Ritu (Host)", qrCode: "VAYO-TKT-SAR06", lat: 12.9100, lng: 77.6380, image: "/assets/events/cards.jpg" }
     ],
     pastTimeline: [
-      { name: "Indiranagar Cafe Crawl", date: "May 29, 2026", category: "Social Event", friendsMet: 5 },
+      { name: "Indiranagar Cafe Crawl", date: "May 29, 2026", category: "Social Mixer", friendsMet: 5 },
       { name: "Rooftop Acoustic Session", date: "May 22, 2026", category: "Acoustic Nights", friendsMet: 4 }
     ],
     bffCrew: [
@@ -209,7 +218,7 @@ const basePersonas = [
     ],
     suggestedConnections: [
       { name: "Kavya M.", role: "Brand Designer", mutualFriends: 5, avatar: "https://picsum.photos/seed/sc4/100/100", reason: "Weekend Explorers" },
-      { name: "Rohit S.", role: "Startup Founder", mutualFriends: 2, avatar: "https://picsum.photos/seed/sc5/100/100", reason: "Attended same event" },
+      { name: "Rohit S.", role: "Startup Founder", mutualFriends: 2, avatar: "https://picsum.photos/seed/sc5/100/100", reason: "Attended same mixer" },
       { name: "Anjali T.", role: "Art Director", mutualFriends: 4, avatar: "https://picsum.photos/seed/sc6/100/100", reason: "Pottery Enthusiasts" },
     ],
     moments: [
@@ -268,11 +277,11 @@ const basePersonas = [
       { name: "Beer & Trivia Night", date: "June 09, 8:30 PM", status: "Approved & Ticket Generated" }
     ],
     activeTickets: [
-      { name: "Beer & Trivia Night", date: "June 09, 8:30 PM", countdown: "7 days left", locationPin: "Toit Brewery, Indiranagar", organizer: "Rohan (Trivia Master)", qrCode: "VAYO-TKT-DAN09" }
+      { name: "Beer & Trivia Night", date: "June 09, 8:30 PM", countdown: "7 days left", locationPin: "Toit Brewery, Indiranagar", organizer: "Rohan (Trivia Master)", qrCode: "VAYO-TKT-DAN09", lat: 12.9791, lng: 77.6406, image: "/assets/events/holi.jpg" }
     ],
     pastTimeline: [
-      { name: "Sunset Run at Agara Lake", date: "May 30, 2026", category: "Active Event", friendsMet: 6 },
-      { name: "Tech Founders Dinner", date: "May 20, 2026", category: "Bizz Event", friendsMet: 2 }
+      { name: "Sunset Run at Agara Lake", date: "May 30, 2026", category: "Active Mixer", friendsMet: 6 },
+      { name: "Tech Founders Dinner", date: "May 20, 2026", category: "Bizz Mixer", friendsMet: 2 }
     ],
     bffCrew: [
       { name: "Agara Lake Runners", members: 42, type: "BFF Squad", emoji: "🏃", lastActive: "Yesterday", nextEvent: "Tomorrow 6 AM" },
@@ -284,7 +293,7 @@ const basePersonas = [
     ],
     suggestedConnections: [
       { name: "Vikram J.", role: "DevOps Lead", mutualFriends: 6, avatar: "https://picsum.photos/seed/sc7/100/100", reason: "Agara Lake Runners" },
-      { name: "Meera K.", role: "Cloud Architect", mutualFriends: 3, avatar: "https://picsum.photos/seed/sc8/100/100", reason: "Attended same event" },
+      { name: "Meera K.", role: "Cloud Architect", mutualFriends: 3, avatar: "https://picsum.photos/seed/sc8/100/100", reason: "Attended same mixer" },
       { name: "Sid L.", role: "Backend Dev", mutualFriends: 4, avatar: "https://picsum.photos/seed/sc9/100/100", reason: "HSR Badminton Club" },
     ],
     moments: [
@@ -342,7 +351,7 @@ const basePersonas = [
       { name: "Modern Art Gallery Tour", date: "June 07, 11:00 AM", status: "Approved & Ticket Generated" }
     ],
     activeTickets: [
-      { name: "Modern Art Gallery Tour", date: "June 07, 11:00 AM", countdown: "5 days left", locationPin: "NGMA, Palace Road", organizer: "Meera (Art Historian)", qrCode: "VAYO-TKT-ELE07" }
+      { name: "Modern Art Gallery Tour", date: "June 07, 11:00 AM", countdown: "5 days left", locationPin: "NGMA, Palace Road", organizer: "Meera (Art Historian)", qrCode: "VAYO-TKT-ELE07", lat: 12.9904, lng: 77.5885, image: "/assets/events/something.jpg" }
     ],
     pastTimeline: [
       { name: "Creative Writing Circle", date: "May 27, 2026", category: "Writing Workshop", friendsMet: 4 },
@@ -359,7 +368,7 @@ const basePersonas = [
     suggestedConnections: [
       { name: "Riya A.", role: "Illustrator", mutualFriends: 5, avatar: "https://picsum.photos/seed/sc10/100/100", reason: "Indie Art Collaborators" },
       { name: "Nikhil V.", role: "Poet & Writer", mutualFriends: 3, avatar: "https://picsum.photos/seed/sc11/100/100", reason: "Jayanagar Book Club" },
-      { name: "Shreya B.", role: "Gallery Curator", mutualFriends: 4, avatar: "https://picsum.photos/seed/sc12/100/100", reason: "Attended same event" },
+      { name: "Shreya B.", role: "Gallery Curator", mutualFriends: 4, avatar: "https://picsum.photos/seed/sc12/100/100", reason: "Attended same mixer" },
     ],
     moments: [
       { location: "NGMA Palace Road", date: "May 27", imageColor: "from-yellow-400 to-amber-500", caption: "Sunday inspiration at the gallery 🎨", imageUrl: "https://picsum.photos/seed/vayo13/800/500" },
@@ -402,7 +411,7 @@ const makeUserPersona = (user, fastApiProfile = null) => {
     image: user.selfie_url || '/assets/sarah_persona.png',
     motivations: [
       'Meet like-minded people through real-life activities',
-      'Discover curated local events in Bangalore',
+      'Discover curated local mixers in Bangalore',
       'Enjoy safe, verified, and platonic-first community spaces'
     ],
     painPoints: [
@@ -450,13 +459,8 @@ const makeUserPersona = (user, fastApiProfile = null) => {
         status: (user.status === "Joined" || user.status === "Approved" || user.status === "Sent") ? "Approved" : "Under Review"
       }
     ],
-    activeTickets: (user.status === "Joined") ? [
-      { name: "VAYO Welcome Social", date: "June 20, 7:00 PM", countdown: "7 days", locationPin: "Indiranagar Hub", organizer: "VAYO Host", qrCode: `VAYO-TKT-${(user.name || 'MEMBER').slice(0, 3).toUpperCase()}99` }
-    ] : [],
-    pastTimeline: [
-      { name: "Application Submitted", date: user.created_at ? new Date(user.created_at).toLocaleDateString() : "Just now", category: "Milestone", friendsMet: 0 },
-      { name: "Identity Verified", date: (user.status === "Sent" || user.status === "Joined") ? "Confirmed" : "In Progress", category: "Milestone", friendsMet: 0 }
-    ],
+    activeTickets: [],
+    pastTimeline: [],
     bffCrew: [
       { name: "Vayo Explorers Crew", members: 124, type: "Community Group", emoji: "🌐", lastActive: "1 day ago", nextEvent: "Soon" }
     ],
@@ -473,9 +477,9 @@ const makeUserPersona = (user, fastApiProfile = null) => {
     ],
     socialLinks: {
       instagram: user.instagram || '',
-      linkedin: '',
-      twitter: '',
-      github: ''
+      linkedin: user.linkedin || '',
+      twitter: user.twitter || '',
+      github: user.github || ''
     },
     bizzSkills: (fastApiProfile && fastApiProfile.bizz_skills) || ['Onboarding', 'Community Build'],
     referral: { code: 'VAYO-WAIT-LIST', referredCount: 0, xpEarned: 0, milestone: 5 }
@@ -496,7 +500,7 @@ function SegmentedProgress({ percentage, color, showMilestones = false }) {
           else if (color === 'green') { activeBg = 'bg-[#84cc16]'; inactiveBg = 'bg-[#f4fbe9]' }
           else { activeBg = 'bg-[#0d9488]'; inactiveBg = 'bg-teal-50' }
           return (
-            <div key={i} className={`h-full flex-1 rounded-full transition-colors duration-500 ${isActive ? activeBg : inactiveBg}`} />
+            <div key={i} className={`h-full flex-1 rounded-full transition-all duration-500 ${isActive ? activeBg : inactiveBg}`} />
           )
         })}
       </div>
@@ -515,8 +519,29 @@ function SegmentedProgress({ percentage, color, showMilestones = false }) {
 function useCountdown(dateStr) {
   const [timeLeft, setTimeLeft] = useState('Soon');
   useEffect(() => {
-    const target = parseTicketDate(dateStr);
-    if (!target) return;
+    let target;
+    try {
+      // Try parsing directly first
+      target = new Date(dateStr);
+      
+      // If invalid (likely missing year), attempt custom parse
+      if (isNaN(target.getTime())) {
+        const parts = dateStr.split(',').map(s => s.trim());
+        const currentYear = new Date().getFullYear();
+        // Assuming parts[0] is Month Day and parts[1] is Time
+        target = new Date(`${parts[0]} ${currentYear} ${parts[1] || ''}`);
+      }
+
+      // If still invalid, try to handle other formats like "24, Jan - 2024"
+      if (isNaN(target.getTime())) {
+        const cleaned = dateStr.replace(/-/g, ' ').replace(/,/g, ' ');
+        target = new Date(cleaned);
+      }
+
+      if (isNaN(target.getTime())) return;
+    } catch {
+      return;
+    }
     const update = () => {
       const diff = target.getTime() - Date.now();
       if (diff <= 0) { setTimeLeft('Starting now!'); return; }
@@ -537,8 +562,8 @@ function useCountdown(dateStr) {
 function TicketCountdown({ date }) {
   const t = useCountdown(date);
   return (
-    <span className="inline-flex items-center gap-1.5 text-[9.5px] font-bold px-2.5 py-1 rounded-lg bg-neutral-900 text-emerald-400 font-mono tabular-nums">
-      <Clock className="w-2.5 h-2.5" />
+    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold px-2.5 py-1.5 rounded-xl bg-neutral-900 text-emerald-400 font-mono tabular-nums">
+      <Clock className="w-3 h-3" />
       {t}
     </span>
   );
@@ -557,7 +582,7 @@ const getBadgeLockProgress = (personaId, badgeName) => {
 
 const getNextTierInfo = (tier, balance) => {
   if (tier === 'Explorer') return { nextTier: 'Pathfinder', needed: Math.max(0, 300 - balance), icon: '🧭', perks: ['Priority ticket booking', 'Host support badge', 'Special venue perks'] };
-  if (tier === 'Pathfinder') return { nextTier: 'Voyager', needed: Math.max(0, 600 - balance), icon: '🚀', perks: ['VIP event access', 'Private dining', 'Community voting rights'] };
+  if (tier === 'Pathfinder') return { nextTier: 'Voyager', needed: Math.max(0, 600 - balance), icon: '🚀', perks: ['VIP mixer access', 'Private dining', 'Community voting rights'] };
   return { nextTier: 'Legend', needed: Math.max(0, 1000 - balance), icon: '🌟', perks: ['Founding member badge', 'Free event hosting', 'National hub access'] };
 };
 
@@ -570,61 +595,11 @@ const getStepperIdx = (status) => {
   return 0; // Applied / Under Review
 };
 
-const formatTimeAgo = (dateStr) => {
-  try {
-    const diffMs = Date.now() - new Date(dateStr).getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
-  } catch {
-    return '';
-  }
-};
-
-const CHECKIN_RADIUS_METERS = 200;
-
-function parseTicketDate(dateStr) {
-  if (!dateStr) return null;
-  let d = new Date(dateStr);
-  if (!isNaN(d.getTime())) return d;
-  const cleaned = dateStr.replace(/ - /g, ' ').replace(/,/g, '').replace(/\s+/g, ' ').trim();
-  d = new Date(cleaned);
-  if (!isNaN(d.getTime())) return d;
-  const parts = dateStr.split(',').map(s => s.trim());
-  d = new Date(`${parts[0]} 2026 ${parts[1] || ''}`);
-  if (!isNaN(d.getTime())) return d;
-  return null;
-}
-
-function formatTicketDateDisplay(dateStr) {
-  const d = parseTicketDate(dateStr);
-  if (!d) {
-    const parts = (dateStr || '').split(',').map(s => s.trim());
-    return { line1: parts[0] || dateStr, line2: parts[1] || '' };
-  }
-  const day = d.getDate();
-  const month = d.toLocaleString('en-US', { month: 'short' });
-  const year = d.getFullYear();
-  const time = d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  return { line1: `${day} ${month}`, line2: `${year} · ${time}` };
-}
-
-function getAttendanceWindowState(eventDateStr) {
-  const target = parseTicketDate(eventDateStr);
-  if (!target) return 'future';
-  const now = Date.now();
-  if (now < target.getTime()) return 'future';
-  if (now > target.getTime() + 10_800_000) return 'past';
-  return 'active';
-}
-
 function ProfileContent() {
   const searchParams = useSearchParams();
   const emailParam = searchParams.get("email");
+  const sessionEmail = typeof window !== "undefined" ? localStorage.getItem("vayo_user_email") : null;
+  const email = emailParam || sessionEmail;
 
   const [personas, setPersonas] = useState(basePersonas);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -639,9 +614,136 @@ function ProfileContent() {
   const [deletedMomentIdxs, setDeletedMomentIdxs] = useState({});
   const [currentEventIdx, setCurrentEventIdx] = useState(0);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [isEventsLoading, setIsEventsLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [rsvpedIds, setRsvpedIds] = useState(new Set());
+  const [checkInModalEvent, setCheckInModalEvent] = useState(null);
+  const [isVerifyingLocation, setIsVerifyingLocation] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNowMs(Date.now()), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Helper: Check if event is within 10-minute check-in window
+  const getCheckInStatus = (dateStr) => {
+    if (!dateStr) return { available: false, timeToStart: 'Unknown', diffMins: 999 };
+    
+    try {
+      let eventDate = new Date(dateStr);
+      
+      // 1. Try parsing custom format "DD, MMM - YYYY" (e.g. "17, Jun - 2026")
+      if (isNaN(eventDate.getTime())) {
+        const customMatch = dateStr.match(/(\d{1,2})\s*,\s*([A-Za-z]{3,})\s*-\s*(\d{4})/);
+        if (customMatch) {
+          const [_, day, month, year] = customMatch;
+          eventDate = new Date(`${month} ${day}, ${year}`);
+        }
+      }
+
+      // 2. If invalid (likely "June 20, 7:00 PM" format without year), attempt custom parse
+      if (isNaN(eventDate.getTime())) {
+        const parts = dateStr.split(',').map(s => s.trim());
+        const currentYear = new Date().getFullYear();
+        if (parts.length > 1) {
+          eventDate = new Date(`${parts[0]} ${currentYear} ${parts[1]}`);
+        } else {
+          // If no comma, try splitting by space (e.g. "20 Jun 7:00 PM")
+          const spaceParts = dateStr.split(' ');
+          if (spaceParts.length >= 2) {
+             eventDate = new Date(`${spaceParts[0]} ${spaceParts[1]} ${currentYear} ${spaceParts.slice(2).join(' ')}`);
+          }
+        }
+      }
+
+      // 3. If still invalid, clean up spacing/dashes/commas and collapse duplicate spaces
+      if (isNaN(eventDate.getTime())) {
+        const cleaned = dateStr.replace(/-/g, ' ').replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+        eventDate = new Date(cleaned);
+      }
+      
+      if (isNaN(eventDate.getTime())) return { available: false, timeToStart: 'Unknown', diffMins: 999 };
+
+      const now = nowMs ? new Date(nowMs) : new Date();
+      // diffMs is positive if event is in future, negative if in past
+      const diffMs = eventDate.getTime() - now.getTime();
+      const diffMins = diffMs / (1000 * 60);
+
+      if (isNaN(diffMins)) return { available: false, timeToStart: 'Unknown', diffMins: 999 };
+
+      // Available from 15 mins before till 4 hours after start
+      // e.g. -240 <= diffMins <= 15
+      const isAvailable = diffMins <= 15 && diffMins >= -240; 
+      
+      let timeLabel = "";
+      if (diffMins > 1440) timeLabel = `Starts in ${Math.round(diffMins/1440)} days`;
+      else if (diffMins > 60) timeLabel = `Starts in ${Math.round(diffMins/60)}h`;
+      else if (diffMins > 15) timeLabel = `Starts in ${Math.round(diffMins)}m`;
+      else if (diffMins < -240) timeLabel = "Event Ended";
+      else timeLabel = "Active Now";
+
+      return { available: isAvailable, timeToStart: timeLabel, diffMins };
+    } catch (e) {
+      return { available: false, timeToStart: 'Unknown', diffMins: 999 };
+    }
+  };
+
+  const handleCheckIn = async (event, sessionEmail) => {
+    if (isVerifyingLocation) return;
+    
+    setIsVerifyingLocation(true);
+    triggerToast("📡 Accessing GPS satellites...");
+
+    if (!navigator.geolocation) {
+      triggerToast("GPS not supported on this device.");
+      setIsVerifyingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        try {
+          const response = await fetch("/api/rsvp/check-in", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: sessionEmail,
+              eventId: event.id || event.event_id,
+              userLat: latitude,
+              userLng: longitude
+            })
+          });
+
+          const data = await response.json();
+          
+          if (response.ok && data.success) {
+            triggerToast(data.message || "Attendance Verified! +20 Karma");
+            setCheckInModalEvent(null); // Close modal on success
+            fetchUserTickets(sessionEmail); // Refresh ticket status
+          } else {
+            // Show custom error (too far) with directions option
+            setCheckInModalEvent({ ...event, error: data.error, distance: data.distance });
+            triggerToast(data.error || "Verification failed.");
+          }
+        } catch (err) {
+          triggerToast("Network error. Please try again.");
+        } finally {
+          setIsVerifyingLocation(false);
+        }
+      },
+      (error) => {
+        let msg = "Location access denied.";
+        if (error.code === 2) msg = "GPS signal lost. Try moving outdoors.";
+        if (error.code === 3) msg = "GPS request timed out.";
+        triggerToast(msg);
+        setIsVerifyingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
   const [showShareCard, setShowShareCard] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
@@ -657,10 +759,6 @@ function ProfileContent() {
   const [userTickets, setUserTickets] = useState([]);
   const [isMomentsLoading, setIsMomentsLoading] = useState(false);
   const [dbMoments, setDbMoments] = useState([]);
-  const [karmaData, setKarmaData] = useState(null);
-  const [isKarmaLoading, setIsKarmaLoading] = useState(false);
-  const [checkinStates, setCheckinStates] = useState({});
-  const [checkinErrors, setCheckinErrors] = useState({});
 
   const fetchUserTickets = async (email) => {
     if (!email) return;
@@ -674,8 +772,8 @@ function ProfileContent() {
         // Update persona state to show these tickets
         setPersonaOverrides(prev => ({
           ...prev,
-          ['user-profile']: {
-            ...prev['user-profile'],
+          [currentPersona.id]: {
+            ...prev[currentPersona.id],
             activeTickets: (data.rsvps || []).map(t => ({
               id: t.event_id,
               name: t.event_title,
@@ -683,7 +781,9 @@ function ProfileContent() {
               locationPin: t.event_location,
               organizer: "VAYO Host",
               qrCode: `VAYO-TKT-${t.event_id.toString().slice(-4).toUpperCase()}`,
-              attendance_status: t.attendance_status,
+              lat: t.lat,
+              lng: t.lng,
+              image: t.image
             }))
           }
         }));
@@ -711,23 +811,9 @@ function ProfileContent() {
     }
   };
 
-  const fetchKarma = async (email) => {
-    if (!email) return;
-    setIsKarmaLoading(true);
-    try {
-      const res = await fetch(`/api/karma?email=${encodeURIComponent(email)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setKarmaData(data);
-      }
-    } catch (err) {
-      console.error("Error fetching karma:", err);
-    } finally {
-      setIsKarmaLoading(false);
-    }
-  };
-
   const currentPersona = personas[activeIdx] || basePersonas[0];
+  const karmaScore = currentPersona.karma_score || currentPersona.karmaBalance || 0;
+  const currentTier = getTierFromScore(karmaScore);
   const _ov = personaOverrides[currentPersona.id];
   const displayPersona = _ov ? {
     ...currentPersona,
@@ -757,56 +843,40 @@ function ProfileContent() {
   ];
   const completenessScore = Math.round((completenessItems.filter(i => i.done).length / completenessItems.length) * 100);
 
-  const karmaNotifications = karmaData ? [
-    (karmaData.breakdown?.eventRsvps?.count ?? 0) > 0 && {
-      id: 'karma-rsvp',
-      icon: '🎟️',
-      msg: `Earned ${karmaData.breakdown.eventRsvps.points} karma from ${karmaData.breakdown.eventRsvps.count} event RSVP${karmaData.breakdown.eventRsvps.count > 1 ? 's' : ''}`,
-      time: 'From RSVPs',
-      unread: false,
-      type: 'KARMA_UPDATE',
-      pts: `+${karmaData.breakdown.eventRsvps.points}`,
-    },
-    (karmaData.breakdown?.profileSetup?.points ?? 0) > 0 && {
-      id: 'karma-profile',
-      icon: '🛡️',
-      msg: `Profile setup earned you ${karmaData.breakdown.profileSetup.points} karma pts`,
-      time: 'From profile',
-      unread: false,
-      type: 'KARMA_UPDATE',
-      pts: `+${karmaData.breakdown.profileSetup.points}`,
-    },
-    (karmaData.breakdown?.community?.referrals ?? 0) > 0 && {
-      id: 'karma-referral',
-      icon: '👥',
-      msg: `You referred ${karmaData.breakdown.community.referrals} member${karmaData.breakdown.community.referrals > 1 ? 's' : ''} — karma earned`,
-      time: 'From referrals',
-      unread: false,
-      type: 'KARMA_UPDATE',
-      pts: `+${karmaData.breakdown.community.referralPts}`,
-    },
-  ].filter(Boolean) : [];
+  const formatTimeAgo = (dateStr) => {
+    try {
+      const currentMs = nowMs || 1780058264000;
+      const diffMs = currentMs - new Date(dateStr).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays}d ago`;
+    } catch {
+      return '';
+    }
+  };
 
   const displayNotifications = currentPersona.id === 'user-profile'
-    ? [
-        ...liveNotifications.map(n => {
-          let icon = '🔔';
-          if (n.type === 'MESSAGE_RECEIVED') icon = '💬';
-          else if (n.type === 'EVENT_MATCH') icon = '📅';
-          else if (n.type === 'EVENT_REMINDER') icon = '⏰';
-          return {
-            id: n.id,
-            icon,
-            msg: n.body || n.title,
-            time: formatTimeAgo(n.created_at),
-            unread: !n.is_read,
-            type: n.type,
-            reference_id: n.reference_id,
-            actor_id: n.actor_id
-          };
-        }),
-        ...karmaNotifications,
-      ]
+    ? liveNotifications.map(n => {
+        let icon = '🔔';
+        if (n.type === 'MESSAGE_RECEIVED') icon = '💬';
+        else if (n.type === 'EVENT_MATCH') icon = '📅';
+        else if (n.type === 'EVENT_REMINDER') icon = '⏰';
+
+        return {
+          id: n.id,
+          icon,
+          msg: n.body || n.title,
+          time: formatTimeAgo(n.created_at),
+          unread: !n.is_read,
+          type: n.type,
+          reference_id: n.reference_id,
+          actor_id: n.actor_id
+        };
+      })
     : (activeMode === 'bff' ? [
         { id: 1, icon: '💚', msg: `Your BFF profile is now live!`, time: '1h ago', unread: true },
         { id: 2, icon: '📸', msg: `New memory added to your shared gallery from last weekend`, time: '4h ago', unread: true },
@@ -817,7 +887,6 @@ function ProfileContent() {
       ] : [
         { id: 3, icon: '📅', msg: `Reminder: ${currentPersona.activeTickets[0]?.name ?? 'Your next event'} is coming up soon`, time: '1d ago', unread: false },
         { id: 4, icon: '👋', msg: `Someone viewed your profile`, time: '2d ago', unread: false },
-        { id: 'k2', icon: '🎟️', msg: `Earned karma from attending events`, time: 'From RSVPs', unread: false, type: 'KARMA_UPDATE', pts: `+${Math.round((currentPersona.karmaBreakdown?.attendedMixers ?? 0))}` },
       ]);
 
   const unreadCount = displayNotifications.filter(n => n.unread).length;
@@ -848,8 +917,8 @@ function ProfileContent() {
 
       if (response.ok) {
         triggerToast('Registration confirmed! Check your tickets.');
-        setRsvpedIds(prev => new Set([...prev, event.id]));
         setSelectedEvent(null);
+        // Refresh tickets
         fetchUserTickets(email);
       } else {
         const data = await response.json();
@@ -992,14 +1061,22 @@ function ProfileContent() {
 
   useEffect(() => {
     if (!isUserLoaded) return;
-    Promise.resolve().then(() => fetchNotifications());
+    const t = setTimeout(() => {
+      fetchNotifications();
+    }, 0);
     const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(t);
+      clearInterval(interval);
+    };
   }, [isUserLoaded]);
 
   useEffect(() => {
     if (showNotifications) {
-      Promise.resolve().then(() => fetchNotifications());
+      const t = setTimeout(() => {
+        fetchNotifications();
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [showNotifications]);
 
@@ -1187,66 +1264,6 @@ function ProfileContent() {
     setTimeout(() => setShowToast(null), 3000);
   };
 
-  const handleCheckin = (tkt) => {
-    const sessionEmail = typeof window !== 'undefined' ? localStorage.getItem("vayo_user_email") : null;
-    const email = emailParam || sessionEmail;
-    const ticketKey = tkt.id;
-
-    if (!email) {
-      triggerToast("Please sign in to mark attendance.");
-      return;
-    }
-    if (!navigator.geolocation) {
-      triggerToast("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    setCheckinStates(prev => ({ ...prev, [ticketKey]: 'loading' }));
-    setCheckinErrors(prev => ({ ...prev, [ticketKey]: null }));
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude: userLat, longitude: userLng } = position.coords;
-        try {
-          const res = await fetch("/api/checkin", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, eventId: tkt.id, userLat, userLng }),
-          });
-          const data = await res.json();
-          if (res.ok) {
-            setCheckinStates(prev => ({ ...prev, [ticketKey]: 'success' }));
-            triggerToast(data.message || "Attendance marked!");
-            fetchUserTickets(email);
-            fetchKarma(email);
-          } else {
-            const errorType =
-              res.status === 409 ? 'already_checked_in'
-              : (data.distance_meters && data.distance_meters > CHECKIN_RADIUS_METERS) ? 'too_far'
-              : 'error';
-            setCheckinStates(prev => ({ ...prev, [ticketKey]: errorType }));
-            setCheckinErrors(prev => ({ ...prev, [ticketKey]: data }));
-            triggerToast(data.error || "Check-in failed.");
-          }
-        } catch {
-          setCheckinStates(prev => ({ ...prev, [ticketKey]: 'error' }));
-          setCheckinErrors(prev => ({ ...prev, [ticketKey]: { message: "Network error. Try again." } }));
-          triggerToast("Network error during check-in.");
-        }
-      },
-      (geoError) => {
-        const msg =
-          geoError.code === 1 ? "Location access denied. Go to Settings → Safari/Chrome → Location and allow access."
-          : geoError.code === 2 ? "GPS is off or unavailable. Enable Location Services on your device and try again."
-          : "Location request timed out. Try moving outdoors or to an open area.";
-        setCheckinStates(prev => ({ ...prev, [ticketKey]: 'error' }));
-        setCheckinErrors(prev => ({ ...prev, [ticketKey]: { message: msg } }));
-        triggerToast(msg);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  };
-
   const getRandomGradient = () => {
     const g = ['from-violet-500 to-purple-600', 'from-amber-400 to-orange-500', 'from-teal-400 to-emerald-600', 'from-pink-500 to-rose-600', 'from-sky-400 to-blue-500'];
     return g[Math.floor(Math.random() * g.length)];
@@ -1294,7 +1311,7 @@ function ProfileContent() {
           { name: 'Community Host', desc: 'Support hosting a neighborhood meet', icon: '🏠', status: 'locked' }
         ];
       case 'maxim': return [
-        { name: 'Cozy Connector', desc: 'Attended 5 cozy venue events', icon: '☕', status: 'unlocked' },
+        { name: 'Cozy Connector', desc: 'Attended 5 cozy venue mixers', icon: '☕', status: 'unlocked' },
         { name: 'Board Game Guild', desc: 'Host of 3 board game meetups', icon: '🎲', status: 'unlocked' },
         { name: 'First Mixer RSVP', desc: 'Completed first event checkout', icon: '🎟️', status: 'unlocked' },
         { name: 'Social Catalyst', desc: 'Contributed +100 vibe points', icon: '⚡', status: 'locked' },
@@ -1313,7 +1330,7 @@ function ProfileContent() {
         { name: 'Speed Runner', desc: 'Completed 10 morning runs', icon: '🏃‍♂️', status: 'unlocked' },
         { name: 'Shuttle Ace', desc: 'Winner of HSR Badminton club', icon: '🏸', status: 'unlocked' },
         { name: 'Trivia Champion', desc: 'Weekly beer & trivia winner', icon: '🍺', status: 'unlocked' },
-        { name: 'Cozy Host', desc: 'Host 5 offline hub events', icon: '🏠', status: 'locked' },
+        { name: 'Cozy Host', desc: 'Host 5 offline hub mixers', icon: '🏠', status: 'locked' },
         { name: 'Elite Pathfinder', desc: 'Earned pathfinder badge', icon: '🛡️', status: 'unlocked' },
         { name: 'Global Voyager', desc: 'Earn 1000+ Karma XP balance', icon: '🌍', status: 'locked' }
       ]
@@ -1323,7 +1340,7 @@ function ProfileContent() {
         { name: 'Literature Guild', desc: 'Jayanagar Book Club lead', icon: '📚', status: 'unlocked' },
         { name: 'Quiet Hub Host', desc: 'Set up low-intensity cafe event', icon: '☕', status: 'locked' },
         { name: 'Profile Guardian', desc: 'Helped verify 10 offline profiles', icon: '🛡️', status: 'locked' },
-        { name: 'Voyager VIP', desc: 'VIP event access level', icon: '✨', status: 'unlocked' }
+        { name: 'Voyager VIP', desc: 'VIP mixer access level', icon: '✨', status: 'unlocked' }
       ]
       default: return []
     }
@@ -1382,7 +1399,6 @@ function ProfileContent() {
             setIsUserLoaded(true);
             fetchUserTickets(sessionEmail);
             fetchUserMoments(sessionEmail);
-            fetchKarma(sessionEmail);
             triggerToast(`Logged in as ${data.user.name || 'Vayo Member'}`);
           } else {
             setIsUserLoaded(false);
@@ -1402,34 +1418,56 @@ function ProfileContent() {
   }, [emailParam]);
 
   const fetchEvents = async () => {
+    setIsEventsLoading(true);
     try {
-      try {
-        const localRes = await fetch(`${BACKEND_URL}/api/v1/events?limit=20`, {
-          signal: AbortSignal.timeout(1500)
-        });
-        if (localRes.ok) {
-          const data = await localRes.json();
-          if (data.events?.length > 0) {
-            setUpcomingEvents(formatEventData(data.events)); setCurrentEventIdx(0);
-            return;
-          }
-        }
-      } catch {
-        // FastAPI offline, fall through to Supabase
-      }
-
+      // 1. Try unified Next.js API first (Supabase / Local persistent file)
       const sbRes = await fetch("/api/events");
       if (sbRes.ok) {
         const data = await sbRes.json();
-        setUpcomingEvents(formatEventData(data.events || [])); setCurrentEventIdx(0);
+        if (data.events && Array.isArray(data.events)) {
+          const activeEvents = data.events.filter(evt => evt.status !== "cancelled");
+          setUpcomingEvents(formatEventData(activeEvents));
+          setIsEventsLoading(false);
+          return;
+        }
       }
     } catch (err) {
-      console.warn("Could not load events:", err);
+      console.log("Supabase fetch failed, trying local Python backend...");
     }
+
+    try {
+      // 2. Fallback to local Python backend (if running)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1500);
+      const localRes = await fetch(`${BACKEND_URL}/api/v1/events?limit=20`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (localRes.ok) {
+        const data = await localRes.json();
+        if (data.events && Array.isArray(data.events) && data.events.length > 0) {
+          const activeEvents = data.events.filter(evt => evt.status !== "cancelled");
+          setUpcomingEvents(formatEventData(activeEvents));
+          setIsEventsLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Local backend offline, showing demo events.");
+      setUpcomingEvents(staticEvents);
+      setIsEventsLoading(false);
+      return;
+    }
+
+    setIsEventsLoading(false);
   };
 
   const formatEventData = (events) => {
-    return events.map((evt) => {
+    return events
+      .filter(evt => {
+        const status = (evt.status || "").toLowerCase();
+        return status !== 'cancelled' && status !== 'canceled';
+      })
+      .map((evt) => {
       let formattedDate = evt.event_date;
       try {
         const d = new Date(evt.event_date);
@@ -1446,29 +1484,33 @@ function ProfileContent() {
         min_karma_required: evt.min_karma_required || 0,
         entry_fee: evt.entry_fee || 0,
         category: evt.category || 'social',
-        max_participants: evt.max_participants || 0,
-        lat: evt.lat || null,
-        lng: evt.lng || null
+        max_participants: evt.max_participants || 0
       };
     });
   };
 
   useEffect(() => {
-    Promise.resolve().then(() => fetchEvents());
+    const t = setTimeout(() => {
+      fetchEvents();
+    }, 0);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
     if (currentPersona && currentPersona.id === 'user-profile') {
       const sessionEmail = localStorage.getItem("vayo_user_email");
       const email = emailParam || sessionEmail;
-      Promise.resolve().then(() => fetchUserTickets(email));
+      const t = setTimeout(() => {
+        fetchUserTickets(email);
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [activeIdx, isUserLoaded]);
 
   const theme = modeColors[activeMode] || modeColors.social;
 
   return (
-    <div className="min-h-screen relative overflow-hidden text-[#1f2937] font-sans antialiased py-12 px-4 md:px-8 lg:px-12 selection:bg-sky-100">
+    <div className="min-h-screen relative overflow-hidden text-[#1f2937] font-sans antialiased pt-12 pb-28 md:py-12 px-4 md:px-8 lg:px-12 selection:bg-sky-100">
       
       {/* Universal Loading Shield to prevent Demo Flash */}
       {isMounted && isLoadingUser && (
@@ -1577,7 +1619,7 @@ function ProfileContent() {
                 </div>
                 <div className="pb-0.5">
                   <div className="text-white font-extrabold text-sm">{currentPersona.name}, {currentPersona.age}</div>
-                  <div className="text-white/50 text-[9px] font-bold uppercase tracking-wider">{currentPersona.role}</div>
+                  <div className="text-white/60 text-[10px] font-bold uppercase tracking-wider">{currentPersona.role}</div>
                 </div>
               </div>
               <button onClick={() => setShowShareCard(false)} className="absolute top-3 right-3 text-white/50 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
@@ -1585,12 +1627,12 @@ function ProfileContent() {
             <div className="bg-white p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Profile Status</div>
+                  <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Profile Status</div>
                   <div className={`text-sm font-extrabold ${theme.textAccent}`}>{completenessScore}% Complete</div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {(currentPersona.socialTags || []).slice(0, 2).map(tag => (
-                    <span key={tag} className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>{tag}</span>
+                    <span key={tag} className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>{tag}</span>
                   ))}
                 </div>
               </div>
@@ -1635,23 +1677,23 @@ function ProfileContent() {
               <span className="w-2 h-2 bg-sky-500 rounded-full animate-pulse shrink-0" />
               <span>Viewing in **Demo Mode** (Previewing profiles). Connect an approved waitlist email to view your personal dashboard.</span>
             </div>
-            <Link href="/" className="px-4 py-1.5 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 font-bold rounded-xl transition-colors shadow-sm">
+            <Link href="/" className="px-4 py-1.5 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 font-bold rounded-xl transition-all shadow-sm">
               Sign In / Apply ↗
             </Link>
           </div>
         )}
 
         {/* ═══ HEADER ═══ */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between border border-white/50 bg-white/30 backdrop-blur-md rounded-3xl py-3 px-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] mb-6 gap-4 relative z-20">
+        <header className="flex items-center justify-between border border-white/50 bg-white/30 backdrop-blur-md rounded-3xl py-3 px-4 md:px-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] mb-6 gap-2 md:gap-4 relative z-20">
           <div className="flex items-center gap-3">
             <div className="text-neutral-800 flex items-center">
               <img src="/assets/vayo-logo.png" className="h-7 w-auto select-none" alt="VAYO" />
               <span className="w-1.5 h-1.5 bg-[#0ea5e9] rounded-full inline-block ml-1 animate-pulse" />
             </div>
-            <span className="text-[8.5px] text-neutral-400 font-bold uppercase tracking-wider hidden sm:block border-l border-neutral-300 pl-3 leading-none h-3 flex items-center mt-1">Community Hub</span>
+            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider hidden sm:block border-l border-neutral-300 pl-3 leading-none h-3 flex items-center mt-1">Community Hub</span>
           </div>
 
-          <div className="flex bg-white/25 backdrop-blur-sm p-1 rounded-full border border-white/30 shadow-sm gap-1 self-center">
+          <div className="hidden md:flex bg-white/25 backdrop-blur-sm p-1 rounded-full border border-white/30 shadow-sm gap-1">
             {['social'].map(mode => {
               const isActive = activeMode === mode;
               const modeTheme = modeColors[mode];
@@ -1660,7 +1702,7 @@ function ProfileContent() {
                   setActiveMode(mode);
                   setIsEditing(false);
                   const allowedTabs = {
-                    social: ['profile', 'karma', 'circle', 'events', 'moments', 'security'],
+                    social: ['profile', 'karma', 'circle', 'mixers', 'moments', 'security'],
                     bff: ['profile', 'circle', 'moments', 'security'],
                     bizz: ['profile', 'circle', 'security'],
                   }[mode];
@@ -1685,14 +1727,14 @@ function ProfileContent() {
                     }
                   }
                 }}
-                  className={`px-3.5 py-1.5 text-[11px] font-bold rounded-full transition-colors duration-300 cursor-pointer ${isActive ? `${modeTheme.bgAccent} text-white shadow-sm scale-[1.02]` : 'text-neutral-500 hover:text-neutral-700 hover:bg-white/40'}`}>
+                  className={`px-3.5 py-1.5 text-[11px] font-bold rounded-full transition-all duration-300 cursor-pointer ${isActive ? `${modeTheme.bgAccent} text-white shadow-sm scale-[1.02]` : 'text-neutral-500 hover:text-neutral-700 hover:bg-white/40'}`}>
                   {mode === 'bizz' ? 'Bizz (Work)' : mode === 'bff' ? 'BFF (Hobbies)' : 'Social (Vibe)'}
                 </button>
               )
             })}
           </div>
 
-          <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
+          <div className="flex items-center justify-end gap-3 w-auto">
             <div className="flex items-center gap-2 relative">
               <div className={`w-9 h-9 rounded-full overflow-hidden border-2 bg-neutral-900 shadow-sm`} style={{ borderColor: theme.accent }}>
                 <img src={currentPersona.image} alt={currentPersona.name} className="w-full h-full object-cover" />
@@ -1710,14 +1752,14 @@ function ProfileContent() {
               {showNotifications && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                  <div className="absolute top-full right-0 mt-2 z-50 w-80 rounded-2xl border border-neutral-200 shadow-2xl overflow-hidden bg-white" onClick={e => e.stopPropagation()}>
+                  <div className="absolute top-full right-[-8px] sm:right-0 mt-2 z-50 w-[calc(100vw-32px)] sm:w-80 rounded-2xl border border-neutral-200 shadow-2xl overflow-hidden bg-white" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-800">Notifications</span>
                         {unreadCount > 0 && currentPersona.id === 'user-profile' && (
-                          <button onClick={markAllNotificationsAsRead} className="text-[9px] text-blue-600 hover:underline font-bold cursor-pointer">Mark all read</button>
+                          <button onClick={markAllNotificationsAsRead} className="text-[10.5px] text-blue-600 hover:underline font-bold cursor-pointer">Mark all read</button>
                         )}
-                        <span className={`text-[8.5px] font-extrabold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>
                           {activeMode === 'social' ? '🌐 Social' : activeMode === 'bff' ? '💚 BFF' : '💼 Bizz'}
                         </span>
                       </div>
@@ -1729,17 +1771,13 @@ function ProfileContent() {
                           key={n.id}
                           onClick={() => { if (n.unread && currentPersona.id === 'user-profile') markNotificationAsRead(n.id); }}
                           className={`flex flex-col gap-2 px-4 py-3 ${n.unread ? 'bg-blue-50/40' : ''}`}>
-                          <div className={`flex items-start gap-3 ${n.type === 'KARMA_UPDATE' ? 'bg-emerald-50/40 -mx-4 px-4 py-1 rounded-lg' : ''}`}>
+                          <div className="flex items-start gap-3">
                             <span className="text-lg shrink-0 mt-0.5">{n.icon}</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-semibold leading-snug text-neutral-700">{n.msg}</p>
-                              <p className="text-[9.5px] text-neutral-400 font-medium mt-0.5">{n.time}</p>
+                              <p className="text-[10.5px] text-neutral-500 font-medium mt-0.5">{n.time}</p>
                             </div>
-                            {n.pts ? (
-                              <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full shrink-0 mt-0.5 whitespace-nowrap">{n.pts}</span>
-                            ) : n.unread ? (
-                              <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />
-                            ) : null}
+                            {n.unread && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
                           </div>
                           {n.type === 'CONNECT_REQUEST' && n.unread && currentPersona.id === 'user-profile' && (
                             <div className="flex gap-2 pl-8">
@@ -1749,7 +1787,7 @@ function ProfileContent() {
                                   await acceptRequest(n.reference_id, n.msg.split(' ')[0] || 'Member');
                                   await markNotificationAsRead(n.id);
                                 }}
-                                className="text-[9px] font-bold px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm cursor-pointer">
+                                className="text-[10.5px] font-bold px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm cursor-pointer">
                                 Accept
                               </button>
                               <button
@@ -1758,7 +1796,7 @@ function ProfileContent() {
                                   await declineRequest(n.reference_id, n.msg.split(' ')[0] || 'Member');
                                   await markNotificationAsRead(n.id);
                                 }}
-                                className="text-[9px] font-bold px-3 py-1 rounded bg-neutral-100 text-neutral-650 hover:bg-neutral-200 border border-neutral-200 transition-colors shadow-sm cursor-pointer">
+                                className="text-[10.5px] font-bold px-3 py-1 rounded bg-neutral-100 text-neutral-650 hover:bg-neutral-200 border border-neutral-200 transition-colors shadow-sm cursor-pointer">
                                 Ignore
                               </button>
                             </div>
@@ -1779,56 +1817,28 @@ function ProfileContent() {
         </header>
 
         {/* ═══ MAIN CARD ═══ */}
-        <div className="bg-white/30 backdrop-blur-md rounded-[32px] border border-white/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] overflow-hidden mb-12">
+        <div className="bg-white/30 backdrop-blur-md rounded-[24px] sm:rounded-[32px] border border-white/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] overflow-hidden mb-12">
 
-          {/* Card Header — personal tier strip */}
-          {(() => {
-            const t = currentPersona.id === 'user-profile' ? (karmaData?.tier || 'Explorer') : (currentPersona.karmaTier || 'Explorer');
-            const score = currentPersona.id === 'user-profile' ? (karmaData?.total ?? null) : currentPersona.karmaBalance;
-            const headerMeta = {
-              Explorer:   { bg: 'from-sky-50 via-blue-50/60 to-white/0',     dot: 'bg-sky-400',     text: 'text-sky-600',    icon: '🔭' },
-              Pathfinder: { bg: 'from-amber-50 via-orange-50/60 to-white/0',  dot: 'bg-amber-400',   text: 'text-amber-600',  icon: '🧭' },
-              Voyager:    { bg: 'from-violet-50 via-purple-50/60 to-white/0', dot: 'bg-violet-500',  text: 'text-violet-600', icon: '🚀' },
-              Conqueror:  { bg: 'from-emerald-50 via-teal-50/60 to-white/0', dot: 'bg-emerald-400', text: 'text-emerald-600',icon: '🌟' },
-            };
-            const hm = headerMeta[t] || headerMeta.Explorer;
-            return (
-              <div className={`px-5 py-3.5 flex items-center justify-between border-b border-white/30 bg-gradient-to-r ${hm.bg}`}>
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{hm.icon}</span>
-                  <div>
-                    <div className="text-[13px] font-extrabold text-neutral-800 leading-tight">{currentPersona.name}</div>
-                    <div className={`text-[9px] font-bold uppercase tracking-widest ${hm.text} flex items-center gap-1.5 mt-0.5`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${hm.dot} inline-block`} />
-                      {t} · Vayo Member
-                    </div>
-                  </div>
-                </div>
-                {score !== null && (
-                  <div className="text-right">
-                    <div className={`text-[18px] font-black leading-none ${hm.text}`}>{score}</div>
-                    <div className="text-[8px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">karma pts</div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+          {/* Card Header */}
+          <div className="px-6 py-4 flex items-center justify-center border-b border-white/30 bg-white/10">
+            <h2 className="text-sm font-extrabold text-neutral-800 tracking-wider uppercase font-sans">Profile Dashboard</h2>
+          </div>
 
           {/* Two-Column Layout */}
-          <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-6 p-4 md:p-6 min-w-0 w-full">
+          <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-6 p-3 sm:p-6 min-w-0 w-full">
 
             {/* ── SIDEBAR ── */}
-            <aside className="w-full min-w-0 overflow-hidden md:space-y-2">
+            <aside className="hidden md:block w-full min-w-0 overflow-hidden md:space-y-2">
               <div className="bg-white/40 backdrop-blur-sm rounded-2xl border border-white/40 p-2 md:p-3 shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-1.5 md:gap-1 scrollbar-none whitespace-nowrap w-full">
                 {[
                   { key: 'profile', label: 'Vibe Profile', icon: <User className="w-4 h-4" /> },
-                  { key: 'events', label: 'Event Stage', icon: <Calendar className="w-4 h-4" /> },
+                  { key: 'mixers', label: 'Event Stage', icon: <Calendar className="w-4 h-4" /> },
                   { key: 'security', label: 'Account & Security', icon: <Lock className="w-4 h-4" /> },
                 ].map(item => {
                     const isActive = activeSidebarTab === item.key;
                     return (
                       <button key={item.key} onClick={() => setActiveSidebarTab(item.key)}
-                        className={`flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold transition-colors duration-200 cursor-pointer shrink-0 w-auto md:w-full ${isActive ? 'bg-white/80 text-neutral-800 shadow-sm border border-neutral-100/50' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white/25'}`}>
+                        className={`flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shrink-0 w-auto md:w-full ${isActive ? 'bg-white/80 text-neutral-800 shadow-sm border border-neutral-100/50' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white/25'}`}>
                         <span className={isActive ? theme.textAccent : 'text-neutral-400'}>{item.icon}</span>
                         <span>{item.label}</span>
                       </button>
@@ -1836,7 +1846,7 @@ function ProfileContent() {
                   })}
                 <div className="hidden md:block border-t border-white/20 my-2" />
                 <div className="md:hidden w-px h-6 bg-white/20 self-center mx-1 shrink-0" />
-                <button onClick={handleLogout} className="flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold text-rose-500/80 hover:text-rose-600 hover:bg-rose-500/10 transition-colors duration-200 cursor-pointer shrink-0 w-auto md:w-full">
+                <button onClick={handleLogout} className="flex items-center gap-2 md:gap-3 px-3.5 md:px-4 py-2 md:py-3 rounded-xl text-xs font-bold text-rose-500/80 hover:text-rose-600 hover:bg-rose-500/10 transition-all duration-200 cursor-pointer shrink-0 w-auto md:w-full">
                   <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
                   <span>Log out</span>
                 </button>
@@ -1844,19 +1854,19 @@ function ProfileContent() {
             </aside>
 
             {/* ── MAIN PANEL ── */}
-            <main className="bg-white border border-white/40 rounded-[32px] shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col min-h-[500px]">
+            <main className="bg-white border border-white/40 rounded-[24px] sm:rounded-[32px] shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col min-h-[500px]">
 
               {/* Panel Header */}
               <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
                 <div className="flex items-center gap-2.5">
                   <div className="p-1.5 bg-neutral-100 rounded-lg text-neutral-600">
                     {activeSidebarTab === 'profile' && <User className="w-4 h-4" />}
-                    {activeSidebarTab === 'events' && <Calendar className="w-4 h-4" />}
+                    {activeSidebarTab === 'mixers' && <Calendar className="w-4 h-4" />}
                     {activeSidebarTab === 'security' && <Lock className="w-4 h-4" />}
                   </div>
                   <h3 className="text-sm font-extrabold text-neutral-800 tracking-tight font-sans">
                     {activeSidebarTab === 'profile' && 'Profile Details'}
-                    {activeSidebarTab === 'events' && 'Event Stage'}
+                    {activeSidebarTab === 'mixers' && 'Event Stage'}
                     {activeSidebarTab === 'security' && 'Account & Security'}
                   </h3>
                 </div>
@@ -1867,7 +1877,7 @@ function ProfileContent() {
                   </div>
                 ) : activeSidebarTab === 'profile' ? (
                   <button onClick={startEdit}
-                    className="flex items-center gap-1.5 bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition-colors hover:bg-neutral-50 cursor-pointer">
+                    className="flex items-center gap-1.5 bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition-all hover:bg-neutral-50 cursor-pointer">
                     <svg className="w-3.5 h-3.5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z" /></svg>
                     <span>Edit</span>
                   </button>
@@ -1875,604 +1885,349 @@ function ProfileContent() {
               </div>
 
               {/* Panel Body */}
-              <div className="p-6 flex-1">
+              <div className="p-4 sm:p-6 flex-1">
 
                 {/* ════════════════════ PROFILE TAB ════════════════════ */}
                 {activeSidebarTab === 'profile' && (
                   <div className="space-y-6 animate-fade-in">
+                    
+                    {/* MOBILE LAYOUT (mockup style card, visible only on mobile viewports) */}
+                    <div className="block sm:hidden space-y-5">
+                      {/* 1. Main Profile Card */}
+                      <div className="bg-white rounded-[2rem] border border-neutral-200/80 shadow-md overflow-hidden flex flex-col relative">
+                        {/* Header Banner Background */}
+                        <div className="h-24 relative overflow-hidden shrink-0">
+                          <img 
+                            src="https://media.istockphoto.com/id/478627080/photo/evening-view-of-ama-dablam.jpg?s=612x612&w=0&k=20&c=GLKvtQt1JVoOB4yR2WI86_fYOmG8WObeZP_QV_gFG_0=" 
+                            alt="AMA DABLAM Banner" 
+                            className="w-full h-full object-cover" 
+                          />
+                          {/* Decorative cloud-like overlay */}
+                          <div className="absolute inset-0 bg-black/10 backdrop-blur-[0.5px]" />
+                          
+                          {/* Share Button (Follow+ style action) */}
+                          <button 
+                            onClick={() => setShowShareCard(true)}
+                            className="absolute top-3.5 right-4 px-3.5 py-1.5 rounded-full bg-white/95 text-neutral-800 text-[10px] font-black uppercase tracking-widest hover:bg-neutral-50 active:scale-95 transition-all shadow-sm border border-neutral-200/20 cursor-pointer flex items-center gap-1 z-10"
+                          >
+                            <span>Share</span>
+                            <Plus className="w-3 h-3 text-neutral-600" />
+                          </button>
+                        </div>
 
-                    {/* Avatar + Info */}
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                      {/* GRADIENT RING AVATAR */}
-                      <div className="relative shrink-0 pb-4">
-                        <div className={`w-28 h-28 rounded-full p-[3px] bg-gradient-to-br ${theme.gradient} shadow-xl`}>
-                          <div className="w-full h-full rounded-full overflow-hidden bg-neutral-900 border-2 border-white/80">
-                            <img src={currentPersona.image} alt={currentPersona.name} className="w-full h-full object-cover" />
+                        {/* Avatar & EXP/Karma Row */}
+                        <div className="px-4.5 -mt-8 flex items-end justify-between relative z-10">
+                          {/* White border circle avatar */}
+                          <div className="w-18 h-18 rounded-full border-4 border-white bg-neutral-900 shadow-md overflow-hidden shrink-0">
+                            <img src={currentPersona.image} className="w-full h-full object-cover" alt={currentPersona.name} />
+                          </div>
+                          
+                          {/* Karma EXP bar */}
+                          <div className="flex items-center gap-1.5 pb-2">
+                            <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">karma</span>
+                            <div className="flex gap-[1.5px] items-end h-3.5">
+                              {[...Array(10)].map((_, idx) => {
+                                const scorePerBar = 100;
+                                const barValue = (idx + 1) * scorePerBar;
+                                const isFilled = (currentPersona.karmaBalance || 150) >= barValue;
+                                
+                                const colors = [
+                                  'bg-indigo-500', 'bg-violet-500', 'bg-purple-500', 
+                                  'bg-fuchsia-500', 'bg-pink-500', 'bg-rose-500', 
+                                  'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-emerald-500'
+                                ];
+                                
+                                return (
+                                  <div 
+                                    key={idx} 
+                                    className={`w-[2.5px] rounded-full transition-all duration-300 ${
+                                      isFilled ? colors[idx] : 'bg-neutral-200'
+                                    }`}
+                                    style={{ height: `${4 + idx * 1}px` }} 
+                                  />
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
-                        {/* Tier badge */}
+
+                        {/* Name and Bio */}
+                        <div className="px-4.5 pt-2 pb-4.5 space-y-1.5 text-left">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-black text-neutral-800 tracking-tight leading-none">{currentPersona.name}</h3>
+                            <span className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-800 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full border border-emerald-500/20 shrink-0">
+                               <span className="inline-flex rounded-full h-1 w-1 bg-emerald-500 animate-pulse" />
+                               Active
+                            </span>
+                          </div>
+                          {isEditing ? (
+                            <div className="space-y-2.5 pt-1">
+                              <div>
+                                <label className="text-[10px] font-extrabold uppercase text-neutral-400 tracking-wider">Bio</label>
+                                <textarea 
+                                  value={editDraft.bio} 
+                                  onChange={e => setEditDraft(p => ({ ...p, bio: e.target.value }))} 
+                                  rows={3}
+                                  className={`w-full text-xs border border-neutral-200/85 rounded-xl px-3 py-2 mt-1 resize-none focus:outline-none focus:ring-1 focus:ring-sky-500/30 bg-neutral-50/30`}
+                                  placeholder="Write your bio…" 
+                                />
+                              </div>
+                              
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-extrabold uppercase text-neutral-400 tracking-wider">Social Channels</label>
+                                <div className="grid grid-cols-1 gap-1.5">
+                                  <div className="flex items-center gap-1.5 border border-neutral-200/85 rounded-xl px-2.5 py-1.5 bg-neutral-50/30">
+                                    <span className="text-[9px] font-extrabold uppercase text-neutral-500 w-16">Instagram</span>
+                                    <input 
+                                      value={editDraft.instagram}
+                                      onChange={e => setEditDraft(p => ({ ...p, instagram: e.target.value }))}
+                                      className="text-xs flex-1 outline-none bg-transparent min-w-0" 
+                                      placeholder="@handle" 
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1.5 border border-neutral-200/85 rounded-xl px-2.5 py-1.5 bg-neutral-50/30">
+                                    <span className="text-[9px] font-extrabold uppercase text-neutral-500 w-16">Twitter / X</span>
+                                    <input 
+                                      value={editDraft.twitter}
+                                      onChange={e => setEditDraft(p => ({ ...p, twitter: e.target.value }))}
+                                      className="text-xs flex-1 outline-none bg-transparent min-w-0" 
+                                      placeholder="@handle" 
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1.5 border border-neutral-200/85 rounded-xl px-2.5 py-1.5 bg-neutral-50/30">
+                                    <span className="text-[9px] font-extrabold uppercase text-neutral-500 w-16">LinkedIn</span>
+                                    <input 
+                                      value={editDraft.linkedin}
+                                      onChange={e => setEditDraft(p => ({ ...p, linkedin: e.target.value }))}
+                                      className="text-xs flex-1 outline-none bg-transparent min-w-0" 
+                                      placeholder="username" 
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-neutral-500 font-semibold leading-relaxed">
+                              {activeMode === 'social' ? displayPersona.socialBio : activeMode === 'bff' ? displayPersona.bffBio : displayPersona.bizzBio}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Stats Bar */}
+                        <div className="border-t border-neutral-100/70 grid grid-cols-3 divide-x divide-neutral-100/70 py-3 bg-neutral-50/50">
+                          <div className="text-center">
+                            <div className={`text-[15px] font-black tracking-tight ${theme.textAccent}`}>
+                              {displayPersona.activeTickets ? displayPersona.activeTickets.length : 0}
+                            </div>
+                            <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-0.5">Mixers</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`text-[15px] font-black tracking-tight ${theme.textAccent}`}>
+                              {displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0}
+                            </div>
+                            <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-0.5">Connections</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`text-[15px] font-black tracking-tight ${theme.textAccent}`}>
+                              {currentPersona.karmaBalance || 0}
+                            </div>
+                            <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-0.5">Karma</div>
+                          </div>
+                        </div>
+
+                        {/* Footer Social Icons */}
+                        <div className="border-t border-neutral-100/70 grid grid-cols-3 divide-x divide-neutral-100/70 bg-white">
+                          <a 
+                            href={displayPersona.socialLinks?.instagram ? `https://instagram.com/${displayPersona.socialLinks.instagram.replace('@', '')}` : '#'} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="py-3 flex items-center justify-center text-neutral-500 hover:text-neutral-800 transition-colors"
+                          >
+                            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
+                            </svg>
+                          </a>
+                          <a 
+                            href={displayPersona.socialLinks?.twitter ? `https://twitter.com/${displayPersona.socialLinks.twitter.replace('@', '')}` : '#'} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="py-3 flex items-center justify-center text-neutral-500 hover:text-neutral-800 transition-colors"
+                          >
+                            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                            </svg>
+                          </a>
+                          <a 
+                            href={displayPersona.socialLinks?.linkedin ? `https://linkedin.com/in/${displayPersona.socialLinks.linkedin}` : '#'} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="py-3 flex items-center justify-center text-neutral-500 hover:text-neutral-800 transition-colors"
+                          >
+                            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" /><circle cx="4" cy="4" r="2" />
+                            </svg>
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* 2. Mobile Karma Progress Bar Card */}
+                      <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 rounded-[2rem] p-5.5 flex items-center justify-between gap-5 shadow-[0_4px_20px_rgba(245,158,11,0.08)]">
+                        <div className="space-y-1.5 text-left">
+                          <span className="text-[10px] text-amber-600 font-black uppercase tracking-widest flex items-center gap-1">
+                            <Flame className="w-3.5 h-3.5 fill-amber-500/25 text-amber-500" /> Karma Tier
+                          </span>
+                          <span className="text-base font-black text-neutral-800 tracking-tight">{currentTier.label}</span>
+                        </div>
+                        <div className="flex-1 max-w-[170px] space-y-2">
+                          <div className="bg-amber-100/70 h-2.5 rounded-full overflow-hidden relative">
+                            <div className="h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-amber-500 to-orange-500" 
+                              style={{ width: `${Math.min(100, Math.max(0, ((karmaScore - currentTier.min) / ((currentTier.max === 999999 ? currentTier.min + 1000 : currentTier.max) - currentTier.min)) * 100))}%` }} />
+                          </div>
+                          <div className="flex justify-between items-center text-[9px] font-bold text-neutral-400 uppercase tracking-wider">
+                            <span>{karmaScore} PTS</span>
+                            <span>{currentTier.max === 999999 ? "Max Tier" : `${currentTier.max - karmaScore} to next`}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Separate Upcoming Events Container */}
+                      <div className="bg-white/40 backdrop-blur-md border border-white/50 rounded-[2rem] p-4 shadow-sm space-y-4">
+                        {/* Upcoming Events Carousel for Mobile */}
                         {(() => {
-                          const t = currentPersona.id === 'user-profile' ? (karmaData?.tier || 'Explorer') : (currentPersona.karmaTier || 'Explorer');
-                          const tg = { Explorer: 'from-sky-400 to-blue-500', Pathfinder: 'from-amber-400 to-orange-500', Voyager: 'from-violet-500 to-purple-600', Conqueror: 'from-emerald-400 to-teal-500' }[t] || 'from-sky-400 to-blue-500';
-                          const ti = { Explorer: '🔭', Pathfinder: '🧭', Voyager: '🚀', Conqueror: '🌟' }[t] || '🔭';
+                          const event = upcomingEvents[currentEventIdx];
+                          
+                          if (isEventsLoading) {
+                            return (
+                              <div className="space-y-4">
+                                <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest text-left">Upcoming Events</h5>
+                                <div className="relative w-full h-[190px] rounded-[24px] overflow-hidden shadow-sm border border-neutral-100 bg-neutral-900 flex flex-col items-center justify-center gap-3">
+                                  <span className="w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+                                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider animate-pulse">Syncing mixers…</span>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          if (!event) {
+                            return (
+                              <div className="space-y-4">
+                                <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest text-left">Upcoming Events</h5>
+                                <div className="relative w-full h-[190px] rounded-[24px] overflow-hidden shadow-sm border-2 border-dashed border-neutral-100 bg-neutral-50 flex flex-col items-center justify-center gap-2 text-center px-6">
+                                  <Calendar className="w-8 h-8 text-neutral-200" />
+                                  <div className="text-xs font-bold text-neutral-400">No Events Scheduled</div>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          const handlePrev = () => {
+                            setCurrentEventIdx(prev => (prev - 1 + upcomingEvents.length) % upcomingEvents.length);
+                          };
+                          const handleNext = () => {
+                            setCurrentEventIdx(prev => (prev + 1) % upcomingEvents.length);
+                          };
                           return (
-                            <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gradient-to-r ${tg} text-white text-[8px] font-extrabold px-2.5 py-1 rounded-full shadow-lg whitespace-nowrap z-10`}>
-                              <span>{ti}</span><span>{t}</span>
+                            <div className="space-y-4">
+                              <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest text-left">Upcoming Events</h5>
+                              <div className="relative w-full h-[190px] rounded-[24px] overflow-hidden shadow-lg border border-neutral-100 bg-neutral-900 group">
+                                <div 
+                                  onClick={() => {
+                                    setSelectedEvent(event);
+                                    setActiveSidebarTab('mixers');
+                                    triggerToast(`Opening registration for: ${event.title}`);
+                                  }}
+                                  className="absolute inset-0 w-full h-full cursor-pointer z-10"
+                                >
+                                  <div className="absolute inset-0 w-full h-full">
+                                    <img
+                                      src={event.image}
+                                      alt={event.title}
+                                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                                    />
+                                  </div>
+                                  
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent" />
+
+                                  <span className="absolute top-3.5 left-3.5 z-20 bg-blue-600 text-white text-[9px] font-extrabold px-2.5 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
+                                    Upcoming Event
+                                  </span>
+
+                                  <div className="absolute bottom-5 left-4 right-4 z-20 flex flex-col gap-1.5 text-left max-w-[calc(100%-32px)]">
+                                    <div className="flex items-center gap-1.5 bg-black/45 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded-full text-[10px] text-white font-bold tracking-wide w-fit">
+                                      <Calendar className="w-3 h-3 text-white" />
+                                      <span>{event.date}</span>
+                                    </div>
+
+                                    <h4 className="text-xs sm:text-sm font-bold text-white leading-snug tracking-tight drop-shadow-md truncate">
+                                      {event.title}
+                                    </h4>
+
+                                    <div className="flex items-center gap-1 text-[9px] text-neutral-300">
+                                      <MapPin className="w-3 h-3 text-sky-400 shrink-0" />
+                                      <span className="truncate">{event.location}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-36 h-9 z-20 flex items-center justify-center">
+                                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 144 36" fill="none" preserveAspectRatio="none">
+                                    <path d="M 0 36 C 16 36, 16 0, 32 0 L 112 0 C 128 0, 128 36, 144 36 Z" fill="#ffffff" />
+                                    <path d="M 0 36 C 16 36, 16 0, 32 0 L 112 0 C 128 0, 128 36, 144 36" stroke="rgba(228, 228, 231, 0.8)" strokeWidth="0.8" />
+                                  </svg>
+
+                                  <div className="relative z-10 flex gap-4 items-center justify-center pb-0.5">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                                      className="w-6.5 h-6.5 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-all duration-200 cursor-pointer"
+                                    >
+                                      <ArrowLeft className="w-3 h-3 text-neutral-600" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                                      className="w-6.5 h-6.5 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-all duration-200 cursor-pointer"
+                                    >
+                                      <ArrowRight className="w-3 h-3 text-neutral-600" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           );
                         })()}
                       </div>
-
-                      <div className="flex-1 text-center sm:text-left space-y-2 min-w-0">
-                        <div className="flex flex-col sm:flex-row items-center gap-2 justify-center sm:justify-start">
-                          <h4 className="text-xl font-extrabold text-neutral-800 tracking-tight">{currentPersona.name}, {currentPersona.age}</h4>
-                          <span className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                            <span className="inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                            Active
-                          </span>
-                          <span className={`flex items-center gap-1 text-[9.5px] font-extrabold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>
-                            {activeMode === 'social' ? '🌐' : activeMode === 'bff' ? '💚' : '💼'}
-                            {activeMode === 'social' ? 'Social' : activeMode === 'bff' ? 'BFF' : 'Bizz'}
-                          </span>
-                        </div>
-
-                        <div className="text-xs text-neutral-500 space-y-1">
-                          <div>+91 9845{currentPersona.id === 'maxim' ? '0 1202' : currentPersona.id === 'sarah' ? '1 3495' : currentPersona.id === 'daniel' ? '2 8593' : currentPersona.id === 'user-profile' ? '4 8392' : '3 9204'}</div>
-                          <div className="text-blue-600 font-semibold hover:underline cursor-pointer">{currentPersona.name.toLowerCase()}@vayo.community</div>
-                          <div className="flex items-center justify-center sm:justify-start gap-1 text-neutral-400">
-                            <MapPin className="w-3.5 h-3.5 shrink-0" />
-                            <span>{currentPersona.location}</span>
-                          </div>
-                          {isEditing ? (
-                            <div className="space-y-1.5 pt-1 max-w-sm">
-                              <div className="grid grid-cols-2 gap-1.5">
-                                {[['instagram', 'ig'], ['linkedin', 'li'], ['twitter', 'tw'], ['github', 'gh']].map(([key, short]) => (
-                                  <div key={key} className="flex items-center gap-1 border rounded-lg px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
-                                    <span className="text-[8.5px] font-extrabold uppercase text-neutral-400 w-5">{short}</span>
-                                    <input value={editDraft[key]}
-                                      onChange={e => setEditDraft(p => ({ ...p, [key]: e.target.value }))}
-                                      className="text-[10.5px] flex-1 outline-none bg-transparent min-w-0" placeholder={`@handle`} />
-                                  </div>
-                                ))}
-                              </div>
-                              {activeMode === 'bizz' && (
-                                <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                                  <div className="flex items-center gap-1 border rounded-lg px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
-                                    <span className="text-[8.5px] font-extrabold uppercase text-neutral-400 w-10">Role</span>
-                                    <input value={editDraft.bizzRole}
-                                      onChange={e => setEditDraft(p => ({ ...p, bizzRole: e.target.value }))}
-                                      className="text-[10.5px] flex-1 outline-none bg-transparent min-w-0" placeholder={`Job Role`} />
-                                  </div>
-                                  <div className="flex items-center gap-1 border rounded-lg px-2 py-1 bg-white" style={{ borderColor: `${theme.accent}30` }}>
-                                    <span className="text-[8.5px] font-extrabold uppercase text-neutral-400 w-12">Company</span>
-                                    <input value={editDraft.bizzCompany}
-                                      onChange={e => setEditDraft(p => ({ ...p, bizzCompany: e.target.value }))}
-                                      className="text-[10.5px] flex-1 outline-none bg-transparent min-w-0" placeholder={`Company`} />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ) : Object.keys(displayPersona.socialLinks || {}).length > 0 && (
-                            <div className="flex items-center justify-center sm:justify-start gap-1.5 pt-0.5">
-                              {displayPersona.socialLinks.instagram && (
-                                <a 
-                                  href={`https://instagram.com/${displayPersona.socialLinks.instagram.replace('@', '')}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  title={`@${displayPersona.socialLinks.instagram}`}
-                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
-                                  </svg>
-                                </a>
-                              )}
-                              {displayPersona.socialLinks.linkedin && (
-                                <a 
-                                  href={`https://linkedin.com/in/${displayPersona.socialLinks.linkedin}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  title={displayPersona.socialLinks.linkedin}
-                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" /><circle cx="4" cy="4" r="2" />
-                                  </svg>
-                                </a>
-                              )}
-                              {displayPersona.socialLinks.twitter && (
-                                <a 
-                                  href={`https://twitter.com/${displayPersona.socialLinks.twitter.replace('@', '')}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  title={`@${displayPersona.socialLinks.twitter}`}
-                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                                  </svg>
-                                </a>
-                              )}
-                              {displayPersona.socialLinks.github && (
-                                <a 
-                                  href={`https://github.com/${displayPersona.socialLinks.github}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  title={displayPersona.socialLinks.github}
-                                  className={`w-6 h-6 rounded-lg flex items-center justify-center border ${theme.cardBorder} ${theme.cardBg} hover:opacity-70 transition-opacity`} style={{ color: theme.accent }}>
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-                                  </svg>
-                                </a>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {isEditing ? (
-                          <textarea value={editDraft.bio} onChange={e => setEditDraft(p => ({ ...p, bio: e.target.value }))} rows={3}
-                            className={`w-full text-xs border rounded-xl px-3 py-2 mt-1 resize-none focus:outline-none focus:ring-2 bg-white ${theme.cardBorder}`}
-                            placeholder="Write your bio…" />
-                        ) : (
-                          <p className="text-xs text-neutral-600 italic font-medium pt-1 max-w-xl">
-                            &ldquo;{activeMode === 'social' ? displayPersona.socialBio : activeMode === 'bff' ? displayPersona.bffBio : displayPersona.bizzBio}&rdquo;
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Profile completeness donut */}
-                      <div className="shrink-0 flex flex-col items-center gap-1.5 self-center sm:self-start sm:pt-1">
-                        <div className="relative w-14 h-14 group cursor-default">
-                          <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
-                            <circle cx="28" cy="28" r="22" fill="none" stroke="#e5e7eb" strokeWidth="4.5" />
-                            <circle cx="28" cy="28" r="22" fill="none" stroke={theme.accent} strokeWidth="4.5"
-                              strokeDasharray={`${2 * Math.PI * 22}`}
-                              strokeDashoffset={`${2 * Math.PI * 22 * (1 - completenessScore / 100)}`}
-                              strokeLinecap="round" className="transition-colors duration-700" />
-                          </svg>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className={`text-[12px] font-extrabold ${theme.textAccent}`}>{completenessScore}%</span>
-                          </div>
-                          <div className="absolute top-0 right-full mr-3 w-44 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                            <div className={`text-[9px] font-extrabold uppercase tracking-wider mb-2 ${theme.textAccent}`}>Profile Checklist</div>
-                            <div className="space-y-1">
-                              {completenessItems.map(item => (
-                                <div key={item.label} className="flex items-center gap-1.5">
-                                  {item.done ? <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" /> : <span className="w-3 h-3 rounded-full border border-neutral-300 shrink-0 inline-block" />}
-                                  <span className={`text-[10px] font-medium ${item.done ? 'text-neutral-700' : 'text-neutral-400'}`}>{item.label}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Complete</span>
-                      </div>
                     </div>
 
-                    {/* Stats bar — per mode */}
-                    <div className={`flex items-center rounded-2xl border ${theme.cardBorder} ${theme.cardBg} overflow-hidden`}>
-                      {(activeMode === 'bff' ? [
-                        { label: 'BFF Squads', value: displayPersona.bffCrew ? displayPersona.bffCrew.length : 0, icon: <Users className="w-3.5 h-3.5" /> },
-                        { label: 'Memories', value: personaMoments.length, icon: <Award className="w-3.5 h-3.5" /> },
-                        { label: 'Close Friends', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0, icon: <Users className="w-3.5 h-3.5" /> },
-                      ] : activeMode === 'bizz' ? [
-                        { label: 'Connections', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0, icon: <Users className="w-3.5 h-3.5" /> },
-                        { label: 'Skills', value: displayPersona.bizzSkills ? displayPersona.bizzSkills.length : 0, icon: <Zap className="w-3.5 h-3.5" /> },
-                        { label: 'Events', value: displayPersona.pastTimeline ? displayPersona.pastTimeline.length : 0, icon: <Calendar className="w-3.5 h-3.5" /> },
-                      ] : [
-                        { label: 'Events', value: displayPersona.activeTickets ? displayPersona.activeTickets.length : 0, icon: <Calendar className="w-3.5 h-3.5" /> },
-                        { label: 'Connections', value: displayPersona.connectionsMet ? displayPersona.connectionsMet.length : 0, icon: <Users className="w-3.5 h-3.5" /> },
-                        { label: 'Karma', value: currentPersona.id === 'user-profile' ? (karmaData?.total ?? '…') : displayPersona.karmaBalance, icon: <Sparkles className="w-3.5 h-3.5" /> },
-                      ]).map((s, i, arr) => (
-                        <div key={i} className={`flex-1 py-3.5 text-center ${i < arr.length - 1 ? 'border-r border-neutral-200/50' : ''}`}>
-                          <div className={`flex items-center justify-center gap-1 mb-1 ${theme.textAccent} opacity-60`}>{s.icon}</div>
-                          <div className={`text-lg font-black tracking-tight ${theme.textAccent}`}>{s.value}</div>
-                          <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-0.5">{s.label}</div>
-                        </div>
-                      ))}
+                    {/* DESKTOP LAYOUT (hidden sm:block, rendering VibeProfile tab component) */}
+                    <div className="hidden sm:block">
+                      <VibeProfile 
+                        currentPersona={currentPersona}
+                        displayPersona={displayPersona}
+                        activeMode={activeMode}
+                        theme={theme}
+                        isEditing={isEditing}
+                        editDraft={editDraft}
+                        setEditDraft={setEditDraft}
+                        completenessScore={completenessScore}
+                        completenessItems={completenessItems}
+                        personaMoments={personaMoments}
+                        upcomingEvents={upcomingEvents}
+                        currentEventIdx={currentEventIdx}
+                        setCurrentEventIdx={setCurrentEventIdx}
+                        isEventsLoading={isEventsLoading}
+                        setSelectedEvent={setSelectedEvent}
+                        setActiveSidebarTab={setActiveSidebarTab}
+                        triggerToast={triggerToast}
+                        handleMomentDelete={handleMomentDelete}
+                        setLightboxMoment={setLightboxMoment}
+                      />
                     </div>
 
-                    {/* Internal Info */}
-                    <div>
-                      <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest mb-3">Internal Status</h5>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-2 text-center sm:text-left">
-                        <div>
-                          <div className="text-[9.5px] text-neutral-400 font-bold uppercase tracking-wider">User Type</div>
-                          <div className="text-xs font-bold text-neutral-700 mt-0.5">
-                            {activeMode === 'bizz' ? 'Founder / Builder' : activeMode === 'bff' ? 'Event Enthusiast' : 'Social Connector'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[9.5px] text-neutral-400 font-bold uppercase tracking-wider">Association</div>
-                          <div className="text-xs font-bold text-neutral-700 mt-0.5">Vayo Offline Hub (Bangalore)</div>
-                        </div>
-                        <div className="col-span-2 sm:col-span-1">
-                          <div className="text-[9.5px] text-neutral-400 font-bold uppercase tracking-wider">Source / Verification</div>
-                          <div className="text-xs font-bold text-neutral-700 mt-0.5 flex items-center gap-1 justify-center sm:justify-start">
-                            {currentPersona.selfieVerified && <ShieldCheck className="w-3.5 h-3.5 text-sky-600 inline shrink-0" />}
-                            <span>{currentPersona.selfieVerified ? 'Selfie Verified' : 'Standard'}</span>
-                          </div>
-                        </div>
-                      </div>
                     </div>
-
-                    <hr className="border-neutral-100" />
-
-                    {/* Upcoming Events Carousel */}
-                    {(() => {
-                      const event = upcomingEvents[currentEventIdx];
-                      
-                      if (!event) {
-                        return (
-                          <div className="space-y-4">
-                            <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Upcoming Events</h5>
-                            <div className="relative w-full h-[220px] sm:h-[280px] rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-lg border border-neutral-100 bg-neutral-50 flex flex-col items-center justify-center gap-3">
-                              <span className="text-2xl">🎉</span>
-                              <span className="text-[11px] text-neutral-400 font-bold uppercase tracking-wider">No upcoming events yet</span>
-                              <span className="text-[10px] text-neutral-300">Check back soon for new events</span>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      const handlePrev = () => {
-                        setCurrentEventIdx(prev => (prev - 1 + upcomingEvents.length) % upcomingEvents.length);
-                      };
-                      const handleNext = () => {
-                        setCurrentEventIdx(prev => (prev + 1) % upcomingEvents.length);
-                      };
-                      return (
-                        <div className="space-y-4">
-                          <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Upcoming Events</h5>
-                          <div className="relative w-full h-[220px] sm:h-[280px] rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-lg border border-neutral-100 bg-neutral-900 group">
-                            {/* Interactive clickable overlay */}
-                            <div 
-                              onClick={() => {
-                                setSelectedEvent(event);
-                                setActiveSidebarTab('events');
-                                triggerToast(`Opening registration for: ${event.title}`);
-                              }}
-                              className="absolute inset-0 w-full h-full cursor-pointer z-10"
-                            >
-                              {/* Slide image */}
-                              <div className="absolute inset-0 w-full h-full">
-                                <img
-                                  src={event.image}
-                                  alt={event.title}
-                                  className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                                />
-                              </div>
-                              
-                              {/* Dark gradient overlay */}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
-
-                              {/* "Upcoming Event" Badge */}
-                              <span className="absolute top-4 left-4 z-20 bg-blue-600 text-white text-[9px] sm:text-[10px] font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
-                                Upcoming Event
-                              </span>
-
-                              {/* Event details container */}
-                              <div className="absolute bottom-6 left-5 right-5 z-20 flex flex-col gap-2.5 text-left max-w-[calc(100%-40px)] md:max-w-[70%]">
-                                {/* Date pill */}
-                                <div className="flex items-center gap-1.5 bg-black/45 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] text-white font-bold tracking-wide w-fit">
-                                  <Calendar className="w-3.5 h-3.5 text-white" />
-                                  <span>{event.date}</span>
-                                </div>
-
-                                {/* Title */}
-                                <h4 className="text-sm sm:text-base md:text-lg font-bold text-white leading-snug tracking-tight drop-shadow-md">
-                                  {event.title}
-                                </h4>
-
-                                {/* Location */}
-                                <div className="flex items-center gap-1 text-[10px] text-neutral-300">
-                                  <MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                                  <span className="truncate">{event.location}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Notch with Arrow Buttons */}
-                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-44 h-12 z-20 flex items-center justify-center">
-                              <svg className="absolute inset-0 w-full h-full drop-shadow-[0_-2px_4px_rgba(0,0,0,0.06)]" viewBox="0 0 176 48" fill="none" preserveAspectRatio="none">
-                                <path
-                                  d="M 0 48 C 20 48, 20 0, 40 0 L 136 0 C 156 0, 156 48, 176 48 Z"
-                                  fill="#ffffff"
-                                />
-                                <path
-                                  d="M 0 48 C 20 48, 20 0, 40 0 L 136 0 C 156 0, 156 48, 176 48"
-                                  stroke="rgba(228, 228, 231, 0.8)"
-                                  strokeWidth="1"
-                                />
-                              </svg>
-
-                              <div className="relative z-10 flex gap-4 items-center justify-center pb-1">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handlePrev(); }}
-                                  className="w-8 h-8 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-colors duration-200 cursor-pointer"
-                                  aria-label="Previous event"
-                                >
-                                  <ArrowLeft className="w-3.5 h-3.5 text-neutral-600" />
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleNext(); }}
-                                  className="w-8 h-8 rounded-full bg-white border border-neutral-200 shadow-sm flex items-center justify-center hover:bg-neutral-50 active:scale-95 transition-colors duration-200 cursor-pointer"
-                                  aria-label="Next event"
-                                >
-                                  <ArrowRight className="w-3.5 h-3.5 text-neutral-600" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    <hr className="border-neutral-100" />
-
-                    {/* ── KARMA SECTION ── */}
-                    {(() => {
-                      const isRealUser = currentPersona.id === 'user-profile';
-                      const karma = isRealUser ? karmaData : {
-                        total: currentPersona.karmaBalance,
-                        tier: currentPersona.karmaTier,
-                        tierIcon: { Explorer: '🔭', Pathfinder: '🧭', Voyager: '🚀', Conqueror: '🌟' }[currentPersona.karmaTier] ?? '🌟',
-                        nextTier: currentPersona.karmaTier === 'Explorer' ? 'Pathfinder' : currentPersona.karmaTier === 'Pathfinder' ? 'Voyager' : currentPersona.karmaTier === 'Voyager' ? 'Conqueror' : null,
-                        nextTierMin: currentPersona.karmaTier === 'Explorer' ? 85 : currentPersona.karmaTier === 'Pathfinder' ? 251 : currentPersona.karmaTier === 'Voyager' ? 421 : null,
-                        tierMin: currentPersona.karmaTier === 'Explorer' ? 0 : currentPersona.karmaTier === 'Pathfinder' ? 85 : currentPersona.karmaTier === 'Voyager' ? 251 : 421,
-                        progressToNext: currentPersona.karmaPercentage,
-                        breakdown: {
-                          profileSetup: { points: currentPersona.karmaBreakdown?.hostSupport ?? 0, max: 5, items: [] },
-                          eventRsvps: { points: currentPersona.karmaBreakdown?.attendedMixers ?? 0, count: Math.round((currentPersona.karmaBreakdown?.attendedMixers ?? 0) / 0.5) },
-                          gpsCheckins: { points: currentPersona.karmaBreakdown?.vibeLeader ?? 0 },
-                          community: { points: currentPersona.karmaBreakdown?.momentContributor ?? 0 },
-                        },
-                      };
-
-                      const tierMeta = {
-                        Explorer:   { gradient: 'from-sky-400 to-blue-500',       glow: 'shadow-sky-200',    bar: '#38bdf8',  pill: 'bg-sky-100 text-sky-700 border-sky-200' },
-                        Pathfinder: { gradient: 'from-amber-400 to-orange-500',   glow: 'shadow-amber-200',  bar: '#fbbf24',  pill: 'bg-amber-100 text-amber-700 border-amber-200' },
-                        Voyager:    { gradient: 'from-violet-500 to-purple-600',  glow: 'shadow-violet-200', bar: '#a78bfa',  pill: 'bg-violet-100 text-violet-700 border-violet-200' },
-                        Conqueror:  { gradient: 'from-emerald-400 to-teal-500',   glow: 'shadow-emerald-200',bar: '#34d399',  pill: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-                      };
-                      const tm = tierMeta[karma?.tier] || tierMeta.Explorer;
-                      const pct = Math.min(100, karma?.progressToNext ?? 0);
-                      const ptsToNext = karma?.nextTierMin ? Math.max(0, karma.nextTierMin - (karma?.total ?? 0)) : 0;
-
-                      return (
-                        <div className="space-y-4">
-                          <h5 className={`text-[11px] font-extrabold uppercase tracking-widest bg-gradient-to-r ${tm.gradient} bg-clip-text text-transparent`}>Karma Points</h5>
-
-                          {isRealUser && isKarmaLoading ? (
-                            <div className="h-28 rounded-2xl bg-neutral-50/60 border border-neutral-100 flex items-center justify-center gap-2.5">
-                              <div className="w-4 h-4 border-2 border-neutral-200 border-t-sky-400 rounded-full animate-spin" />
-                              <span className="text-[10px] font-bold uppercase tracking-[2px] text-neutral-400">Computing karma…</span>
-                            </div>
-                          ) : (
-                            <>
-                              {/* Hero card */}
-                              <div className={`relative rounded-2xl overflow-hidden shadow-lg ${tm.glow}`}>
-                                <div className={`absolute inset-0 bg-gradient-to-br ${tm.gradient} opacity-90`} />
-                                <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")' }} />
-
-                                <div className="relative px-5 py-4 flex items-center gap-4">
-                                  <div className="text-5xl drop-shadow-md select-none shrink-0">{karma?.tierIcon}</div>
-
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-baseline gap-1.5">
-                                      <span className="text-4xl font-black text-white tracking-tight drop-shadow">{karma?.total ?? 0}</span>
-                                      <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">/ 500</span>
-                                    </div>
-                                    <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest border ${tm.pill} bg-white/80 backdrop-blur-sm`}>
-                                      {karma?.tier} Tier
-                                    </span>
-                                  </div>
-
-                                  <div className="shrink-0 relative w-12 h-12">
-                                    <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
-                                      <circle cx="24" cy="24" r="19" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="4" />
-                                      <circle cx="24" cy="24" r="19" fill="none" stroke="white" strokeWidth="4"
-                                        strokeDasharray={`${2 * Math.PI * 19}`}
-                                        strokeDashoffset={`${2 * Math.PI * 19 * (1 - Math.min(1, (karma?.total ?? 0) / 84))}`}
-                                        strokeLinecap="round" className="transition-colors duration-700" />
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                      <span className="text-[8px] font-extrabold text-white leading-none">{Math.min(84, Math.round(karma?.total ?? 0))}</span>
-                                      <span className="text-[6px] text-white/60 font-bold">/84</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {karma?.nextTier && (
-                                  <div className="relative px-5 pb-4 space-y-1">
-                                    <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
-                                      <div className="h-full bg-white rounded-full transition-colors duration-700" style={{ width: `${pct}%` }} />
-                                    </div>
-                                    <div className="flex justify-between text-[8.5px] font-bold text-white/60">
-                                      <span>{karma.tier}</span>
-                                      <span className="text-white/90">{ptsToNext} pts → {karma.nextTier}</span>
-                                    </div>
-                                  </div>
-                                )}
-                                {!karma?.nextTier && (
-                                  <div className="relative px-5 pb-3 text-[9px] font-bold text-white/80">Maximum tier reached 🎉</div>
-                                )}
-                              </div>
-
-                              {/* Profile completeness nudge — real users only */}
-                              {isRealUser && !isKarmaLoading && (() => {
-                                const missing = (karma?.breakdown?.profileSetup?.items ?? []).filter(i => !i.done);
-                                if (!missing.length) return null;
-                                return (
-                                  <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/60 px-3.5 py-3">
-                                    <span className="text-base shrink-0 mt-0.5">💡</span>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-[10px] font-extrabold text-amber-700 mb-2">Complete your profile for more karma</div>
-                                      <div className="space-y-1.5">
-                                        {missing.map((item, i) => (
-                                          <div key={i} className="flex items-center justify-between gap-2">
-                                            <span className="text-[9.5px] text-amber-600/80 font-medium leading-tight">{item.label}</span>
-                                            <span className="text-[9px] font-extrabold text-emerald-500 shrink-0">+{item.max} pt{item.max > 1 ? 's' : ''}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-
-                              {/* Locked feature teaser */}
-                              {(() => {
-                                const UNLOCK_AT = 251;
-                                const ptsNeeded = Math.max(0, UNLOCK_AT - (karma?.total ?? 0));
-                                const alreadyUnlocked = (karma?.total ?? 0) >= UNLOCK_AT;
-                                return (
-                                  <details className="group">
-                                    <summary className="list-none cursor-pointer select-none">
-                                      <div className={`flex items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-3 transition-colors duration-200
-                                        ${alreadyUnlocked
-                                          ? 'border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50'
-                                          : 'border-neutral-200 bg-neutral-50/60 hover:border-sky-200 hover:bg-sky-50/40'
-                                        }`}>
-                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg transition-colors
-                                          ${alreadyUnlocked ? 'bg-emerald-100' : 'bg-neutral-100 group-hover:bg-sky-100'}`}>
-                                          {alreadyUnlocked ? '🎉' : '🔒'}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="text-[11px] font-extrabold text-neutral-800 leading-tight">Host an Event</div>
-                                          <div className={`text-[9px] font-semibold mt-0.5 ${alreadyUnlocked ? 'text-emerald-500' : 'text-neutral-400'}`}>
-                                            {alreadyUnlocked ? 'Feature unlocked · Voyager tier' : 'Tap to see how to unlock'}
-                                          </div>
-                                        </div>
-                                        {!alreadyUnlocked && (
-                                          <svg className="w-3.5 h-3.5 text-neutral-300 group-open:rotate-180 transition-transform duration-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
-                                        )}
-                                      </div>
-                                    </summary>
-
-                                    {!alreadyUnlocked && (
-                                      <div className="mt-2 px-1 space-y-2.5">
-                                        {/* Points needed */}
-                                        <div className="flex items-center justify-between bg-white rounded-xl border border-neutral-100 px-3.5 py-3">
-                                          <div>
-                                            <div className="text-[10.5px] font-extrabold text-neutral-700">Points required</div>
-                                            <div className="text-[9px] text-neutral-400 font-medium mt-0.5">Reach Voyager tier to host</div>
-                                          </div>
-                                          <div className="text-right shrink-0">
-                                            <div className="text-[18px] font-black text-neutral-800 leading-none">{UNLOCK_AT}</div>
-                                            <div className="text-[8px] font-bold text-neutral-300 uppercase tracking-wider">pts needed</div>
-                                          </div>
-                                        </div>
-
-                                        {/* Progress toward unlock */}
-                                        <div className="space-y-1.5 px-0.5">
-                                          <div className="flex justify-between text-[8.5px] font-bold">
-                                            <span className="text-neutral-400">Your karma</span>
-                                            <span className="text-sky-500">{ptsNeeded} pts to go</span>
-                                          </div>
-                                          <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                                            <div
-                                              className="h-full bg-gradient-to-r from-sky-400 to-violet-500 rounded-full transition-colors duration-700"
-                                              style={{ width: `${Math.min(100, ((karma?.total ?? 0) / UNLOCK_AT) * 100)}%` }}
-                                            />
-                                          </div>
-                                          <div className="flex justify-between text-[7.5px] text-neutral-300 font-medium">
-                                            <span>{karma?.total ?? 0} pts</span>
-                                            <span>{UNLOCK_AT} pts</span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </details>
-                                );
-                              })()}
-                            </>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    <hr className="border-neutral-100" />
-
-                    <div>
-                      <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest mb-3">Vibe Profile Tags</h5>
-                      <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
-                        {(activeMode === 'social' ? currentPersona.socialTags : activeMode === 'bff' ? currentPersona.bffTags : currentPersona.bizzTags).map((tag, i) => (
-                          <span key={i} className={`text-[10.5px] font-bold px-2.5 py-1 rounded-xl border ${theme.badgeBg}`}>
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Bizz Skills block */}
-                    {activeMode === 'bizz' && (
-                      <>
-                        <hr className="border-neutral-100" />
-                        <div>
-                          <h5 className="text-[11px] font-bold text-teal-650 uppercase tracking-widest mb-3">Skills & Expertise</h5>
-                          {isEditing ? (
-                            <div className="space-y-2">
-                              <div className="flex flex-wrap gap-1.5">
-                                {editDraft.bizzSkills.map((skill, i) => (
-                                  <span key={i} className={`flex items-center gap-1 text-[10.5px] font-bold px-2.5 py-1 rounded-xl border ${theme.cardBorder} ${theme.cardBg}`}>
-                                    <Zap className="w-3 h-3" style={{ color: theme.accent }} />{skill}
-                                    <button onClick={() => setEditDraft(p => ({ ...p, bizzSkills: p.bizzSkills.filter((_, j) => j !== i) }))} className="ml-0.5 text-neutral-400 hover:text-red-500 cursor-pointer">×</button>
-                                  </span>
-                                ))}
-                              </div>
-                              <div className="flex gap-2 max-w-sm">
-                                <input value={editDraft.newSkill} onChange={e => setEditDraft(p => ({ ...p, newSkill: e.target.value }))}
-                                  onKeyDown={e => { if (e.key === 'Enter' && editDraft.newSkill.trim()) { setEditDraft(p => ({ ...p, bizzSkills: [...p.bizzSkills, p.newSkill.trim()], newSkill: '' })); } }}
-                                  className={`flex-1 text-xs border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 bg-white ${theme.cardBorder}`} placeholder="Add a skill… (Enter to add)" />
-                                <button onClick={() => { if (editDraft.newSkill.trim()) setEditDraft(p => ({ ...p, bizzSkills: [...p.bizzSkills, p.newSkill.trim()], newSkill: '' })); }}
-                                  className="px-3 py-2 rounded-xl text-xs font-bold text-white cursor-pointer" style={{ background: theme.accent }}>Add</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex flex-wrap gap-2">
-                              {(displayPersona.bizzSkills || []).map((skill, i) => (
-                                <span key={i} className={`flex items-center gap-1.5 text-[10.5px] font-bold px-3 py-1.5 rounded-xl border ${theme.cardBorder} ${theme.cardBg}`}>
-                                  <Zap className={`w-3 h-3`} style={{ color: theme.accent }} />{skill}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-
-                  </div>
                 )}
 
                 {/* ════════════════════ EVENT STAGE TAB ════════════════════ */}
-                {activeSidebarTab === 'events' && (
+                {activeSidebarTab === 'mixers' && (
                   <div className="space-y-6 animate-fade-in">
-
-                    {/* Upcoming Events to RSVP */}
-                    {upcomingEvents.length > 0 && (
-                      <div className="space-y-2">
-                        <h5 className="text-[11px] font-bold text-sky-600 uppercase tracking-widest">Upcoming Events</h5>
-                        {upcomingEvents.map((evt) => {
-                          const isRegistered = rsvpedIds.has(evt.id) ||
-                            (displayPersona.activeTickets || []).some(t => t.name === evt.title);
-                          return (
-                            <button
-                              key={evt.id}
-                              onClick={() => !isRegistered && setSelectedEvent(evt)}
-                              className={`w-full flex items-center gap-3 p-2.5 rounded-xl border transition-colors text-left ${isRegistered ? 'border-emerald-100 bg-emerald-50/40 cursor-default' : selectedEvent?.id === evt.id ? 'border-blue-300 bg-blue-50/60 cursor-pointer' : 'border-neutral-100 bg-white/70 hover:border-blue-200 hover:bg-blue-50/30 cursor-pointer'}`}
-                            >
-                              <img src={evt.image} alt={evt.title} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-neutral-100" />
-                              <div className="min-w-0 flex-1">
-                                <div className="text-[11px] font-extrabold text-neutral-800 truncate">{evt.title}</div>
-                                <div className="text-[9.5px] text-neutral-400 font-medium truncate">{evt.date} · {evt.location}</div>
-                              </div>
-                              {isRegistered
-                                ? <span className="text-[9px] font-extrabold text-emerald-600 shrink-0 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-full">✓ Registered</span>
-                                : <span className="text-[9px] font-extrabold text-blue-600 shrink-0 bg-blue-50 border border-blue-100 px-2 py-1 rounded-full">RSVP</span>
-                              }
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
 
                     {/* Event Registration Panel */}
                     {selectedEvent && (
@@ -2491,7 +2246,7 @@ function ProfileContent() {
                           </div>
                           
                           <div className="space-y-1 min-w-0 flex-1">
-                            <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-blue-600">Apply for RSVP</span>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">Apply for RSVP</span>
                             <h4 className="text-sm font-extrabold text-neutral-800 leading-snug truncate">{selectedEvent.title}</h4>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-neutral-500 font-medium">
                               <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-neutral-400" />{selectedEvent.date}</span>
@@ -2500,25 +2255,49 @@ function ProfileContent() {
                           </div>
                         </div>
 
-                        {/* Location Map */}
-                        {selectedEvent.lat && selectedEvent.lng && (
-                          <LocationMap lat={selectedEvent.lat} lng={selectedEvent.lng} venue={selectedEvent.location} />
-                        )}
+                        {/* CTA button or state */}
+                        {(() => {
+                          const isAlreadyApplied = (displayPersona.pendingApplications || []).some(
+                            app => app.name === selectedEvent.title
+                          ) || (displayPersona.activeTickets || []).some(
+                            tkt => tkt.name === selectedEvent.title
+                          );
 
-                        <button
-                          onClick={() => handleRSVP(selectedEvent)}
-                          className="w-full py-2.5 rounded-xl text-xs font-extrabold text-white cursor-pointer transition-opacity hover:opacity-90 flex items-center justify-center gap-2 shadow-sm"
-                          style={{ background: theme.accent }}
-                        >
-                          <CalendarPlus className="w-4 h-4" />
-                          <span>Confirm Registration & Get Ticket</span>
-                        </button>
+                          if (isAlreadyApplied) {
+                            return (
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-center gap-2 py-2 w-full rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 text-xs font-bold">
+                                  <Check className="w-4 h-4" />
+                                  <span>Applied / Ticket Approved ✓</span>
+                                </div>
+                                <button
+                                  onClick={() => handleCancelRSVP(selectedEvent.id)}
+                                  className="w-full py-2 rounded-xl text-[10px] font-bold text-rose-600 border border-rose-100 bg-rose-50/50 hover:bg-rose-50 cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Cancel My RSVP</span>
+                                </button>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <button
+                              onClick={() => handleRSVP(selectedEvent)}
+                              className="w-full py-2.5 rounded-xl text-xs font-extrabold text-white cursor-pointer transition-opacity hover:opacity-90 flex items-center justify-center gap-2 shadow-sm"
+                              style={{ background: theme.accent }}
+                            >
+                              <CalendarPlus className="w-4 h-4" />
+                              <span>Confirm Registration & Get Ticket</span>
+                            </button>
+                          );
+                        })()}
                       </div>
                     )}
 
                     {/* ── Top row: Next-up card (left) + glassmorphic calendar (right) ── */}
                     {(() => {
-                      const now = new Date(2026, 5, 1);
+                      const now = new Date();
                       const year = now.getFullYear(); const month = now.getMonth();
                       const monthName = now.toLocaleString('default', { month: 'long' });
                       const firstDay = new Date(year, month, 1).getDay();
@@ -2529,58 +2308,59 @@ function ProfileContent() {
                       allEvents.forEach(e => { const d = parseDay(e.date); if (d && d <= daysInMonth) { if (!eventDays.has(d)) eventDays.set(d, []); eventDays.get(d).push(e.name); } });
                       const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
                       while (cells.length % 7 !== 0) cells.push(null);
-                      const today = 11;
+                      const today = now.getDate();
                       const nextTkt = displayPersona.activeTickets ? displayPersona.activeTickets[0] : null;
                       return (
                         <div className="flex flex-col sm:flex-row items-stretch gap-3">
                           {/* Left: section label + next-up card */}
                           <div className="flex-1 min-w-0 flex flex-col gap-2">
-                            <h5 className={`text-[11px] font-bold uppercase tracking-widest ${theme.textAccent} font-sans`}>Event Stage</h5>
+                            <h5 className={`text-[12px] font-bold uppercase tracking-widest ${theme.textAccent} font-sans`}>Event Stage</h5>
                             {nextTkt ? (
-                              <div className="flex-1 rounded-xl p-3 border border-neutral-100 bg-white/70 shadow-sm space-y-2" style={{ backdropFilter: 'blur(8px)' }}>
-                                <span className="text-[8px] font-extrabold uppercase tracking-widest text-neutral-400">Next Up</span>
-                                <div className="text-[12.5px] font-extrabold text-neutral-800 leading-tight">{nextTkt.name}</div>
-                                <div className="flex items-center gap-1 text-[9.5px] text-neutral-500 font-medium">
-                                  <Clock className="w-3 h-3 shrink-0" style={{ color: theme.accent }} />
-                                  {(() => { const { line1, line2 } = formatTicketDateDisplay(nextTkt.date); return <><span>{line1}</span>{line2 && <span className="text-neutral-400">{line2}</span>}</>; })()}
+                              <div className="flex-1 rounded-xl p-4 border border-neutral-100 bg-white/80 shadow-sm space-y-2.5" style={{ backdropFilter: 'blur(8px)' }}>
+                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-neutral-500">Next Up</span>
+                                <div className="text-[14px] font-extrabold text-neutral-800 leading-tight">{nextTkt.name}</div>
+                                <div className="flex items-center gap-1.5 text-[11px] text-neutral-600 font-medium">
+                                  <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: theme.accent }} />
+                                  {nextTkt.date.split(',')[0]}
+                                  {nextTkt.date.split(',')[1] && <span className="text-neutral-500">{nextTkt.date.split(',')[1]}</span>}
                                 </div>
-                                <div className="flex items-center gap-1 text-[9.5px] text-neutral-500 font-medium">
-                                  <MapPin className="w-3 h-3 shrink-0" style={{ color: theme.accent }} />
+                                <div className="flex items-center gap-1.5 text-[11px] text-neutral-600 font-medium">
+                                  <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: theme.accent }} />
                                   <span className="truncate">{nextTkt.locationPin}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 text-[8.5px] font-bold text-emerald-600 pt-0.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 pt-0.5">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                   {nextTkt.organizer}
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex-1 rounded-xl p-3 border border-neutral-100 bg-white/70 shadow-sm flex items-center justify-center text-xs text-neutral-400">
+                              <div className="flex-1 rounded-xl p-4 border border-neutral-100 bg-white/70 shadow-sm flex items-center justify-center text-sm text-neutral-500">
                                 No upcoming tickets
                               </div>
                             )}
                           </div>
                           {/* Right: glassmorphic mini-calendar */}
-                          <div className="w-full sm:w-[160px] shrink-0 rounded-xl relative self-stretch"
+                          <div className="w-full sm:w-[180px] shrink-0 rounded-xl relative self-stretch"
                             style={{
                               background: `linear-gradient(145deg, ${theme.accent}28 0%, ${theme.accent}0a 100%)`,
-                              border: `1px solid rgba(255,255,255,0.6)`,
+                              border: `1px solid rgba(255,255,255,0.7)`,
                               boxShadow: `0 4px 24px ${theme.accent}1a, 0 1px 3px rgba(0,0,0,0.05)`
                             }}>
-                            <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.10) 100%)' }} />
-                            <div className="relative z-10 p-2.5 h-full flex flex-col" style={{ backdropFilter: 'blur(14px)' }}>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-2.5 h-2.5" style={{ color: theme.accent }} />
-                                  <span className="text-[9.5px] font-extrabold text-neutral-700">{monthName.slice(0, 3)} &apos;{String(year).slice(2)}</span>
+                            <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) 100%)' }} />
+                            <div className="relative z-10 p-3 h-full flex flex-col" style={{ backdropFilter: 'blur(14px)' }}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="w-3 h-3" style={{ color: theme.accent }} />
+                                  <span className="text-[11px] font-extrabold text-neutral-800">{monthName.slice(0, 3)} &apos;{String(year).slice(2)}</span>
                                 </div>
-                                <span className="text-[7.5px] font-bold px-1.5 py-[2px] rounded-full"
-                                  style={{ background: `${theme.accent}20`, color: theme.accent }}>
-                                  {eventDays.size} ev
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                  style={{ background: `${theme.accent}30`, color: theme.accent }}>
+                                  {eventDays.size} events
                                 </span>
                               </div>
-                              <div className="grid grid-cols-7 mb-[3px]">
+                              <div className="grid grid-cols-7 mb-[4px]">
                                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                                  <div key={i} className="text-center text-[7px] font-extrabold text-neutral-400 leading-none pb-[2px]">{d}</div>
+                                  <div key={i} className="text-center text-[10px] font-extrabold text-neutral-500 leading-none pb-[3px]">{d}</div>
                                 ))}
                               </div>
                               <div className="grid grid-cols-7 flex-1">
@@ -2590,22 +2370,28 @@ function ProfileContent() {
                                   const col = i % 7;
                                   const tipAnchor = col <= 2 ? 'left-0' : col >= 5 ? 'right-0' : 'left-1/2 -translate-x-1/2';
                                   return (
-                                    <div key={i} className="relative flex flex-col items-center justify-start py-[1px] group">
+                                    <div key={i} className="relative flex flex-col items-center justify-start py-[2px] group cursor-default">
                                       {day && (
                                         <>
-                                          <span className="text-[8px] font-bold w-[17px] h-[17px] flex items-center justify-center rounded-full leading-none"
-                                            style={isToday ? { background: theme.accent, color: '#fff', boxShadow: `0 0 0 2px ${theme.accent}35` }
-                                              : events ? { background: `${theme.accent}22`, color: theme.accent }
-                                                : { color: '#b0b8c8' }}>
+                                          <span 
+                                            onClick={() => {
+                                              if (events) {
+                                                triggerToast(`Events on ${monthName} ${day}: ${events.join(', ')}`);
+                                              }
+                                            }}
+                                            className={`text-[10px] font-bold w-[24px] h-[24px] flex items-center justify-center rounded-full leading-none transition-all duration-300 ${events ? 'cursor-pointer hover:scale-110 active:scale-95' : ''}`}
+                                            style={isToday ? { background: theme.accent, color: '#fff', boxShadow: `0 0 0 2px ${theme.accent}35`, zIndex: 5 }
+                                              : events ? { background: `${theme.accent}25`, color: theme.accent, fontWeight: '900' }
+                                                : { color: '#64748b' }}>
                                             {day}
                                           </span>
                                           {events
-                                            ? <span className="w-[3px] h-[3px] rounded-full mt-0.5" style={{ background: theme.accent }} />
-                                            : <span className="w-[3px] h-[3px] opacity-0 mt-0.5" />}
+                                            ? <span className={`w-1 h-1 rounded-full mt-1 ${isToday ? 'bg-white' : ''}`} style={{ background: isToday ? '#fff' : theme.accent }} />
+                                            : <span className="w-1 h-1 opacity-0 mt-1" />}
                                           {events && (
-                                            <div className={`absolute bottom-full mb-1 z-50 hidden group-hover:block w-28 pointer-events-none ${tipAnchor}`}>
-                                              <div className="rounded-lg px-2 py-1.5 text-[8px] font-semibold text-white shadow-xl"
-                                                style={{ background: `linear-gradient(135deg, ${theme.accent}f0, ${theme.accent}c0)`, backdropFilter: 'blur(8px)' }}>
+                                            <div className={`absolute bottom-full mb-1.5 z-50 hidden group-hover:block group-active:block w-32 pointer-events-none ${tipAnchor}`}>
+                                              <div className="rounded-lg px-2.5 py-2 text-[10px] font-bold text-white shadow-2xl animate-in zoom-in-95 duration-200"
+                                                style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}ee)`, backdropFilter: 'blur(8px)' }}>
                                                 {events.map((ev, j) => <div key={j} className="truncate">• {ev}</div>)}
                                               </div>
                                             </div>
@@ -2624,139 +2410,158 @@ function ProfileContent() {
 
                     {/* ── Live Tickets ── */}
                     <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-1.5 font-sans">
-                        Live Tickets <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                      </h5>
-                      <div className="space-y-4">
-                        {(displayPersona.activeTickets || []).map((tkt, i) => {
-                          const matchedEvent = upcomingEvents.find(e => e.title === tkt.name);
-                          const tktLat = matchedEvent?.lat || null;
-                          const tktLng = matchedEvent?.lng || null;
-                          return (
-                          <div key={i} className="border border-neutral-200 rounded-2xl overflow-hidden flex flex-col md:flex-row bg-neutral-50/50 shadow-sm">
-                            {/* Left Stub */}
-                            <div className="flex-1 p-5 space-y-4 border-r border-dashed border-neutral-200 relative">
-                              <div className="absolute right-[-6px] top-[-6px] w-3 h-3 rounded-full bg-white border border-neutral-200 hidden md:block" />
-                              <div className="absolute right-[-6px] bottom-[-6px] w-3 h-3 rounded-full bg-white border border-neutral-200 hidden md:block" />
-                              <div className="space-y-0.5">
-                                <div className={`text-[9px] font-extrabold uppercase tracking-wider ${theme.textAccent}`}>Upcoming Event Ticket</div>
-                                <h4 className="text-sm font-extrabold text-neutral-800 leading-snug">{tkt.name}</h4>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3 text-xs">
-                                <div className="space-y-0.5">
-                                  <span className="text-neutral-400 font-bold block text-[9px] uppercase tracking-wider">Date & Time</span>
-                                  {(() => { const { line1, line2 } = formatTicketDateDisplay(tkt.date); return (<>
-                                  <span className="font-bold text-neutral-700 flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-neutral-400" />{line1}</span>
-                                  <span className="text-[10px] text-neutral-400 block pl-5">{line2}</span>
-                                  </>); })()}
-                                </div>
-                                <div className="space-y-0.5">
-                                  <span className="text-neutral-400 font-bold block text-[9px] uppercase tracking-wider">Venue Location</span>
-                                  <span className="font-bold text-neutral-700 flex items-center gap-1 max-w-[170px] truncate" title={tkt.locationPin}><MapPin className="w-3.5 h-3.5 text-neutral-400" />{tkt.locationPin}</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between text-xs pt-1">
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-6 h-6 rounded-full bg-neutral-200 border border-neutral-300 flex items-center justify-center text-[9px] font-bold text-neutral-600 uppercase">{tkt.organizer.charAt(0)}</div>
-                                  <div className="leading-tight">
-                                    <span className="text-[8.5px] text-neutral-400 block">Host Organizer</span>
-                                    <span className="font-bold text-neutral-700">{tkt.organizer}</span>
+                      <div className="flex items-center justify-between mb-4 px-1">
+                        <h5 className="text-[12px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2 font-sans">
+                          Live Tickets <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                        </h5>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              fetchUserTickets(sessionEmail);
+                              triggerToast("Syncing your latest ticket status...");
+                            }}
+                            className="p-1.5 rounded-xl bg-neutral-100 text-neutral-500 hover:bg-neutral-200 transition-colors cursor-pointer group"
+                            title="Refresh Tickets"
+                          >
+                            <Bell className={`w-3.5 h-3.5 ${isTicketsLoading ? 'animate-spin' : 'group-hover:rotate-12'}`} />
+                          </button>
+                          {displayPersona.activeTickets && displayPersona.activeTickets.length > 1 && (
+                            <div className="flex items-center gap-1.5 bg-blue-50/50 px-2 py-1 rounded-full border border-blue-100/50">
+                              <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">Swipe for More</span>
+                              <ArrowRight className="w-2.5 h-2.5 text-blue-500 animate-bounce-x" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="relative">
+                        {displayPersona.activeTickets && displayPersona.activeTickets.length > 0 ? (
+                          <div className="flex overflow-x-auto gap-4 pb-4 px-1 snap-x snap-mandatory scrollbar-none no-scrollbar -mx-1">
+                            {displayPersona.activeTickets.map((tkt, i) => {
+                               const isToday = tkt.date && tkt.date.includes(new Date().getDate().toString()) && tkt.date.includes(new Date().toLocaleString('default', { month: 'short' }));
+                               return (
+                              <div key={i} className="min-w-[280px] sm:min-w-[400px] md:min-w-full snap-center space-y-4">
+                                <div className={`border rounded-2xl overflow-hidden flex flex-col md:flex-row bg-white shadow-md transition-all duration-500 hover:shadow-xl ${isToday ? 'border-emerald-200 ring-2 ring-emerald-500/10' : 'border-neutral-200'}`}>
+                                  {/* Event Photo Banner */}
+                                  <div className="w-full md:w-[150px] h-[120px] md:h-auto shrink-0 relative overflow-hidden bg-neutral-105 border-b md:border-b-0 md:border-r border-neutral-200">
+                                    <img 
+                                      src={tkt.image || "/assets/events/something.jpg"} 
+                                      alt={tkt.name} 
+                                      className="w-full h-full object-cover" 
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/40 via-transparent to-transparent" />
+                                  </div>
+
+                                  {/* Left Stub */}
+                                  <div className="flex-1 p-5 md:p-6 space-y-5 border-b border-dashed md:border-b-0 md:border-r border-neutral-200 relative">
+                                    {/* Ticket Punch Holes */}
+                                    <div className="absolute left-[-7px] bottom-[-7px] md:left-auto md:bottom-auto md:right-[-7px] md:top-[-7px] w-3.5 h-3.5 rounded-full bg-neutral-50 border border-neutral-200" />
+                                    <div className="absolute right-[-7px] bottom-[-7px] w-3.5 h-3.5 rounded-full bg-neutral-50 border border-neutral-200" />
+                                    <div className="space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <div className={`text-[10px] font-extrabold uppercase tracking-widest ${theme.textAccent}`}>Upcoming Mixer Ticket</div>
+                                        {isToday && <span className="text-[10px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full animate-pulse shadow-sm">Happening Today</span>}
+                                      </div>
+                                      <h4 className="text-base font-extrabold text-neutral-800 leading-tight line-clamp-2 md:line-clamp-none h-10 md:h-auto">{tkt.name}</h4>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-sm">
+                                      <div className="space-y-1">
+                                        <span className="text-neutral-400 font-bold block text-[10px] uppercase tracking-widest">Date & Time</span>
+                                        <span className="font-bold text-neutral-700 flex items-center gap-1.5 text-[12px] md:text-sm"><Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-neutral-400 shrink-0" />{tkt.date.split(',')[0]}</span>
+                                        <span className="text-[10px] md:text-[11px] text-neutral-500 block pl-5 md:pl-5.5">{tkt.date.split(',')[1]}</span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <span className="text-neutral-400 font-bold block text-[10px] uppercase tracking-widest">Venue Location</span>
+                                        <span className="font-bold text-neutral-700 flex items-center gap-1.5 text-[12px] md:text-sm max-w-[150px] truncate" title={tkt.locationPin}><MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-neutral-400 shrink-0" />{tkt.locationPin}</span>
+                                        {(tkt.lat || tkt.latitude) && (
+                                          <a 
+                                            href={`https://www.google.com/maps/search/?api=1&query=${tkt.lat || tkt.latitude},${tkt.lng || tkt.longitude}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] font-black text-blue-500 uppercase hover:underline flex items-center gap-0.5 mt-1.5 active:scale-95 transition-transform w-fit"
+                                          >
+                                            Get Directions <ChevronRight className="w-2.5 h-2.5" />
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm pt-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-[10px] font-bold text-neutral-600 uppercase shadow-inner">{tkt.organizer.charAt(0)}</div>
+                                        <div className="leading-tight">
+                                          <span className="text-[10px] text-neutral-500 block font-bold uppercase tracking-wider">Host</span>
+                                          <span className="font-bold text-neutral-700 truncate max-w-[80px] block">{tkt.organizer}</span>
+                                        </div>
+                                      </div>
+                                      {/* LIVE COUNTDOWN */}
+                                      <TicketCountdown date={tkt.date} />
+                                    </div>
+                                  </div>
+                                  {/* Right QR Stub */}
+                                  <div className="w-full md:w-[150px] p-5 md:p-6 flex flex-col items-center justify-center bg-neutral-50 shrink-0 border-t md:border-t-0 md:border-l border-neutral-100 relative">
+                                    <div className="p-2 border border-neutral-200 rounded-xl shadow-lg bg-white mb-2 md:mb-3 group-hover:rotate-1 transition-transform">
+                                      <QRCodeSVG 
+                                        value={tkt.qrCode || `VAYO-TKT-${tkt.id}`} 
+                                        size={72}
+                                        level="M"
+                                        includeMargin={false}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] md:text-[11px] font-black text-neutral-500 uppercase tracking-[0.2em] mb-3">{tkt.qrCode}</span>
+                                    {(() => {
+                                      const status = getCheckInStatus(tkt.date);
+                                      const isVerified = tkt.status === "Attended";
+
+                                      if (isVerified) {
+                                        return (
+                                          <div className="w-full py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest border border-emerald-200 flex items-center justify-center gap-1.5 shadow-sm">
+                                            <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+                                          </div>
+                                        );
+                                      }
+
+                                      if (status.available) {
+                                        return (
+                                          <button 
+                                            onClick={() => handleCheckIn(tkt, sessionEmail)} 
+                                            disabled={isVerifyingLocation}
+                                            className={`w-full py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-100 hover:border-blue-300 cursor-pointer transition-all active:scale-95 shadow-sm flex items-center justify-center gap-1.5 ${isVerifyingLocation ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                          >
+                                            {isVerifyingLocation ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
+                                            {isVerifyingLocation ? "Verifying..." : "Check-In Now"}
+                                          </button>
+                                        );
+                                      }
+
+                                      return (
+                                        <button 
+                                          onClick={() => setCheckInModalEvent(tkt)} 
+                                          className={`w-full py-2.5 rounded-xl border border-neutral-200 bg-neutral-100/50 text-[10px] font-black uppercase tracking-widest text-neutral-500 hover:bg-neutral-100 cursor-pointer transition-all active:scale-95 shadow-sm flex flex-col items-center justify-center gap-0.5 leading-tight`}
+                                        >
+                                          <span>Venue Details</span>
+                                          <span className="text-[8px] font-bold opacity-70">
+                                            {status.timeToStart === "Active Now" ? "Check-in is Active" : `Check-in ${status.timeToStart}`}
+                                          </span>
+                                        </button>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
-                                {/* LIVE COUNTDOWN */}
-                                <TicketCountdown date={tkt.date} />
+                                {tkt.lat && tkt.lng && (
+                                  <LocationMap lat={tkt.lat} lng={tkt.lng} venue={tkt.locationPin} />
+                                )}
                               </div>
-                              {/* ── ATTENDANCE BLOCK ── */}
-                              {(() => {
-                                if (!tkt.id) return null; // static demo persona — skip
-                                const ticketKey = tkt.id;
-                                const state = checkinStates[ticketKey] || 'idle';
-                                const errData = checkinErrors[ticketKey];
-
-                                if (tkt.attendance_status === true || state === 'success' || state === 'already_checked_in') {
-                                  return (
-                                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-neutral-100">
-                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-extrabold">
-                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                        Attended
-                                      </span>
-                                      <span className="text-[9.5px] text-neutral-400 font-medium">GPS check-in confirmed</span>
-                                    </div>
-                                  );
-                                }
-
-                                const windowState = getAttendanceWindowState(tkt.date);
-
-                                if (windowState === 'past') {
-                                  return (
-                                    <div className="mt-3 pt-3 border-t border-neutral-100">
-                                      <span className="text-[9.5px] text-neutral-400 font-medium">Check-in window has closed</span>
-                                    </div>
-                                  );
-                                }
-
-                                if (windowState === 'future') return null;
-
-                                // windowState === 'active': event is live
-                                return (
-                                  <div className="mt-3 pt-3 border-t border-neutral-100 space-y-1.5">
-                                    <button
-                                      disabled={state === 'loading'}
-                                      onClick={() => handleCheckin(tkt)}
-                                      className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[11px] font-extrabold transition-colors cursor-pointer
-                                        ${state === 'loading'
-                                          ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                                          : state === 'too_far'
-                                          ? 'bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100'
-                                          : 'bg-sky-500 text-white hover:bg-sky-600 shadow-sm'
-                                        }`}
-                                    >
-                                      {state === 'loading' ? (
-                                        <>
-                                          <span className="w-3.5 h-3.5 border-2 border-neutral-300 border-t-neutral-500 rounded-full animate-spin" />
-                                          Getting location…
-                                        </>
-                                      ) : state === 'too_far' ? (
-                                        <>
-                                          <MapPin className="w-3.5 h-3.5" />
-                                          Retry — You&apos;re {errData?.distance_meters}m away
-                                        </>
-                                      ) : (
-                                        <>
-                                          <MapPin className="w-3.5 h-3.5" />
-                                          Mark Attendance
-                                        </>
-                                      )}
-                                    </button>
-                                    {state === 'error' && errData?.message && (
-                                      <p className="text-[9.5px] text-rose-500 font-medium text-center">{errData.message}</p>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                              {tktLat && tktLng && (
-                                <LocationMap lat={tktLat} lng={tktLng} venue={tkt.locationPin} />
-                              )}
-                            </div>
-                            {/* Right QR Stub */}
-                            <div className="w-full md:w-[130px] p-4 flex flex-col items-center justify-center bg-white shrink-0 border-l border-neutral-100">
-                              <div className="p-1 border border-neutral-200 rounded-lg shadow-sm bg-neutral-50/50">
-                                <svg className="w-16 h-16 text-neutral-800" viewBox="0 0 100 100">
-                                  <rect width="100" height="100" fill="none" />
-                                  <rect x="0" y="0" width="30" height="30" fill="currentColor" /><rect x="5" y="5" width="20" height="20" fill="white" /><rect x="10" y="10" width="10" height="10" fill="currentColor" />
-                                  <rect x="70" y="0" width="30" height="30" fill="currentColor" /><rect x="75" y="5" width="20" height="20" fill="white" /><rect x="80" y="10" width="10" height="10" fill="currentColor" />
-                                  <rect x="0" y="70" width="30" height="30" fill="currentColor" /><rect x="5" y="75" width="20" height="20" fill="white" /><rect x="10" y="80" width="10" height="10" fill="currentColor" />
-                                  <rect x="40" y="10" width="10" height="25" fill="currentColor" /><rect x="50" y="5" width="10" height="10" fill="currentColor" />
-                                  <rect x="45" y="45" width="15" height="15" fill="currentColor" /><rect x="15" y="45" width="15" height="15" fill="currentColor" />
-                                  <rect x="70" y="45" width="20" height="15" fill="currentColor" /><rect x="45" y="75" width="15" height="15" fill="currentColor" /><rect x="75" y="75" width="15" height="15" fill="currentColor" />
-                                </svg>
-                              </div>
-                              <span className="text-[8.5px] font-bold text-neutral-500 uppercase tracking-widest mt-2">{tkt.qrCode}</span>
-                              <button onClick={() => triggerToast('Showing full-screen ticket for verification!')} className={`mt-1.5 text-[9px] font-bold ${theme.textAccent} hover:underline cursor-pointer`}>Show Full QR</button>
-                            </div>
+                            )})}
                           </div>
-                          );
-                        })}
+                        ) : (
+                          <div className="py-12 border-2 border-dashed border-neutral-200 rounded-2xl flex flex-col items-center justify-center text-center space-y-3 bg-neutral-50/50">
+                            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm border border-neutral-100">
+                              <Zap className="w-6 h-6 text-neutral-300" />
+                            </div>
+                            <div className="text-sm font-extrabold text-neutral-800">No Active Tickets</div>
+                            <p className="text-[11px] text-neutral-500 max-w-[220px] font-medium leading-relaxed">Once your RSVP is approved, your live entry ticket will appear here.</p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -2764,8 +2569,8 @@ function ProfileContent() {
 
                     {/* Event Journey Stepper */}
                     <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 font-sans">Event Journey</h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <h5 className="text-[12px] font-bold text-blue-600 uppercase tracking-widest mb-4 font-sans">Event Journey</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {userTickets.length > 0 ? (
                           userTickets.slice(0, 2).map((tkt, i) => {
                             const eventStatus = tkt.status || 'Registered';
@@ -2781,49 +2586,74 @@ function ProfileContent() {
                             const accentColor = isConfirmed ? '#10b981' : '#6366f1';
 
                             return (
-                              <div key={i} className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm space-y-4">
+                              <div key={i} className="rounded-2xl border border-neutral-100 bg-white p-5 shadow-sm space-y-5">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-extrabold text-neutral-800 truncate max-w-[150px]">{tkt.event_title}</span>
-                                  <span className="text-[9.5px] text-neutral-400 font-medium">Progress</span>
+                                  <span className="text-[13px] font-extrabold text-neutral-800 truncate max-w-[160px]">{tkt.event_title}</span>
+                                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Status</span>
                                 </div>
 
                                 {/* Stepper display */}
-                                <div className="flex items-center justify-between relative px-2 pt-1">
-                                  <div className="absolute top-[13px] left-8 right-8 h-0.5 bg-neutral-100 z-0">
-                                    <div className="h-full transition-colors duration-500"
+                                <div className="flex flex-col gap-5 relative pl-4 py-1.5 sm:hidden">
+                                  <div className="absolute left-[13px] top-3 bottom-3 w-0.5 bg-neutral-100 z-0">
+                                    <div className="h-full transition-all duration-700 ease-out"
                                       style={{
-                                        width: stepIdx === 2 ? '100%' : stepIdx === 1 ? '50%' : '0%',
+                                        height: stepIdx === 2 ? '100%' : stepIdx === 1 ? '50%' : '0%',
                                         backgroundColor: accentColor
                                       }} />
                                   </div>
-
                                   {steps.map((label, step) => {
                                     const isCurrent = step === stepIdx;
                                     const isDone = step <= stepIdx;
                                     return (
-                                      <div key={step} className="flex flex-col items-center relative z-10">
-                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-bold transition-colors duration-300 bg-white ${isDone ? '' : 'border-neutral-200 text-neutral-400'}`}
-                                          style={isDone ? { borderColor: accentColor, backgroundColor: accentColor, color: '#fff' } : isCurrent ? { borderColor: accentColor, color: accentColor } : {}}>
+                                      <div key={step} className="flex items-center gap-3.5 relative z-10 text-left">
+                                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-black transition-all duration-500 bg-white shrink-0 ${isDone ? '' : 'border-neutral-200 text-neutral-400'}`}
+                                          style={isDone ? { borderColor: accentColor, backgroundColor: accentColor, color: '#fff' } : isCurrent ? { borderColor: accentColor, color: accentColor, borderWidth: '2px' } : {}}>
                                           {isDone ? '✓' : step + 1}
                                         </div>
-                                        <span className={`text-[7.5px] font-extrabold uppercase tracking-wider mt-1.5 transition-colors duration-300 ${isDone ? 'text-neutral-700' : 'text-neutral-400'}`}>{label}</span>
+                                        <div className="flex flex-col">
+                                          <span className={`text-[10px] font-black uppercase tracking-wider transition-colors duration-500 ${isDone ? 'text-neutral-700' : 'text-neutral-500'}`}>{label}</span>
+                                          {isCurrent && <span className="text-[9px] text-neutral-500 font-bold uppercase mt-0.5">Current Phase</span>}
+                                        </div>
                                       </div>
                                     )
                                   })}
                                 </div>
 
-                                <div className="flex items-center justify-between pt-1">
-                                  <span className="text-[9px] text-neutral-400 font-medium">Latest Status</span>
-                                  <span className="text-[9.5px] font-black uppercase" style={{ color: accentColor }}>{eventStatus}</span>
+                                <div className="hidden sm:flex items-center justify-between relative px-3 pt-1">
+                                  <div className="absolute top-[14px] left-10 right-10 h-0.5 bg-neutral-100 z-0">
+                                    <div className="h-full transition-all duration-700 ease-out"
+                                      style={{
+                                        width: stepIdx === 2 ? '100%' : stepIdx === 1 ? '50%' : '0%',
+                                        backgroundColor: accentColor
+                                      }} />
+                                  </div>
+                                  {steps.map((label, step) => {
+                                    const isCurrent = step === stepIdx;
+                                    const isDone = step <= stepIdx;
+                                    return (
+                                      <div key={step} className="flex flex-col items-center relative z-10">
+                                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-black transition-all duration-500 bg-white ${isDone ? '' : 'border-neutral-200 text-neutral-400'}`}
+                                          style={isDone ? { borderColor: accentColor, backgroundColor: accentColor, color: '#fff' } : isCurrent ? { borderColor: accentColor, color: accentColor, borderWidth: '2px' } : {}}>
+                                          {isDone ? '✓' : step + 1}
+                                        </div>
+                                        <span className={`text-[10px] font-black uppercase tracking-wider mt-2.5 transition-colors duration-500 ${isDone ? 'text-neutral-700' : 'text-neutral-500'}`}>{label}</span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-neutral-50">
+                                  <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Latest Update</span>
+                                  <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: accentColor }}>{eventStatus}</span>
                                 </div>
                               </div>
                             )
                           })
                         ) : (
-                          <div className="col-span-full py-8 border-2 border-dashed border-neutral-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-2">
-                             <Calendar className="w-8 h-8 text-neutral-200" />
-                             <div className="text-xs font-bold text-neutral-400">No Active Event Journey</div>
-                             <p className="text-[10px] text-neutral-300 max-w-[200px]">RSVP to an upcoming event to track your ticket status here.</p>
+                          <div className="col-span-full py-10 border-2 border-dashed border-neutral-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-3 bg-neutral-50/20">
+                             <Calendar className="w-10 h-10 text-neutral-200" />
+                             <div className="text-sm font-bold text-neutral-400">No Journey Trackers</div>
+                             <p className="text-[11px] text-neutral-400 max-w-[240px] leading-relaxed">Track the real-time status of your mixer applications and registrations here.</p>
                           </div>
                         )}
                       </div>
@@ -2833,15 +2663,15 @@ function ProfileContent() {
 
                     {/* Past Timeline */}
                     <div>
-                      <h5 className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-3 font-sans">Past Timeline</h5>
-                      <div className="relative border-l border-neutral-100/80 ml-2 pl-4 space-y-4 pt-1">
+                      <h5 className="text-[12px] font-bold text-blue-600 uppercase tracking-widest mb-4 font-sans">Past Timeline</h5>
+                      <div className="relative border-l-2 border-neutral-100 ml-2.5 pl-6 space-y-6 pt-1">
                         {(currentPersona.pastTimeline || []).map((past, i) => (
                           <div key={i} className="relative">
-                            <span className="absolute left-[-21px] top-1 w-2.5 h-2.5 rounded-full border border-white shadow-sm" style={{ background: theme.accent }} />
+                            <span className="absolute left-[-32px] top-1 w-3.5 h-3.5 rounded-full border-2 border-white shadow-md transition-transform hover:scale-125" style={{ background: theme.accent }} />
                             <div className="leading-tight">
-                              <span className="text-[9.5px] text-neutral-400 font-medium">{past.date}</span>
-                              <div className="text-xs font-extrabold text-neutral-800 mt-0.5">{past.name}</div>
-                              <div className="flex gap-2 text-[9.5px] text-neutral-400 font-semibold mt-0.5">
+                              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{past.date}</span>
+                              <div className="text-sm font-black text-neutral-800 mt-1">{past.name}</div>
+                              <div className="flex gap-2 text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1 opacity-70">
                                 <span>{past.category}</span>
                               </div>
                             </div>
@@ -2855,102 +2685,12 @@ function ProfileContent() {
 
                 {/* ════════════════════ SECURITY TAB ════════════════════ */}
                 {activeSidebarTab === 'security' && (
-                  <div className="space-y-6 animate-fade-in">
-
-                    {/* Change Password Form */}
-                    <div className="rounded-2xl border border-neutral-100 bg-white shadow-sm overflow-hidden">
-                      <div className={`px-4 py-3 border-b border-neutral-100 ${theme.panelHeader} flex items-center justify-between`}>
-                        <div className="flex items-center gap-2">
-                          <Lock className={`w-3.5 h-3.5 ${theme.textAccent}`} />
-                          <span className="text-[11px] font-extrabold text-neutral-700 uppercase tracking-wider">Change Password</span>
-                        </div>
-                        <button onClick={() => setShowChangePwd(p => !p)} className={`text-[10px] font-bold ${theme.textAccent} hover:underline cursor-pointer`}>
-                          {showChangePwd ? 'Hide' : 'Show'}
-                        </button>
-                      </div>
-
-                      <div className={`p-4 space-y-3 transition-colors ${showChangePwd ? 'block' : 'hidden'}`}>
-                        {[
-                          { key: 'current', label: 'Current Password', placeholder: 'Enter current password' },
-                          { key: 'next', label: 'New Password', placeholder: 'Minimum 8 characters' },
-                          { key: 'confirm', label: 'Confirm New Password', placeholder: 'Re-enter new password' },
-                        ].map((field) => (
-                          <div key={field.key} className="space-y-1">
-                            <label className="text-[9.5px] font-bold text-neutral-400 uppercase tracking-wider">{field.label}</label>
-                            <div className="relative flex items-center">
-                              <input
-                                type={showPwd[field.key] ? 'text' : 'password'}
-                                value={pwdForm[field.key]}
-                                onChange={e => setPwdForm(p => ({ ...p, [field.key]: e.target.value }))}
-                                className={`w-full text-xs border rounded-xl pl-3 pr-10 py-2.5 focus:outline-none focus:ring-2 bg-white ${theme.cardBorder}`}
-                                placeholder={field.placeholder}
-                              />
-                              <button
-                                onClick={() => setShowPwd(p => ({ ...p, [field.key]: !p[field.key] }))}
-                                className="absolute right-3 text-neutral-400 hover:text-neutral-600 cursor-pointer">
-                                {showPwd[field.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                        {pwdForm.next && pwdForm.confirm && pwdForm.next !== pwdForm.confirm && (
-                          <p className="text-[10.5px] text-red-500 font-semibold">Passwords do not match</p>
-                        )}
-                        <button
-                          onClick={handleUpdatePassword}
-                          disabled={!pwdForm.current || !pwdForm.next || pwdForm.next !== pwdForm.confirm}
-                          className="w-full py-2.5 rounded-xl text-xs font-extrabold text-white disabled:opacity-40 cursor-pointer mt-1"
-                          style={{ background: theme.accent }}>
-                          Update Password
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Security Settings Switches */}
-                    <div className="rounded-2xl border border-neutral-100 bg-white shadow-sm overflow-hidden">
-                      <div className={`px-4 py-3 border-b border-neutral-100 ${theme.panelHeader} flex items-center gap-2`}>
-                        <ShieldCheck className={`w-3.5 h-3.5 ${theme.textAccent}`} />
-                        <span className="text-[11px] font-extrabold text-neutral-700 uppercase tracking-wider">Security Settings</span>
-                      </div>
-                      <div className="divide-y divide-neutral-100">
-                        {[
-                          { label: 'Two-Factor Authentication', desc: 'Add an extra layer of security to your account', enabled: false },
-                          { label: 'Login Notifications', desc: 'Get notified whenever a new sign-in occurs', enabled: true },
-                          { label: 'Remember Trusted Devices', desc: 'Stay logged in for 30 days on this device', enabled: true },
-                        ].map((item, i) => (
-                          <div key={i} className="flex items-center justify-between px-4 py-3.5">
-                            <div className="flex-1 mr-4">
-                              <div className="text-[11.5px] font-bold text-neutral-700">{item.label}</div>
-                              <div className="text-[9.5px] text-neutral-400 font-medium mt-0.5">{item.desc}</div>
-                            </div>
-                            <div className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-colors cursor-not-allowed ${item.enabled ? theme.bgAccent : 'bg-neutral-200'}`}>
-                              <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${item.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Danger Zone */}
-                    <div className="rounded-2xl border border-red-100 bg-white shadow-sm overflow-hidden">
-                      <div className="px-4 py-3 border-b border-red-100 bg-red-50/50 flex items-center gap-2">
-                        <X className="w-3.5 h-3.5 text-red-400" />
-                        <span className="text-[11px] font-extrabold text-red-500 uppercase tracking-wider">Danger Zone</span>
-                      </div>
-                      <div className="p-4 flex items-center justify-between gap-4">
-                        <div>
-                          <div className="text-[11.5px] font-bold text-neutral-700">Deactivate Account</div>
-                          <div className="text-[9.5px] text-neutral-400 font-medium mt-0.5">Temporarily hide your profile from the community</div>
-                        </div>
-                        <button
-                          onClick={() => triggerToast('Account deactivation is disabled in demo mode')}
-                          className="shrink-0 text-[10px] font-bold px-3 py-2 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                          Deactivate
-                        </button>
-                      </div>
-                    </div>
-
-                  </div>
+                  <SecurityTab 
+                    theme={theme}
+                    emailParam={emailParam}
+                    sessionEmail={sessionEmail}
+                    triggerToast={triggerToast}
+                  />
                 )}
 
               </div>
@@ -2959,7 +2699,127 @@ function ProfileContent() {
           </div>
         </div>
 
-        <div className="border-t border-white/30 w-full pt-4 mb-16" />
+        <div className="border-t border-white/30 w-full pt-4 mb-24 sm:mb-16" />
+        <div className="h-20 sm:hidden" />
+
+        {/* ═══ MOBILE BOTTOM NAVIGATION ═══ */}
+        <div className="md:hidden fixed bottom-5 left-4 right-4 z-40 bg-white/80 backdrop-blur-lg border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.08)] rounded-3xl px-3 py-2 flex items-center justify-around">
+          {[
+            { key: 'profile', label: 'Vibe Profile', icon: <User className="w-5 h-5" /> },
+            { key: 'mixers', label: 'Event Stage', icon: <Calendar className="w-5 h-5" /> },
+            { key: 'security', label: 'Security', icon: <Lock className="w-5 h-5" /> },
+          ].map(item => {
+            const isActive = activeSidebarTab === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setActiveSidebarTab(item.key)}
+                className="flex flex-col items-center justify-center gap-1 py-1 px-3 text-[10px] font-extrabold transition-all duration-200 active:scale-95 cursor-pointer text-neutral-500 hover:text-neutral-800"
+              >
+                <span className={isActive ? theme.textAccent : 'text-neutral-400'}>{item.icon}</span>
+                <span className={isActive ? 'text-neutral-800 font-extrabold' : 'text-neutral-400 font-bold'}>{item.label}</span>
+              </button>
+            );
+          })}
+          
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="flex flex-col items-center justify-center gap-1 py-1 px-3 text-[10px] font-extrabold text-rose-500/80 active:scale-95 cursor-pointer transition-all duration-200"
+          >
+            <svg className="w-5 h-5 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+            <span className="text-rose-400 font-bold">Log out</span>
+          </button>
+        </div>
+
+        {/* ═══ CHECK-IN / VENUE DETAILS MODAL ═══ */}
+        {checkInModalEvent && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 relative border border-neutral-100">
+              <button 
+                onClick={() => setCheckInModalEvent(null)}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-neutral-100 text-neutral-500 rounded-full hover:bg-neutral-200 transition-colors z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              
+              <div className="p-6 md:p-8 space-y-6">
+                <div className="space-y-2 text-center pt-2">
+                  <div className="w-12 h-12 mx-auto bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shadow-inner mb-4">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-black text-neutral-800 leading-tight">{checkInModalEvent.name || checkInModalEvent.event_title}</h3>
+                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">{checkInModalEvent.date || checkInModalEvent.event_date}</p>
+                </div>
+
+                <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-100 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0">
+                      <MapPin className="w-4 h-4 text-neutral-400" />
+                    </div>
+                    <div className="pt-1">
+                      <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1">Venue Destination</div>
+                      <div className="text-sm font-bold text-neutral-700">{checkInModalEvent.locationPin || checkInModalEvent.venue || "TBD"}</div>
+                    </div>
+                  </div>
+                  {(checkInModalEvent.lat || checkInModalEvent.latitude) && (
+                    <a 
+                      href={`https://www.google.com/maps/search/?api=1&query=${checkInModalEvent.lat || checkInModalEvent.latitude},${checkInModalEvent.lng || checkInModalEvent.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full mt-2 py-3 rounded-xl bg-blue-500 text-white text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm hover:bg-blue-600 transition-colors active:scale-95"
+                    >
+                      Open in Maps <ChevronRight className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+
+                {checkInModalEvent.error && (
+                  <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                    <div className="text-[11px] text-red-600 font-semibold leading-relaxed">
+                      {checkInModalEvent.error}
+                    </div>
+                  </div>
+                )}
+                
+                {(() => {
+                  const status = getCheckInStatus(checkInModalEvent.date || checkInModalEvent.event_date);
+                  if (status.available) {
+                    return (
+                      <button 
+                        onClick={() => handleCheckIn(checkInModalEvent, sessionEmail)}
+                        disabled={isVerifyingLocation}
+                        className={`w-full py-4 rounded-2xl border-2 border-emerald-500 bg-emerald-500 text-white text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 hover:border-emerald-600 cursor-pointer transition-all active:scale-95 ${isVerifyingLocation ? 'opacity-80 cursor-wait' : ''}`}
+                      >
+                        {isVerifyingLocation ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                        {isVerifyingLocation ? "Verifying GPS..." : "Verify Attendance Now"}
+                      </button>
+                    );
+                  }
+                  
+                  if (status.timeToStart === "Event Ended") {
+                    return (
+                      <div className="w-full py-4 rounded-2xl border-2 border-neutral-200 bg-neutral-100 text-neutral-400 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                        Event Has Ended
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="text-center space-y-1 pt-2">
+                      <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                        {status.timeToStart === "Active Now" ? "Check-in is" : "Check-in unlocks in"}
+                      </div>
+                      <div className="text-lg font-black text-neutral-700">{status.timeToStart}</div>
+                    </div>
+                  );
+                })()}
+
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

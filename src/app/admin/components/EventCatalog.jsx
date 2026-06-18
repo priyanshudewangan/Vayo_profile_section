@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
-import { CalendarPlus, Plus, Calendar, MapPin, Trash2, Users, CheckCircle2, Clock } from "lucide-react";
+import { CalendarPlus, Plus, Calendar, MapPin, Trash2, Users, CheckCircle2 } from "lucide-react";
+import { HOST_OPTIONS, CATEGORY_OPTIONS, IMAGE_PRESETS } from "../lib/constants";
 
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), { ssr: false });
-import { HOST_OPTIONS, CATEGORY_OPTIONS, IMAGE_PRESETS } from "../lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,10 +12,10 @@ import { Label } from "@/components/ui/label";
 
 export const EventCatalog = ({
   events,
-  pastEvents = [],
   isLoadingEvents,
   handleCreateEventSubmit,
   handleCancelEvent,
+  handleDeleteEvent,
   isSubmittingEvent,
   createdEventData,
   setCreatedEventData,
@@ -27,6 +27,8 @@ export const EventCatalog = ({
   eventDate, setEventDate,
   eventCity, setEventCity,
   eventVenue, setEventVenue,
+  eventLatitude, setEventLatitude,
+  eventLongitude, setEventLongitude,
   eventCategory, setEventCategory,
   eventTags, setEventTags,
   eventMinKarma, setEventMinKarma,
@@ -35,34 +37,15 @@ export const EventCatalog = ({
   imagePreset, setImagePreset,
   customImageUrl, setCustomImageUrl,
   eventHostId, setEventHostId,
-  eventLat, setEventLat,
-  eventLng, setEventLng
+  // Image upload props
+  imageFile,
+  imagePreview,
+  uploadingImage,
+  handleImageUpload,
+  handleRemoveImage
 }) => {
-  const [showMapPicker, setShowMapPicker] = useState(false);
-  const [editingLocationId, setEditingLocationId] = useState(null);
-  const [isSavingLocation, setIsSavingLocation] = useState(false);
-
-  const handleSaveLocation = async (eventId, { venue, lat, lng }) => {
-    setIsSavingLocation(true);
-    try {
-      const res = await fetch("/api/events", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_id: eventId, venue, lat, lng })
-      });
-      if (res.ok) {
-        addToast("Location updated!", "success");
-        setEditingLocationId(null);
-        fetchEvents();
-      } else {
-        addToast("Failed to update location", "error");
-      }
-    } catch {
-      addToast("Network error", "error");
-    } finally {
-      setIsSavingLocation(false);
-    }
-  };
+  const [hideCancelled, setHideCancelled] = useState(true);
+  const displayedEvents = (events || []).filter(evt => !hideCancelled || evt.status !== "cancelled");
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-10 items-start animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 md:pb-0">
@@ -76,7 +59,7 @@ export const EventCatalog = ({
             <div className="p-2 rounded-xl bg-vayo-blue/10 text-vayo-blue shadow-sm">
               <CalendarPlus className="w-4 h-4 md:w-5 md:h-5" />
             </div>
-            <span>Publish Event</span>
+            <span>Publish Mixer</span>
           </h3>
           <p className="text-[11px] md:text-xs text-slate-500 font-medium pl-1">
             Build and broadcast a new offline community event.
@@ -85,7 +68,7 @@ export const EventCatalog = ({
 
         <form onSubmit={handleCreateEventSubmit} className="space-y-4 md:space-y-5">
           <div className="space-y-1.5 md:space-y-2">
-            <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Event Title *</Label>
+            <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Mixer Title *</Label>
             <Input
               type="text"
               placeholder="e.g. Salsa Social Nights"
@@ -141,26 +124,6 @@ export const EventCatalog = ({
                 onChange={(e) => setEventVenue(e.target.value)}
                 className="w-full bg-vayo-alice/40 border-2 border-vayo-sky/50 rounded-xl md:rounded-2xl px-4 md:px-5 py-6 md:py-7 text-xs md:text-sm text-slate-800 placeholder:text-slate-300 focus:border-vayo-blue focus:bg-white transition-all shadow-inner"
               />
-              <button
-                type="button"
-                onClick={() => setShowMapPicker(v => !v)}
-                className="flex items-center gap-1.5 text-[10px] font-black text-vayo-blue hover:text-vayo-light transition-colors pl-1 pt-0.5 cursor-pointer"
-              >
-                <MapPin className="w-3 h-3" />
-                {showMapPicker ? "Hide Map" : "📍 Pin on Map"}
-                {eventLat && !showMapPicker && <span className="text-emerald-500 ml-1">✓ Pinned</span>}
-              </button>
-              {showMapPicker && (
-                <div className="pt-1">
-                  <LocationPicker
-                    onChange={({ venue, lat, lng }) => {
-                      setEventVenue(venue);
-                      setEventLat(lat);
-                      setEventLng(lng);
-                    }}
-                  />
-                </div>
-              )}
             </div>
             <div className="space-y-1.5 md:space-y-2">
               <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Category</Label>
@@ -175,6 +138,20 @@ export const EventCatalog = ({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-1.5 md:space-y-2">
+            <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Map Location Pin *</Label>
+            <LocationPicker
+              initialLat={eventLatitude}
+              initialLng={eventLongitude}
+              initialVenue={eventVenue}
+              onChange={({ venue, lat, lng }) => {
+                setEventVenue(venue);
+                setEventLatitude(lat);
+                setEventLongitude(lng);
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-2 md:gap-3">
@@ -225,30 +202,118 @@ export const EventCatalog = ({
             </Select>
           </div>
 
-          {/* Cover Image */}
-          <div className="space-y-1.5 md:space-y-2">
-            <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Cover Image</Label>
-            <Select value={imagePreset} onValueChange={setImagePreset}>
-              <SelectTrigger className="w-full bg-vayo-alice/40 border-2 border-vayo-sky/50 rounded-xl md:rounded-2xl px-4 md:px-5 py-6 md:py-7 text-xs md:text-sm text-slate-800 focus:border-vayo-blue transition-all shadow-inner h-auto">
-                <SelectValue placeholder="Select image" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border-vayo-sky shadow-xl">
-                {IMAGE_PRESETS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value} className="text-[10px] md:text-xs font-bold py-2 md:py-3 focus:bg-vayo-alice focus:text-vayo-blue transition-colors cursor-pointer">{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {imagePreset === "custom" && (
-              <input
-                type="url"
-                placeholder="https://..."
-                value={customImageUrl}
-                onChange={(e) => setCustomImageUrl(e.target.value)}
-                className="w-full bg-vayo-alice/40 border-2 border-vayo-sky/50 rounded-xl px-4 py-3 text-xs text-slate-800 placeholder:text-slate-300 focus:border-vayo-blue focus:bg-white transition-all shadow-inner outline-none mt-1"
-              />
+          <div className="space-y-3">
+            <Label className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-[2px] block pl-1">Mixer Cover Image *</Label>
+            
+            {/* Toggle tabs to choose Preset vs Upload */}
+            <div className="flex bg-vayo-alice/60 p-1.5 rounded-xl border border-vayo-sky/20 gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setImagePreset("/assets/events/something.jpg");
+                  setCustomImageUrl("");
+                }}
+                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-center cursor-pointer transition-all duration-300 ${
+                  imagePreset !== "custom" ? "bg-vayo-blue text-white shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Use Preset
+              </button>
+              <button
+                type="button"
+                onClick={() => setImagePreset("custom")}
+                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-center cursor-pointer transition-all duration-300 ${
+                  imagePreset === "custom" ? "bg-vayo-blue text-white shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Upload Poster
+              </button>
+            </div>
+
+            {/* Render Preset Selector if Use Preset active */}
+            {imagePreset !== "custom" && (
+              <div className="space-y-1.5 animate-in fade-in duration-300">
+                <Select value={imagePreset} onValueChange={setImagePreset}>
+                  <SelectTrigger className="w-full bg-vayo-alice/40 border-2 border-vayo-sky/50 rounded-xl md:rounded-2xl px-4 md:px-5 py-6 md:py-7 text-xs md:text-sm text-slate-800 focus:border-vayo-blue transition-all shadow-inner h-auto">
+                    <SelectValue placeholder="Select preset image" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-vayo-sky shadow-xl">
+                    {IMAGE_PRESETS.filter(opt => opt.value !== "custom").map(opt => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-[10px] md:text-xs font-bold py-2 md:py-3 focus:bg-vayo-alice focus:text-vayo-blue transition-colors cursor-pointer">{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
-            {imagePreset && imagePreset !== "custom" && (
-              <img src={imagePreset} alt="preview" className="w-full h-20 object-cover rounded-xl border border-vayo-sky/30 mt-1" />
+
+            {/* Render File Uploader if Upload Poster active */}
+            {imagePreset === "custom" && (
+              <div className="space-y-2.5 animate-in fade-in duration-300">
+                {imagePreview ? (
+                  <div className="relative border-2 border-vayo-sky/50 bg-vayo-alice/20 rounded-2xl p-4 flex items-center justify-between shadow-inner">
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-xl overflow-hidden border border-vayo-sky/30 shadow-sm shrink-0">
+                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-slate-700 block truncate">{imageFile?.name || "Uploaded Image"}</span>
+                        <span className="text-[8.5px] text-slate-400 font-semibold uppercase tracking-wider block mt-0.5">Custom Poster Selected</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-600 hover:bg-rose-500 hover:text-white rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-full border-2 border-dashed border-vayo-sky/60 hover:border-vayo-blue bg-vayo-alice/30 rounded-2xl p-5 text-center flex flex-col items-center justify-center gap-2.5 transition-all duration-300 relative group/dropzone">
+                    <div className="w-9 h-9 rounded-full bg-vayo-blue/10 border border-vayo-sky/30 flex items-center justify-center text-vayo-blue shrink-0">
+                      <Plus className="w-4 h-4 group-hover/dropzone:rotate-90 transition-transform duration-300" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-700">
+                        {uploadingImage ? "Uploading poster image..." : "Upload custom event poster image"}
+                      </p>
+                      <label className="text-[9.5px] text-vayo-blue font-black hover:underline cursor-pointer block mt-1">
+                        Browse poster file
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) handleImageUpload(e.target.files[0]);
+                          }}
+                          className="hidden"
+                          disabled={uploadingImage}
+                        />
+                      </label>
+                    </div>
+                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wide">Max Size: 5MB (PNG, JPG, JPEG)</p>
+                  </div>
+                )}
+                
+                {/* Fallback Custom Image URL Input */}
+                <div className="space-y-1">
+                  <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider pl-1">Or paste cover image URL:</span>
+                  <Input
+                    type="url"
+                    placeholder="https://example.com/poster.jpg"
+                    value={customImageUrl}
+                    onChange={(e) => {
+                      setCustomImageUrl(e.target.value);
+                      setImagePreset("custom");
+                      if (e.target.value) {
+                        setImagePreview(e.target.value);
+                      } else {
+                        setImagePreview("");
+                      }
+                    }}
+                    className="w-full bg-vayo-alice/40 border-2 border-vayo-sky/50 rounded-xl px-4 py-4 text-xs text-slate-800 placeholder:text-slate-300 focus:border-vayo-blue transition-all"
+                  />
+                </div>
+              </div>
             )}
           </div>
 
@@ -265,7 +330,7 @@ export const EventCatalog = ({
             ) : (
               <>
                 <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
-                <span>Publish Event Live</span>
+                <span>Publish Mixer Live</span>
               </>
             )}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
@@ -275,7 +340,7 @@ export const EventCatalog = ({
         {createdEventData && (
           <div className="bg-emerald-50/80 backdrop-blur-sm border-2 border-emerald-200 rounded-2xl md:rounded-[2rem] p-5 md:p-6 text-left animate-in zoom-in-95 duration-500 shadow-sm mt-1 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-2"><CheckCircle2 className="w-10 h-10 md:w-12 md:h-12 text-emerald-100" /></div>
-            <span className="text-[9px] md:text-[10px] font-black text-emerald-700 uppercase tracking-[2px] block">Event Live!</span>
+            <span className="text-[9px] md:text-[10px] font-black text-emerald-700 uppercase tracking-[2px] block">Mixer Live!</span>
             <div className="flex gap-2 mt-4 md:mt-5">
               <Button
                 variant="outline"
@@ -310,11 +375,23 @@ export const EventCatalog = ({
               <span>Upcoming Catalog</span>
             </h3>
             <p className="text-[10px] md:text-xs text-vayo-alice/70 font-medium tracking-wide">
-              Manage events and track registrant counts.
+              Manage mixers and track registrant counts.
             </p>
           </div>
-          <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[8px] md:text-[9px] font-black text-white uppercase tracking-[2px] shrink-0">
-             <span className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> DB LIVE
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => setHideCancelled(!hideCancelled)}
+              className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all duration-300 cursor-pointer ${
+                hideCancelled
+                  ? "bg-rose-500/20 border-rose-500/30 text-rose-300 hover:bg-rose-500/35"
+                  : "bg-white/10 border-white/10 text-white/70 hover:bg-white/15"
+              }`}
+            >
+              {hideCancelled ? "Show Cancelled" : "Hide Cancelled"}
+            </button>
+            <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[8px] md:text-[9px] font-black text-white uppercase tracking-[2px]">
+               <span className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> DB LIVE
+            </div>
           </div>
         </div>
 
@@ -328,19 +405,19 @@ export const EventCatalog = ({
             </div>
             <span className="text-[9px] md:text-[10px] text-vayo-alice tracking-[3px] md:tracking-[4px] uppercase font-black animate-pulse opacity-80">Synchronizing</span>
           </div>
-        ) : events.length === 0 ? (
+        ) : displayedEvents.length === 0 ? (
           <div className="py-20 md:py-40 text-center flex flex-col items-center justify-center gap-4 bg-white/5 backdrop-blur-md border-2 border-dashed border-white/10 rounded-[2rem] md:rounded-[3rem] shadow-xl mx-2">
             <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-vayo-sky/20 mb-2">
               <CalendarPlus className="w-8 h-8 md:w-10 md:h-10 opacity-20" />
             </div>
             <div className="space-y-1 px-4">
               <p className="text-sm md:text-base font-bold text-white opacity-80 tracking-tight">Catalog is empty</p>
-              <p className="text-[10px] md:text-[11px] text-vayo-alice/40 font-medium">Publish your first community event above.</p>
+              <p className="text-[10px] md:text-[11px] text-vayo-alice/40 font-medium">Publish your first community mixer above.</p>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:gap-5 max-h-[700px] md:max-h-[900px] overflow-y-auto pr-2 md:pr-3 scrollbar-vayo px-2 md:px-0">
-            {events.map((evt) => {
+            {displayedEvents.map((evt) => {
               const isCancelled = evt.status === "cancelled";
               const dateObj = new Date(evt.event_date);
               const formattedDate = dateObj.toLocaleDateString(undefined, {
@@ -352,8 +429,8 @@ export const EventCatalog = ({
               });
 
               return (
-                <div key={evt.event_id} className="flex flex-col">
                 <div
+                  key={evt.event_id}
                   className={`bg-white border-2 ${isCancelled ? "border-rose-200/50 opacity-80" : "border-vayo-sky/40 hover:border-vayo-blue/60"} rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-6 flex flex-col sm:flex-row gap-5 md:gap-6 items-center shadow-[0_4px_24px_rgba(72,147,198,0.04)] hover:shadow-xl hover:-translate-y-1 transition-all duration-500 relative group/card overflow-hidden`}
                 >
                   <div className="w-full sm:w-24 sm:h-24 rounded-2xl md:rounded-3xl overflow-hidden shrink-0 border-2 border-vayo-sky/30 relative bg-slate-100 shadow-md aspect-video sm:aspect-square">
@@ -384,21 +461,9 @@ export const EventCatalog = ({
                     </div>
 
                     <div className="flex items-center justify-center sm:justify-start gap-1.5 md:gap-2 mt-1.5 md:mt-2 flex-wrap">
-                      {evt.is_live && (
-                        <span className="flex items-center gap-1 px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-rose-500 text-white text-[9px] md:text-[10px] font-black tracking-widest shadow-sm animate-pulse">
-                          <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                          LIVE
-                        </span>
-                      )}
                       <span className="px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-amber-50 text-amber-700 border-2 border-amber-100 text-[9px] md:text-[10px] font-black tracking-widest shadow-sm">
                         {evt.participant_count || 0} RSVPs
                       </span>
-                      {evt.checked_in_count > 0 && (
-                        <span className="flex items-center gap-1 px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-teal-50 text-teal-700 border-2 border-teal-100 text-[9px] md:text-[10px] font-black tracking-widest shadow-sm">
-                          <CheckCircle2 className="w-3 h-3" />
-                          {evt.checked_in_count} Attended
-                        </span>
-                      )}
                       <span className="px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-emerald-50 text-emerald-700 border-2 border-emerald-100 text-[9px] md:text-[10px] font-black tracking-widest shadow-sm">
                         {evt.entry_fee === 0 ? "FREE" : `\u20B9${evt.entry_fee}`}
                       </span>
@@ -407,8 +472,19 @@ export const EventCatalog = ({
 
                   <div className="flex flex-row sm:flex-col gap-2 md:gap-3 shrink-0 self-center sm:self-center justify-center w-full sm:w-auto mt-2 md:mt-0 pt-4 md:pt-0 border-t sm:border-t-0 border-slate-100">
                     {isCancelled ? (
-                      <div className="px-4 py-2 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black bg-rose-50 border-2 border-rose-200 text-rose-600 uppercase tracking-[2px] shadow-sm animate-in zoom-in-95">
-                        Cancelled
+                      <div className="flex items-center gap-2">
+                        <div className="px-4 py-2 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black bg-rose-50 border-2 border-rose-200 text-rose-600 uppercase tracking-[2px] shadow-sm animate-in zoom-in-95">
+                          Cancelled
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteEvent(evt.event_id, evt.host_id)}
+                          className="rounded-xl md:rounded-2xl bg-white hover:bg-rose-600 hover:text-white border-slate-200 hover:border-rose-600 transition-all duration-300 shadow-sm flex items-center justify-center p-2 h-9 w-9 text-slate-400 hover:text-white shrink-0 cursor-pointer"
+                          title="Delete Permanently"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        </Button>
                       </div>
                     ) : (
                       <>
@@ -424,14 +500,6 @@ export const EventCatalog = ({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setEditingLocationId(editingLocationId === evt.event_id ? null : evt.event_id)}
-                          className="flex-1 sm:flex-none rounded-xl md:rounded-2xl bg-vayo-alice/60 hover:bg-vayo-blue hover:text-white border-vayo-sky hover:border-vayo-blue transition-all duration-300 shadow-sm flex items-center justify-center gap-2 h-9 md:h-11 px-4 md:px-6 font-black uppercase text-[9px] md:text-[10px] tracking-widest"
-                        >
-                          <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
                           onClick={() => handleCancelEvent(evt.event_id, evt.host_id)}
                           className="flex-1 sm:flex-none rounded-xl md:rounded-2xl bg-white hover:bg-rose-500 hover:text-white border-slate-200 hover:border-rose-500 transition-all duration-300 shadow-sm flex items-center justify-center gap-2 h-9 md:h-11 px-4 md:px-6 font-black uppercase text-[9px] md:text-[10px] tracking-widest text-slate-400"
                         >
@@ -441,64 +509,8 @@ export const EventCatalog = ({
                     )}
                   </div>
                 </div>
-
-                {/* Inline Location Editor */}
-                {editingLocationId === evt.event_id && (
-                  <div className="bg-white border-2 border-t-0 border-vayo-sky/40 rounded-b-[2rem] md:rounded-b-[2.5rem] px-5 md:px-6 pb-5 md:pb-6 pt-4 space-y-3 -mt-6">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black text-vayo-blue uppercase tracking-[2px]">📍 Update Location</span>
-                      {evt.lat && <span className="text-[9px] text-emerald-600 font-bold">Pinned: {Number(evt.lat).toFixed(4)}, {Number(evt.lng).toFixed(4)}</span>}
-                    </div>
-                    <LocationPicker onChange={(loc) => handleSaveLocation(evt.event_id, loc)} />
-                    {isSavingLocation && <p className="text-[10px] text-vayo-blue font-bold animate-pulse">Saving…</p>}
-                  </div>
-                )}
-                </div>
               );
             })}
-          </div>
-        )}
-
-        {/* Past Events */}
-        {pastEvents.length > 0 && (
-          <div className="space-y-4 md:space-y-5 mt-6 md:mt-8">
-            <div className="flex items-center gap-3 px-1">
-              <Clock className="w-4 h-4 text-slate-400" />
-              <h3 className="text-base md:text-lg font-bold text-white/70 tracking-tight">Past Events</h3>
-              <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/50 text-[9px] font-black tracking-widest uppercase">{pastEvents.length}</span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 md:gap-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-vayo px-2 md:px-0">
-              {pastEvents.map((evt) => {
-                const dateObj = new Date(evt.event_date);
-                const formattedDate = dateObj.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) + " • " + dateObj.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-                const attendanceRate = evt.participant_count > 0
-                  ? Math.round((evt.checked_in_count / evt.participant_count) * 100)
-                  : 0;
-                return (
-                  <div key={evt.event_id} className="bg-white/10 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-5 flex flex-col sm:flex-row gap-4 items-center opacity-80 hover:opacity-100 transition-opacity duration-300">
-                    <div className="w-full sm:w-16 sm:h-16 rounded-xl md:rounded-2xl overflow-hidden shrink-0 bg-white/10 aspect-video sm:aspect-square">
-                      <img src={evt.cover_image_url || "/assets/events/something.jpg"} alt={evt.title} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col gap-1.5 text-center sm:text-left">
-                      <h4 className="font-black text-white truncate text-sm md:text-base tracking-tight">{evt.title}</h4>
-                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 text-[9px] text-white/50 font-bold uppercase tracking-wider">
-                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formattedDate}</span>
-                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{evt.city || 'Bangalore'}</span>
-                      </div>
-                      <div className="flex items-center justify-center sm:justify-start gap-1.5 flex-wrap mt-1">
-                        <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/60 border border-white/10 text-[9px] font-black tracking-widest">
-                          {evt.participant_count || 0} RSVPs
-                        </span>
-                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/20 text-[9px] font-black tracking-widest">
-                          <CheckCircle2 className="w-3 h-3" />
-                          {evt.checked_in_count || 0} Attended ({attendanceRate}%)
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         )}
       </div>

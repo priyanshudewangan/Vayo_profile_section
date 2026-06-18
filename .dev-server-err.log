@@ -1,0 +1,35 @@
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\Saran\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\Saran\Vayo_temp\package-lock.json
+
+[browser] Image with src "/assets/vayo-logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/assets/vayo-logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+Fetch Moments Error: {
+  code: 'PGRST205',
+  details: null,
+  hint: 'Perhaps you meant the table \'public.events\'',
+  message: 'Could not find the table \'public.moments\' in the schema cache'
+}
+[browser] Failed to fetch live notifications: TypeError: Failed to fetch
+    at fetchNotifications (src/app/profile/page.js:946:25)
+    at ProfileContent.useEffect (src/app/profile/page.js:995:34)
+  944 |     if (!email || !token) return;
+  945 |     try {
+> 946 |       const res = await fetch(`${BACKEND_URL}/api/v1/notifications/${encodeURIComponent(e...
+      |                         ^
+  947 |         headers: { "Authorization": `Bearer ${token}` }
+  948 |       });
+  949 |       if (res.ok) { (src/app/profile/page.js:954:15)
+[browser] FastAPI backend is offline or unreachable. Using Supabase fallback. TypeError: Failed to fetch
+    at ProfileContent.useEffect.fetchUserProfile (src/app/profile/page.js:1365:42)
+  1363 |             if (token) {
+  1364 |               try {
+> 1365 |                 const fastApiRes = await fetch(`${BACKEND_URL}/api/v1/users/${encodeURIC...
+       |                                          ^
+  1366 |                   headers: {
+  1367 |                     "Authorization": `Bearer ${token}`
+  1368 |                   } (src/app/profile/page.js:1374:25)
+[browser] Image with src "/assets/vayo-logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
