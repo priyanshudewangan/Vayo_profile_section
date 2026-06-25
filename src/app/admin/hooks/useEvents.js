@@ -9,8 +9,11 @@ export const useEvents = (password, addToast) => {
   const [createdEventData, setCreatedEventData] = useState(null);
   
   // Event creation form state
+  const [eventType, setEventType] = useState("event");
   const [eventTitle, setEventTitle] = useState("");
   const [eventDescription, setEventDescription] = useState("");
+  const [eventDuration, setEventDuration] = useState("");
+  const [eventEndDate, setEventEndDate] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventCity, setEventCity] = useState("Bangalore");
   const [eventVenue, setEventVenue] = useState("");
@@ -160,6 +163,7 @@ export const useEvents = (password, addToast) => {
 
     const payload = {
       host_id: eventHostId,
+      event_type: eventType,
       title: eventTitle,
       description: eventDescription || null,
       event_date: dateObj.toISOString(),
@@ -169,7 +173,9 @@ export const useEvents = (password, addToast) => {
       interest_tags: tagsArray,
       min_karma_required: parseInt(eventMinKarma) || 0,
       entry_fee: parseInt(eventEntryFee) || 0,
-      max_participants: eventMaxParticipants ? parseInt(eventMaxParticipants) : null,
+      max_participants: eventType === "meetup" ? null : (eventMaxParticipants ? parseInt(eventMaxParticipants) : null),
+      duration: eventType === "experience" ? (eventDuration || null) : null,
+      end_date: eventType === "experience" ? (eventEndDate ? new Date(eventEndDate).toISOString() : null) : null,
       cover_image_url: coverImageUrl || "/assets/events/something.jpg",
       latitude: parseFloat(eventLatitude) || 12.9716,
       longitude: parseFloat(eventLongitude) || 77.5946
@@ -212,6 +218,8 @@ export const useEvents = (password, addToast) => {
     setEventMinKarma(0);
     setEventEntryFee(0);
     setEventMaxParticipants("");
+    setEventDuration("");
+    setEventEndDate("");
     setImageFile(null);
     setImagePreview("");
     setCustomImageUrl("");
@@ -308,8 +316,11 @@ export const useEvents = (password, addToast) => {
     createdEventData,
     setCreatedEventData,
     // Form states
+    eventType, setEventType,
     eventTitle, setEventTitle,
     eventDescription, setEventDescription,
+    eventDuration, setEventDuration,
+    eventEndDate, setEventEndDate,
     eventDate, setEventDate,
     eventCity, setEventCity,
     eventVenue, setEventVenue,

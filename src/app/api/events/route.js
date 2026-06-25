@@ -80,10 +80,11 @@ export async function POST(request) {
     }
     
     const body = await request.json();
-    const { 
+    const {
       event_id, eventId, title, venue, lat, lng, latitude, longitude,
       description, city, status, category, host_id, cover_image_url,
-      interest_tags, min_karma_required, entry_fee, max_participants, event_date
+      interest_tags, min_karma_required, entry_fee, max_participants, event_date,
+      event_type, duration, end_date
     } = body;
 
     const finalEventId = eventId || event_id || `evt_${Math.random().toString(36).substring(2, 12)}`;
@@ -108,7 +109,10 @@ export async function POST(request) {
       interest_tags: interest_tags || [],
       min_karma_required: min_karma_required || 0,
       entry_fee: entry_fee || 0,
-      max_participants: max_participants || null
+      max_participants: max_participants || null,
+      event_type: event_type || "event",
+      duration: duration || null,
+      end_date: end_date || null
     };
 
     const { data, error } = await supabase
