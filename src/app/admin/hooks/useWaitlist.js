@@ -9,8 +9,8 @@ export const useWaitlist = (password, addToast) => {
   const [togglingStatusMap, setTogglingStatusMap] = useState({});
   const [sandboxModalEmail, setSandboxModalEmail] = useState(null);
 
-  const fetchEmails = async (token, isRefresh = false) => {
-    setIsLoading(true);
+  const fetchEmails = async (token, silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const response = await fetch("/api/admin/emails", {
         headers: {
@@ -22,7 +22,7 @@ export const useWaitlist = (password, addToast) => {
 
       if (response.ok) {
         setEmails(data.emails || []);
-        if (isRefresh) {
+        if (!silent) {
           addToast("Dashboard records refreshed", "info");
         }
       } else {
@@ -30,9 +30,9 @@ export const useWaitlist = (password, addToast) => {
       }
     } catch (err) {
       console.error(err);
-      addToast("Failed to connect to database.", "error");
+      if (!silent) addToast("Failed to connect to database.", "error");
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 

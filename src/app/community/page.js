@@ -10,7 +10,8 @@ import {
   ArrowRight, 
   AlertCircle, 
   Mail, 
-  ChevronRight 
+  ChevronRight,
+  Flame
 } from "lucide-react";
 
 // Video sequence from actual community highlights
@@ -177,6 +178,23 @@ const RunningVayoDoodle = () => (
 
 export default function CommunityPage() {
   const router = useRouter();
+  const [sessionEmail, setSessionEmail] = useState("");
+  const [sessionKarma, setSessionKarma] = useState(null);
+
+  useEffect(() => {
+    const localEmail = localStorage.getItem("vayo_user_email");
+    if (localEmail && localEmail.includes("@")) {
+      setSessionEmail(localEmail);
+      fetch(`/api/karma?email=${encodeURIComponent(localEmail)}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.total !== undefined) {
+            setSessionKarma(data.total);
+          }
+        })
+        .catch(err => console.warn("Failed to fetch karma on community mount:", err));
+    }
+  }, []);
 
   // Video state transitions
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -416,8 +434,20 @@ export default function CommunityPage() {
           </Link>
 
           {/* Right side status and bookmark items */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
             
+            {/* Karma link capsule, visible when logged in */}
+            {sessionEmail && (
+              <Link 
+                href="/karma" 
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 rounded-full text-sky-400 hover:text-sky-300 transition-all shadow-sm cursor-pointer shrink-0 hover:scale-105 active:scale-95"
+                title="View Karma Reputation Page"
+              >
+                <Flame className="w-3.5 h-3.5 fill-sky-500/40 animate-pulse text-sky-500" />
+                <span className="text-[10px] font-black uppercase tracking-wider">{sessionKarma !== null ? sessionKarma : 350} PTS</span>
+              </Link>
+            )}
+
             {/* Status Reserved capsule */}
             <div className="px-3.5 py-1.5 rounded-full bg-indigo-600/90 text-white text-[10px] md:text-xs font-bold tracking-wider flex items-center gap-1.5 shadow-md backdrop-blur-sm">
               <span className="w-1.5 h-1.5 bg-indigo-300 rounded-full animate-pulse" />

@@ -87,8 +87,8 @@ export const useEvents = (password, addToast) => {
     setImagePreset("/assets/events/something.jpg");
   };
 
-  const fetchEvents = async () => {
-    setIsLoadingEvents(true);
+  const fetchEvents = async (silent = false) => {
+    if (!silent) setIsLoadingEvents(true);
     try {
       // 1. Fetch from Next.js API (Supabase / local JSON)
       const nextResponse = await fetch(`/api/events`);
@@ -132,7 +132,7 @@ export const useEvents = (password, addToast) => {
     } catch (err) {
       console.error("Fetch Events Error:", err);
     } finally {
-      setIsLoadingEvents(false);
+      if (!silent) setIsLoadingEvents(false);
     }
   };
 

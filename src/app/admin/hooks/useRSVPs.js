@@ -8,8 +8,8 @@ export const useRSVPs = (password, addToast) => {
   const [eventAttendees, setEventAttendees] = useState([]);
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false);
 
-  const fetchRSVPs = async (token) => {
-    setIsLoadingRSVPs(true);
+  const fetchRSVPs = async (token, silent = false) => {
+    if (!silent) setIsLoadingRSVPs(true);
     try {
       const response = await fetch("/api/rsvp/admin", {
         headers: { Authorization: token || password }
@@ -21,7 +21,7 @@ export const useRSVPs = (password, addToast) => {
     } catch (err) {
       console.error("Error fetching RSVPs:", err);
     } finally {
-      setIsLoadingRSVPs(false);
+      if (!silent) setIsLoadingRSVPs(false);
     }
   };
 

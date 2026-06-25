@@ -1,5 +1,5 @@
-import React from "react";
-import { RefreshCw, Search, X, Copy, Check, Phone, Eye, CheckCircle2 } from "lucide-react";
+import React, { useState } from "react";
+import { RefreshCw, Search, X, Copy, Check, Phone, Eye, CheckCircle2, AtSign, Briefcase, UtensilsCrossed, Sunset, User, Cake } from "lucide-react";
 import { getRelativeTime, getAvatarGradient, getInitials, getAge } from "../lib/utils";
 
 const InstagramIcon = ({ className }) => (
@@ -20,14 +20,82 @@ const InstagramIcon = ({ className }) => (
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export const WaitlistRegistry = ({ 
-  filteredEmails, 
-  isLoading, 
-  fetchEmails, 
-  password, 
-  activeTab, 
-  setActiveTab, 
-  searchTerm, 
+function ProfileModal({ item, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white rounded-t-3xl z-10">
+          <div className="flex items-center gap-3">
+            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${getAvatarGradient(item.email)} flex items-center justify-center text-white font-black text-base shrink-0`}>
+              {getInitials(item.name || item.email)}
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-800">{item.name || "—"}</h3>
+              {item.vayo_id && <p className="text-[11px] text-vayo-blue font-bold">@{item.vayo_id}</p>}
+              <p className="text-[10px] text-slate-400">{item.email}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 transition-colors shrink-0">
+            <X className="w-4 h-4 text-slate-500" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Selfie */}
+          {item.selfie_url && (
+            <img src={item.selfie_url} alt="Selfie" className="w-28 h-28 rounded-2xl object-cover border border-slate-100 shadow mx-auto block" />
+          )}
+
+          {/* Basic Info Grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {item.phone && <InfoRow icon={<Phone className="w-3 h-3"/>} label="Phone" value={item.phone} />}
+            {item.birthdate && <InfoRow icon={<Cake className="w-3 h-3"/>} label="Age / DOB" value={`${getAge(item.birthdate)} yrs · ${item.birthdate}`} />}
+            {item.instagram && <InfoRow icon={<AtSign className="w-3 h-3"/>} label="Instagram" value={item.instagram} />}
+            {item.profession && <InfoRow icon={<Briefcase className="w-3 h-3"/>} label="Profession" value={item.profession} />}
+            <InfoRow icon={<User className="w-3 h-3"/>} label="Applied" value={getRelativeTime(item.created_at)} />
+            <InfoRow label="Status" value={item.status || "Pending"} />
+          </div>
+
+          {/* Tag Sections */}
+          {item.interests?.length > 0 && <TagSection label="🎯 Interests & Vibes" tags={item.interests} color="blue" />}
+          {item.food_preferences?.length > 0 && <TagSection label="🍽️ Food Preferences" tags={item.food_preferences} color="emerald" />}
+          {item.weekend_activities?.length > 0 && <TagSection label="🌅 Weekend Activities" tags={item.weekend_activities} color="violet" />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ icon, label, value }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-1">{icon}{label}</span>
+      <span className="text-[11px] text-slate-700 font-semibold truncate">{value}</span>
+    </div>
+  );
+}
+
+function TagSection({ label, tags, color }) {
+  const colors = { blue: "bg-blue-50 text-blue-700 border-blue-200", emerald: "bg-emerald-50 text-emerald-700 border-emerald-200", violet: "bg-violet-50 text-violet-700 border-violet-200" };
+  return (
+    <div>
+      <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">{label}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {tags.map(t => <span key={t} className={`px-2.5 py-1 rounded-xl border text-[10px] font-semibold ${colors[color]}`}>{t}</span>)}
+      </div>
+    </div>
+  );
+}
+
+export const WaitlistRegistry = ({
+  filteredEmails,
+  isLoading,
+  fetchEmails,
+  password,
+  activeTab,
+  setActiveTab,
+  searchTerm,
   setSearchTerm,
   stats,
   sendingEmailMap,
@@ -38,7 +106,10 @@ export const WaitlistRegistry = ({
   handleSendInvite,
   setZoomedSelfie
 }) => {
+  const [profileItem, setProfileItem] = useState(null);
   return (
+    <>
+    {profileItem && <ProfileModal item={profileItem} onClose={() => setProfileItem(null)} />}
     <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Waitlist Control Ledger Card */}
       <div className="bg-white border border-vayo-sky rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-8 shadow-[0_8px_40px_rgba(72,147,198,0.08)] flex flex-col gap-6 md:gap-8 transition-all duration-300">
@@ -155,7 +226,11 @@ export const WaitlistRegistry = ({
                     {isJoined ? <CheckCircle2 className="w-4 h-4" /> : isSent ? <Check className="w-4 h-4" /> : <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-amber-500 animate-pulse"></span>}
                   </div>
 
-                  <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-tr ${avatarGrad} flex items-center justify-center text-white text-sm md:text-base font-black select-none shadow-lg shrink-0 group-hover:scale-105 transition-transform duration-300`}>
+                  <div
+                    onClick={() => setProfileItem(item)}
+                    className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-tr ${avatarGrad} flex items-center justify-center text-white text-sm md:text-base font-black select-none shadow-lg shrink-0 group-hover:scale-105 transition-transform duration-300 cursor-pointer`}
+                    title="View full profile"
+                  >
                     {initials}
                   </div>
 
@@ -219,24 +294,6 @@ export const WaitlistRegistry = ({
                     </span>
                   </div>
 
-                  <div className="flex-1 min-w-0 border-l border-slate-100 pl-5 md:pl-8 hidden sm:block">
-                    <span className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-[2px] block mb-1.5 md:mb-2">Member Vibes</span>
-                    <div className="flex flex-wrap gap-1 md:gap-1.5 max-h-[50px] md:max-h-[55px] overflow-y-auto pr-1 scrollbar-hide">
-                      {item.interests && item.interests.length > 0 ? (
-                        item.interests.map((interest) => (
-                          <span
-                            key={interest}
-                            className="px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg bg-white border border-vayo-sky/40 text-[9px] md:text-[9.5px] font-bold text-vayo-blue shadow-sm hover:border-vayo-blue transition-colors truncate max-w-[100px] md:max-w-[120px]"
-                            title={interest}
-                          >
-                            {interest}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-[10px] text-slate-400 italic">No vibe tags selected</span>
-                      )}
-                    </div>
-                  </div>
 
                   <div className="shrink-0 flex items-center justify-center ml-auto lg:ml-0">
                     {item.selfie_url ? (
@@ -323,5 +380,6 @@ export const WaitlistRegistry = ({
         </div>
       )}
     </section>
+    </>
   );
 };

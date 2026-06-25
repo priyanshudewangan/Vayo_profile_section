@@ -184,14 +184,9 @@ function JoinFormContent() {
         card.style.transform = `translateX(${x}px) translateZ(${targetZ}px) rotateY(${targetRotate}deg) scale(${targetScale})`;
         card.style.zIndex = hp > 0.05 ? Math.round(50 + hp * 10) : Math.round(10 - Math.abs(t) * 8);
         
-        // Visual glows and border highlights matching Sky Reflection and Alice Blue
-        if (hp > 0.01) {
-          card.style.borderColor = `rgba(226, 239, 246, ${0.25 + hp * 0.45})`;
-          card.style.boxShadow = `0 10px 40px -10px rgba(26, 62, 92, 0.3), 0 0 ${hp * 32}px ${hp * 5}px rgba(226, 239, 246, ${hp * 0.3})`;
-        } else {
-          card.style.borderColor = 'rgba(141, 190, 220, 0.3)'; // Sky Reflection border
-          card.style.boxShadow = '0 10px 30px -10px rgba(26, 62, 92, 0.15)';
-        }
+        // Clean white transparent border and no shadows
+        card.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+        card.style.boxShadow = 'none';
       });
       
       animationFrameId = requestAnimationFrame(animate);
@@ -254,9 +249,7 @@ function JoinFormContent() {
 
       {/* 3D Perspective Curved Coverflow Carousel */}
       <section className="w-full relative overflow-hidden py-14 flex items-center justify-center select-none">
-        {/* Soft edge masking gradients to fade out cards on sides */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-24 sm:w-48 bg-gradient-to-r from-[#4893C6] via-[#4893C6]/60 to-transparent z-20"></div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-24 sm:w-48 bg-gradient-to-l from-[#4893C6] via-[#4893C6]/60 to-transparent z-20"></div>
+
 
         {/* 3D Viewport wrapper */}
         <div 
@@ -276,7 +269,7 @@ function JoinFormContent() {
                 ref={(el) => (cardRefs.current[index] = el)}
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
-                className="absolute top-5 left-0 rounded-[2rem] border border-[#8DBEDC]/35 bg-white/10 backdrop-blur-md text-[#E2EFF6] transition-color-glow cursor-pointer overflow-hidden preserve-3d"
+                className="absolute top-5 left-0 rounded-[2rem] bg-[#102436]/95 text-[#E2EFF6] transition-color-glow cursor-pointer overflow-hidden preserve-3d carousel-card-clean"
                 style={{
                   width: `${dimensions.cardWidth}px`,
                   height: `${dimensions.cardHeight}px`,
@@ -289,7 +282,7 @@ function JoinFormContent() {
                 {/* Visual card content - styled like a premium human-designed polaroid flyer */}
                 <div className="absolute inset-0 w-full h-full flex flex-col preserve-3d">
                   {/* Event Image Container (Upper Section) */}
-                  <div className="relative w-full h-[55%] overflow-hidden">
+                  <div className="relative w-full h-[55%] overflow-hidden rounded-t-[2rem]">
                     <Image 
                       src={mixer.image} 
                       alt={mixer.title} 
@@ -302,9 +295,9 @@ function JoinFormContent() {
                   </div>
 
                   {/* Polaroid Content Area (Lower Section) - Sky Reflection and Alice Blue */}
-                  <div className="w-full h-[45%] bg-[#1a3e5c]/45 border-t border-[#8DBEDC]/25 p-5 flex flex-col justify-between z-20 pointer-events-none select-none">
+                  <div className="w-full h-[45%] bg-[#1a3e5c]/45 p-5 flex flex-col justify-between z-20 pointer-events-none select-none rounded-b-[2rem] carousel-card-footer-clean">
                     <div>
-                      <span className="px-2.5 py-0.5 text-[9px] uppercase font-extrabold tracking-widest rounded-full bg-[#8DBEDC]/15 text-[#E2EFF6] border border-[#8DBEDC]/30 w-fit mb-2 inline-block">
+                      <span className="px-2.5 py-0.5 text-[9px] uppercase font-extrabold tracking-widest rounded-full bg-[#8DBEDC]/15 text-[#E2EFF6] w-fit mb-2 inline-block">
                         {mixer.tag}
                       </span>
                       
@@ -411,10 +404,46 @@ function JoinFormContent() {
 }
 
 export default function JoinPage() {
+  const [videoMounted, setVideoMounted] = useState(false);
+  useEffect(() => {
+    setVideoMounted(true);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#4893C6] text-[#E2EFF6] relative overflow-x-hidden">
       {/* High-End Organic Film Grain Overlay */}
       <div className="fixed inset-0 bg-noise opacity-[0.035] pointer-events-none z-10"></div>
+
+      {/* Background Video */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        {videoMounted && (
+          <>
+            {/* Mobile Portrait Video */}
+            <video
+              className="absolute top-1/2 left-1/2 min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 object-cover object-center block md:hidden"
+              autoPlay
+              muted
+              loop
+              playsInline
+            >
+              <source src="/assets/Train_mobile.mp4" type="video/mp4" />
+            </video>
+            
+            {/* Desktop Landscape Video */}
+            <video
+              className="absolute top-1/2 left-1/2 min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 object-cover object-center hidden md:block"
+              autoPlay
+              muted
+              loop
+              playsInline
+            >
+              <source src="/assets/Train_bg.mp4" type="video/mp4" />
+            </video>
+          </>
+        )}
+        {/* Subtle overlay to enhance contrast and ensure premium aesthetic */}
+        <div className="absolute inset-0 bg-black/35 md:bg-black/25"></div>
+      </div>
 
       {/* Clean Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center px-4 h-24 bg-transparent transition-all duration-300 pointer-events-none">

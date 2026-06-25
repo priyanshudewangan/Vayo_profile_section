@@ -17,5 +17,11 @@ export const supabase = createClient(
 // Server-side only: service role key bypasses RLS. Never import this in client components.
 export const supabaseAdmin = createClient(
   supabaseUrl || "https://placeholder.supabase.co",
-  supabaseServiceKey || supabaseAnonKey || "placeholder"
+  supabaseServiceKey || supabaseAnonKey || "placeholder",
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
 );

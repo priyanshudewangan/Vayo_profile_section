@@ -9,6 +9,7 @@ import EventStage from "@/components/profile/tabs/EventStage";
 import VibeProfile from "@/components/profile/tabs/VibeProfile";
 import SecurityTab from "@/components/profile/tabs/SecurityTab";
 import { getTierFromScore } from "@/lib/karma";
+import { supabase } from "@/lib/supabase";
 
 const LocationMap = dynamic(() => import("@/components/LocationMap"), { ssr: false });
 import { QRCodeSVG } from 'qrcode.react';
@@ -620,6 +621,26 @@ function ProfileContent() {
   const [isVerifyingLocation, setIsVerifyingLocation] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [karmaData, setKarmaData] = useState(null);
+  const [isKarmaLoading, setIsKarmaLoading] = useState(false);
+  const [showKarmaModal, setShowKarmaModal] = useState(false);
+  const [karmaModalTab, setKarmaModalTab] = useState("history");
+
+  const fetchKarma = async (email) => {
+    if (!email) return;
+    setIsKarmaLoading(true);
+    try {
+      const res = await fetch(`/api/karma?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setKarmaData(data);
+      }
+    } catch (err) {
+      console.error("Error fetching karma:", err);
+    } finally {
+      setIsKarmaLoading(false);
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => setNowMs(Date.now()), 30000);
@@ -723,6 +744,7 @@ function ProfileContent() {
             triggerToast(data.message || "Attendance Verified! +20 Karma");
             setCheckInModalEvent(null); // Close modal on success
             fetchUserTickets(sessionEmail); // Refresh ticket status
+            fetchKarma(sessionEmail); // Refresh karma score
           } else {
             // Show custom error (too far) with directions option
             setCheckInModalEvent({ ...event, error: data.error, distance: data.distance });
@@ -812,7 +834,8 @@ function ProfileContent() {
   };
 
   const currentPersona = personas[activeIdx] || basePersonas[0];
-  const karmaScore = currentPersona.karma_score || currentPersona.karmaBalance || 0;
+  const isRealUser = currentPersona.id === 'user-profile';
+  const karmaScore = isRealUser ? (karmaData?.total ?? 350) : (currentPersona.karma_score || currentPersona.karmaBalance || 0);
   const currentTier = getTierFromScore(karmaScore);
   const _ov = personaOverrides[currentPersona.id];
   const displayPersona = _ov ? {
@@ -1399,6 +1422,7 @@ function ProfileContent() {
             setIsUserLoaded(true);
             fetchUserTickets(sessionEmail);
             fetchUserMoments(sessionEmail);
+            fetchKarma(sessionEmail);
             triggerToast(`Logged in as ${data.user.name || 'Vayo Member'}`);
           } else {
             setIsUserLoaded(false);
@@ -1415,6 +1439,59 @@ function ProfileContent() {
     };
 
     fetchUserProfile();
+  }, [emailParam]);
+
+  // Realtime subscriptions — auto-update tickets and karma without refresh
+  useEffect(() => {
+    const sessionEmail = typeof window !== "undefined" ? localStorage.getItem("vayo_user_email") : null;
+    const userEmail = emailParam || sessionEmail;
+    if (!userEmail) return;
+
+    // 1. Watch RSVP changes for this user
+    const rsvpChannel = supabase
+      .channel(`rsvps:${userEmail}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "rsvps",
+        filter: `user_email=eq.${userEmail}`,
+      }, (payload) => {
+        const { new: updated, eventType } = payload;
+        if (eventType === "UPDATE") {
+          const newStatus = updated.status?.toLowerCase();
+          if (newStatus === "confirmed") triggerToast("🎉 Your ticket has been confirmed!");
+          else if (newStatus === "processing") triggerToast("⏳ Your RSVP is being processed.");
+        }
+        fetchUserTickets(userEmail);
+      })
+      .subscribe();
+
+    // 2. Watch waitlist changes (karma score + approval status)
+    const waitlistChannel = supabase
+      .channel(`waitlist:${userEmail}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "waitlist",
+        filter: `email=eq.${userEmail}`,
+      }, (payload) => {
+        const { new: updated, old: prev } = payload;
+        if (updated.karma_score !== prev.karma_score) {
+          const diff = (updated.karma_score || 0) - (prev.karma_score || 0);
+          if (diff > 0) triggerToast(`+${diff} karma earned!`);
+          fetchKarma(userEmail);
+        }
+        if (updated.status !== prev.status) {
+          if (updated.status === "Sent") triggerToast("✅ Your VAYO invite has been sent! Check your email.");
+          else if (updated.status === "Joined") triggerToast("🚀 Welcome to VAYO! You're now a member.");
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(rsvpChannel);
+      supabase.removeChannel(waitlistChannel);
+    };
   }, [emailParam]);
 
   const fetchEvents = async () => {
@@ -1832,6 +1909,7 @@ function ProfileContent() {
               <div className="bg-white/40 backdrop-blur-sm rounded-2xl border border-white/40 p-2 md:p-3 shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-1.5 md:gap-1 scrollbar-none whitespace-nowrap w-full">
                 {[
                   { key: 'profile', label: 'Vibe Profile', icon: <User className="w-4 h-4" /> },
+                  { key: 'karma', label: 'Karma Points', icon: <Flame className="w-4 h-4 text-sky-500 fill-sky-500/20" /> },
                   { key: 'mixers', label: 'Event Stage', icon: <Calendar className="w-4 h-4" /> },
                   { key: 'security', label: 'Account & Security', icon: <Lock className="w-4 h-4" /> },
                 ].map(item => {
@@ -1861,11 +1939,13 @@ function ProfileContent() {
                 <div className="flex items-center gap-2.5">
                   <div className="p-1.5 bg-neutral-100 rounded-lg text-neutral-600">
                     {activeSidebarTab === 'profile' && <User className="w-4 h-4" />}
+                    {activeSidebarTab === 'karma' && <Flame className="w-4 h-4 text-sky-500 fill-sky-500/20" />}
                     {activeSidebarTab === 'mixers' && <Calendar className="w-4 h-4" />}
                     {activeSidebarTab === 'security' && <Lock className="w-4 h-4" />}
                   </div>
                   <h3 className="text-sm font-extrabold text-neutral-800 tracking-tight font-sans">
                     {activeSidebarTab === 'profile' && 'Profile Details'}
+                    {activeSidebarTab === 'karma' && 'Reputation & Karma'}
                     {activeSidebarTab === 'mixers' && 'Event Stage'}
                     {activeSidebarTab === 'security' && 'Account & Security'}
                   </h3>
@@ -1886,6 +1966,210 @@ function ProfileContent() {
 
               {/* Panel Body */}
               <div className="p-4 sm:p-6 flex-1">
+
+                {/* ════════════════════ KARMA TAB ════════════════════ */}
+                {activeSidebarTab === 'karma' && (
+                  <div className="space-y-6 animate-fade-in">
+                    {/* Hero Stats Layout */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Left: Giant Score & Current Tier */}
+                      <div className="bg-gradient-to-br from-sky-500/5 via-blue-500/5 to-transparent rounded-3xl p-6 border border-sky-500/10 space-y-4 text-center flex flex-col justify-center items-center">
+                        <div className="w-12 h-12 bg-sky-50 text-sky-500 rounded-2xl flex items-center justify-center shadow-inner">
+                          <Flame className="w-6 h-6 fill-sky-500/25 animate-pulse" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-sky-600 font-extrabold uppercase tracking-widest leading-none">{currentTier.label} Tier</p>
+                          <h4 className="text-2xl font-black text-neutral-800 tracking-tight">{currentTier.label}</h4>
+                        </div>
+                        <div>
+                          <span className="text-5xl font-black text-neutral-800 tracking-tight drop-shadow-sm">{karmaScore}</span>
+                          <span className="text-xs font-extrabold text-neutral-400 tracking-widest uppercase ml-1.5">PTS</span>
+                        </div>
+                        <div className="space-y-1.5 w-full max-w-[280px]">
+                          <div className="bg-sky-100/70 h-2.5 rounded-full overflow-hidden relative">
+                            <div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-blue-500" 
+                              style={{ width: `${Math.min(100, Math.max(0, ((karmaScore - currentTier.min) / ((currentTier.max === 999999 ? currentTier.min + 1000 : currentTier.max) - currentTier.min)) * 100))}%` }} />
+                          </div>
+                          <div className="flex justify-between items-center text-[9px] font-bold text-neutral-400 uppercase tracking-wider">
+                            <span>{currentTier.label}</span>
+                            <span>{currentTier.max === 999999 ? "Max Tier" : `${currentTier.max - karmaScore} to next level`}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Rules, Monthly Caps & Benefits */}
+                      <div className="bg-neutral-50 rounded-3xl p-6 border border-neutral-100 flex flex-col justify-between gap-4">
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-bold text-neutral-700 tracking-wide">Reputation Performance & Caps</h4>
+                          <p className="text-[11px] text-neutral-500 leading-relaxed">
+                            To ensure authenticity and long-term quality connections, monthly earnings are capped at 84 pts, and 6-month totals are capped around 500 pts.
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {/* Monthly ring status */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center text-[9px] font-black uppercase text-neutral-400 tracking-wider">
+                              <span>Monthly Contribution Progress</span>
+                              <span className="text-neutral-600">{karmaScore % 84} / 84 PTS</span>
+                            </div>
+                            <div className="h-2 bg-neutral-200 rounded-full overflow-hidden relative">
+                              <div className="h-full bg-gradient-to-r from-sky-500 to-blue-500 rounded-full"
+                                style={{ width: `${Math.round(((karmaScore % 84) / 84) * 100)}%` }} />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-2 border-t border-neutral-200/50">
+                            <span className="text-xs font-bold text-sky-600">★ Benefits:</span>
+                            <span className="text-[11px] text-neutral-600 font-medium">Priority invitations, waitlist skips, event host rights, and vibe moderation tools.</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Segmented Control Sub-Tabs */}
+                    <div className="bg-neutral-100 p-1 rounded-2xl flex w-full max-w-sm mx-auto">
+                      <button 
+                        type="button"
+                        onClick={() => setKarmaModalTab('history')}
+                        className={`flex-1 py-2 text-center text-xs font-bold rounded-xl transition-all cursor-pointer ${karmaModalTab === 'history' ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}
+                      >
+                        Karma Ledger
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setKarmaModalTab('earn')}
+                        className={`flex-1 py-2 text-center text-xs font-bold rounded-xl transition-all cursor-pointer ${karmaModalTab === 'earn' ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}
+                      >
+                        How to Earn
+                      </button>
+                    </div>
+
+                    {/* Sub-tab Content */}
+                    <div className="space-y-3 max-w-xl mx-auto w-full">
+                      {karmaModalTab === 'history' ? (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] text-neutral-400 font-extrabold uppercase tracking-wider">Transaction Ledger</h4>
+                            <Link href="/karma" className="text-[10px] text-indigo-500 font-bold hover:underline">View Full Reputation Page ↗</Link>
+                          </div>
+                          {(() => {
+                            const isRealUser = currentPersona.id === 'user-profile';
+                            let ledgerItems = [];
+                            
+                            if (isRealUser) {
+                              ledgerItems = (karmaData?.ledger || []).map(entry => ({
+                                id: entry.id,
+                                title: entry.description || entry.action_type.replace(/_/g, ' '),
+                                points: entry.point_delta,
+                                date: entry.created_at ? new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recently',
+                                icon: entry.point_delta > 0 ? '✨' : '⚠️'
+                              }));
+                            } else {
+                              const breakdown = currentPersona.karmaBreakdown || {};
+                              ledgerItems = [
+                                { id: '1', title: 'Email Verification', points: 1, date: 'June 01', icon: '🛡️' },
+                                { id: '2', title: 'Profile Photo Upload', points: 1, date: 'June 01', icon: '📸' },
+                                { id: '3', title: 'Verify Phone Number', points: 1, date: 'June 02', icon: '📱' },
+                                { id: '4', title: 'Create Unique User ID', points: 2, date: 'June 02', icon: '🆔' },
+                              ];
+                              if (breakdown.attendedMixers) {
+                                ledgerItems.push({ id: '5', title: 'GPS Check-In at Meetup', points: 3, date: 'June 10', icon: '📍' });
+                                ledgerItems.push({ id: '6', title: 'GPS Check-In at Event', points: 5, date: 'June 12', icon: '🎪' });
+                              }
+                              if (breakdown.momentContributor) {
+                                ledgerItems.push({ id: '7', title: 'Referral Registration', points: 1, date: 'June 14', icon: '👥' });
+                              }
+                            }
+
+                            if (ledgerItems.length === 0) {
+                              return (
+                                <div className="p-8 border border-dashed border-neutral-100 rounded-2xl text-center text-xs font-bold text-neutral-400 bg-neutral-50/50">
+                                  No transactions logged yet. Complete tasks or RSVP to events to start earning!
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                                {ledgerItems.map(item => (
+                                  <div key={item.id} className="flex items-center justify-between p-3.5 bg-neutral-50 rounded-2xl border border-neutral-100 hover:border-neutral-200 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-lg select-none">{item.icon}</span>
+                                      <div className="text-left">
+                                        <p className="text-xs font-bold text-neutral-800 leading-snug">{item.title}</p>
+                                        <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{item.date}</p>
+                                      </div>
+                                    </div>
+                                    <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                                      +{item.points}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="space-y-4 text-left">
+                          <h4 className="text-[10px] text-neutral-400 font-extrabold uppercase tracking-wider">Earning Milestones</h4>
+                          <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                            
+                            {/* Profile Completion */}
+                            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-2">
+                              <h5 className="text-[11px] font-black text-neutral-500 uppercase tracking-widest">1. Verification & Identity</h5>
+                              <ul className="space-y-2">
+                                <li className="flex items-center justify-between text-xs">
+                                  <span className="text-neutral-700">Upload Profile Photo</span>
+                                  <span className="font-extrabold text-sky-600 font-mono bg-sky-50 px-2 py-0.5 rounded-md text-[10px]">+1 PTS</span>
+                                </li>
+                                <li className="flex items-center justify-between text-xs">
+                                  <span className="text-neutral-700">Verify Email Address</span>
+                                  <span className="font-extrabold text-sky-600 font-mono bg-sky-50 px-2 py-0.5 rounded-md text-[10px]">+1 PTS</span>
+                                </li>
+                                <li className="flex items-center justify-between text-xs">
+                                  <span className="text-neutral-700">Verify Mobile Number</span>
+                                  <span className="font-extrabold text-sky-600 font-mono bg-sky-50 px-2 py-0.5 rounded-md text-[10px]">+1 PTS</span>
+                                </li>
+                                <li className="flex items-center justify-between text-xs">
+                                  <span className="text-neutral-700">Claim Unique VAYO User ID</span>
+                                  <span className="font-extrabold text-sky-600 font-mono bg-sky-50 px-2 py-0.5 rounded-md text-[10px]">+2 PTS</span>
+                                </li>
+                              </ul>
+                            </div>
+
+                            {/* Community Interaction */}
+                            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-2">
+                              <h5 className="text-[11px] font-black text-neutral-500 uppercase tracking-widest">2. In-Person Check-Ins</h5>
+                              <ul className="space-y-2">
+                                <li className="flex items-center justify-between text-xs">
+                                  <span className="text-neutral-700">GPS Check-In at Free Meetup (Max 10/mo)</span>
+                                  <span className="font-extrabold text-sky-600 font-mono bg-sky-50 px-2 py-0.5 rounded-md text-[10px]">+3 PTS</span>
+                                </li>
+                                <li className="flex items-center justify-between text-xs">
+                                  <span className="text-neutral-700">GPS Check-In at Hosted Event (Max 3/mo)</span>
+                                  <span className="font-extrabold text-sky-600 font-mono bg-sky-50 px-2 py-0.5 rounded-md text-[10px]">+5 PTS</span>
+                                </li>
+                              </ul>
+                            </div>
+
+                            {/* Referrals */}
+                            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-2">
+                              <h5 className="text-[11px] font-black text-neutral-500 uppercase tracking-widest">3. Referrals & Invites</h5>
+                              <ul className="space-y-2">
+                                <li className="flex items-center justify-between text-xs">
+                                  <span className="text-neutral-700">Send Successful Referral Invitation</span>
+                                  <span className="font-extrabold text-sky-600 font-mono bg-sky-50 px-2 py-0.5 rounded-md text-[10px]">+1 PTS</span>
+                                </li>
+                              </ul>
+                            </div>
+                            
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* ════════════════════ PROFILE TAB ════════════════════ */}
                 {activeSidebarTab === 'profile' && (
@@ -2007,9 +2291,21 @@ function ProfileContent() {
                               </div>
                             </div>
                           ) : (
-                            <p className="text-xs text-neutral-500 font-semibold leading-relaxed">
-                              {activeMode === 'social' ? displayPersona.socialBio : activeMode === 'bff' ? displayPersona.bffBio : displayPersona.bizzBio}
-                            </p>
+                            <>
+                              <p className="text-xs text-neutral-500 font-semibold leading-relaxed">
+                                {activeMode === 'social' ? displayPersona.socialBio : activeMode === 'bff' ? displayPersona.bffBio : displayPersona.bizzBio}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5 pt-2">
+                                {((activeMode === 'social' ? displayPersona.socialTags : activeMode === 'bff' ? displayPersona.bffTags : displayPersona.bizzTags) || []).map(tag => (
+                                  <span 
+                                    key={tag} 
+                                    className={`text-[9.5px] font-black px-2.5 py-0.5 rounded-full border ${theme.badgeBg}`}
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </>
                           )}
                         </div>
 
@@ -2071,16 +2367,19 @@ function ProfileContent() {
                       </div>
 
                       {/* 2. Mobile Karma Progress Bar Card */}
-                      <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 rounded-[2rem] p-5.5 flex items-center justify-between gap-5 shadow-[0_4px_20px_rgba(245,158,11,0.08)]">
+                      <button
+                        onClick={() => setShowKarmaModal(true)}
+                        className="w-full text-left bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-transparent border border-sky-500/20 rounded-[2rem] p-5.5 flex items-center justify-between gap-5 shadow-[0_4px_20px_rgba(14,165,233,0.08)] cursor-pointer hover:bg-sky-500/15 hover:border-sky-500/30 active:scale-[0.98] transition-all"
+                      >
                         <div className="space-y-1.5 text-left">
-                          <span className="text-[10px] text-amber-600 font-black uppercase tracking-widest flex items-center gap-1">
-                            <Flame className="w-3.5 h-3.5 fill-amber-500/25 text-amber-500" /> Karma Tier
+                          <span className="text-[10px] text-sky-600 font-black uppercase tracking-widest flex items-center gap-1">
+                            <Flame className="w-3.5 h-3.5 fill-sky-500/25 text-sky-500" /> Karma Tier · Details →
                           </span>
                           <span className="text-base font-black text-neutral-800 tracking-tight">{currentTier.label}</span>
                         </div>
                         <div className="flex-1 max-w-[170px] space-y-2">
-                          <div className="bg-amber-100/70 h-2.5 rounded-full overflow-hidden relative">
-                            <div className="h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-amber-500 to-orange-500" 
+                          <div className="bg-sky-100/70 h-2.5 rounded-full overflow-hidden relative">
+                            <div className="h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-sky-500 to-blue-500" 
                               style={{ width: `${Math.min(100, Math.max(0, ((karmaScore - currentTier.min) / ((currentTier.max === 999999 ? currentTier.min + 1000 : currentTier.max) - currentTier.min)) * 100))}%` }} />
                           </div>
                           <div className="flex justify-between items-center text-[9px] font-bold text-neutral-400 uppercase tracking-wider">
@@ -2088,7 +2387,7 @@ function ProfileContent() {
                             <span>{currentTier.max === 999999 ? "Max Tier" : `${currentTier.max - karmaScore} to next`}</span>
                           </div>
                         </div>
-                      </div>
+                      </button>
 
                       {/* 3. Separate Upcoming Events Container */}
                       <div className="bg-white/40 backdrop-blur-md border border-white/50 rounded-[2rem] p-4 shadow-sm space-y-4">
@@ -2219,6 +2518,8 @@ function ProfileContent() {
                         triggerToast={triggerToast}
                         handleMomentDelete={handleMomentDelete}
                         setLightboxMoment={setLightboxMoment}
+                        karmaData={karmaData}
+                        isKarmaLoading={isKarmaLoading}
                       />
                     </div>
 
@@ -2550,6 +2851,12 @@ function ProfileContent() {
                                 {tkt.lat && tkt.lng && (
                                   <LocationMap lat={tkt.lat} lng={tkt.lng} venue={tkt.locationPin} />
                                 )}
+                                <a
+                                  href={`/events/${tkt.id}?you=${encodeURIComponent(sessionEmail || "")}`}
+                                  className="mt-2 w-full py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-[10px] font-black uppercase tracking-widest text-violet-600 hover:bg-violet-100 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                                >
+                                  🎯 View Event & Split
+                                </a>
                               </div>
                             )})}
                           </div>
@@ -2706,6 +3013,7 @@ function ProfileContent() {
         <div className="md:hidden fixed bottom-5 left-4 right-4 z-40 bg-white/80 backdrop-blur-lg border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.08)] rounded-3xl px-3 py-2 flex items-center justify-around">
           {[
             { key: 'profile', label: 'Vibe Profile', icon: <User className="w-5 h-5" /> },
+            { key: 'karma', label: 'Karma Points', icon: <Flame className="w-5 h-5 text-sky-500 fill-sky-500/20" /> },
             { key: 'mixers', label: 'Event Stage', icon: <Calendar className="w-5 h-5" /> },
             { key: 'security', label: 'Security', icon: <Lock className="w-5 h-5" /> },
           ].map(item => {
@@ -2731,6 +3039,180 @@ function ProfileContent() {
             <span className="text-rose-400 font-bold">Log out</span>
           </button>
         </div>
+
+        {/* ═══ KARMA DETAILS MODAL ═══ */}
+        {showKarmaModal && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300" onClick={() => setShowKarmaModal(false)}>
+            <div className="bg-white w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 relative border border-neutral-100 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              
+              {/* Close Button */}
+              <button 
+                onClick={() => setShowKarmaModal(false)}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-neutral-100 text-neutral-500 rounded-full hover:bg-neutral-200 transition-colors z-10 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* Modal Body */}
+              <div className="p-6 md:p-8 space-y-5 flex-1 overflow-y-auto scrollbar-thin">
+                
+                {/* Hero Header */}
+                <div className="space-y-2 text-center pt-4">
+                  <div className="w-12 h-12 mx-auto bg-sky-50 text-sky-500 rounded-2xl flex items-center justify-center shadow-inner mb-3">
+                    <Flame className="w-6 h-6 fill-sky-500/25 animate-pulse" />
+                  </div>
+                  <h3 className="text-xl font-black text-neutral-800 tracking-tight leading-none">Reputation & Karma</h3>
+                  <p className="text-[10px] text-sky-600 font-extrabold uppercase tracking-widest">{currentTier.label} Tier</p>
+                </div>
+
+                {/* Score & Progress Bar */}
+                <div className="bg-gradient-to-br from-sky-500/5 via-blue-500/5 to-transparent rounded-2xl p-4.5 border border-sky-500/10 space-y-3.5 text-center">
+                  <div>
+                    <span className="text-5xl font-black text-neutral-800 tracking-tight drop-shadow-sm">{karmaScore}</span>
+                    <span className="text-[10px] font-extrabold text-neutral-400 tracking-widest uppercase ml-1.5">PTS</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="bg-sky-100/70 h-2 rounded-full overflow-hidden relative">
+                      <div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-blue-500" 
+                        style={{ width: `${Math.min(100, Math.max(0, ((karmaScore - currentTier.min) / ((currentTier.max === 999999 ? currentTier.min + 1000 : currentTier.max) - currentTier.min)) * 100))}%` }} />
+                    </div>
+                    <div className="flex justify-between items-center text-[8.5px] font-bold text-neutral-400 uppercase tracking-wider">
+                      <span>{currentTier.label}</span>
+                      <span>{currentTier.max === 999999 ? "Max Tier" : `${currentTier.max - karmaScore} to next level`}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Segmented Control Sub-Tabs */}
+                <div className="bg-neutral-100 p-1 rounded-2xl flex w-full">
+                  <button 
+                    onClick={() => setKarmaModalTab('history')}
+                    className={`flex-1 py-2 text-center text-xs font-bold rounded-xl transition-all cursor-pointer ${karmaModalTab === 'history' ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}
+                  >
+                    Karma Ledger
+                  </button>
+                  <button 
+                    onClick={() => setKarmaModalTab('earn')}
+                    className={`flex-1 py-2 text-center text-xs font-bold rounded-xl transition-all cursor-pointer ${karmaModalTab === 'earn' ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}
+                  >
+                    How to Earn
+                  </button>
+                </div>
+
+                {/* Sub-tab Content */}
+                <div className="space-y-3">
+                  {karmaModalTab === 'history' ? (
+                    <div className="space-y-2.5">
+                      <h4 className="text-[10px] text-neutral-400 font-extrabold uppercase tracking-wider text-left">Recent Transactions</h4>
+                      {(() => {
+                        const isRealUser = currentPersona.id === 'user-profile';
+                        let ledgerItems = [];
+                        
+                        if (isRealUser) {
+                          ledgerItems = (karmaData?.ledger || []).map(entry => ({
+                            id: entry.id,
+                            title: entry.description || entry.action_type.replace(/_/g, ' '),
+                            points: entry.point_delta,
+                            date: entry.created_at ? new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recently',
+                            icon: entry.point_delta > 0 ? '✨' : '⚠️'
+                          }));
+                        } else {
+                          const breakdown = currentPersona.karmaBreakdown || {};
+                          ledgerItems = [
+                            { id: '1', title: 'Email Verification', points: 1, date: 'June 01', icon: '🛡️' },
+                            { id: '2', title: 'Profile Photo Upload', points: 1, date: 'June 01', icon: '📸' },
+                            { id: '3', title: 'Verify Phone Number', points: 1, date: 'June 02', icon: '📱' },
+                            { id: '4', title: 'Create Unique User ID', points: 2, date: 'June 02', icon: '🆔' },
+                          ];
+                          if (breakdown.attendedMixers) {
+                            ledgerItems.push({ id: '5', title: 'GPS Check-In at Meetup', points: 3, date: 'June 10', icon: '📍' });
+                            ledgerItems.push({ id: '6', title: 'GPS Check-In at Event', points: 5, date: 'June 12', icon: '🎪' });
+                          }
+                          if (breakdown.momentContributor) {
+                            ledgerItems.push({ id: '7', title: 'Referral Registration', points: 1, date: 'June 14', icon: '👥' });
+                          }
+                        }
+
+                        if (ledgerItems.length === 0) {
+                          return (
+                            <div className="p-8 border border-dashed border-neutral-100 rounded-2xl text-center text-xs font-bold text-neutral-400 bg-neutral-50/50">
+                              No transactions logged yet. Complete tasks or RSVP to events to start earning!
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-1.5 max-h-[30vh] overflow-y-auto pr-1">
+                            {ledgerItems.map(item => (
+                              <div key={item.id} className="flex items-center justify-between p-3 bg-neutral-50 hover:bg-neutral-100/70 border border-neutral-100 rounded-xl transition-all">
+                                <div className="flex items-center gap-3 text-left">
+                                  <span className="text-base shrink-0">{item.icon}</span>
+                                  <div>
+                                    <div className="text-xs font-black text-neutral-700 leading-tight">{item.title}</div>
+                                    <div className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-0.5">{item.date}</div>
+                                  </div>
+                                </div>
+                                <span className={`text-xs font-black tracking-tight shrink-0 ${item.points >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                  {item.points >= 0 ? `+${item.points}` : item.points} PTS
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
+                      <h4 className="text-[10px] text-neutral-400 font-extrabold uppercase tracking-wider text-left">Karma Action Checklist</h4>
+                      
+                      <div className="space-y-2">
+                        {[
+                          { title: "Upload Profile Photo", desc: "Upload a clean face profile photo", points: "+1 PTS", done: currentPersona.id === 'user-profile' ? true : currentPersona.selfieVerified },
+                          { title: "Email Verification", desc: "Verify your email to validate identity", points: "+1 PTS", done: true },
+                          { title: "Verify Phone Number", desc: "Add and verify your mobile number", points: "+1 PTS", done: true },
+                          { title: "Create Unique User ID", desc: "Claim your unique username handle", points: "+2 PTS", done: true },
+                          { title: "RSVP Confirmation", desc: "Confirm registration to a scheduled activity", points: "+0.5 PTS", done: (currentPersona.activeTickets?.length > 0 || userTickets?.length > 0) },
+                          { title: "GPS Meetup Check-In", desc: "Complete GPS check-in at a free meetup", points: "+3 PTS", done: false },
+                          { title: "GPS Event Check-In", desc: "Complete GPS check-in at a structured event", points: "+5 PTS", done: false },
+                          { title: "GPS Trip Check-In", desc: "Complete GPS check-in at an experience trip", points: "+12 PTS", done: false },
+                          { title: "Referral Program", desc: "Earn when referred user registers, RSVPs & checks-in", points: "+1 to +4 PTS", done: false },
+                          { title: "Consecutive Streak", desc: "Remain active with weekly check-ins", points: "+1 to +8 PTS", done: false },
+                          { title: "Review System", desc: "Receive positive verified reviews from others", points: "+1 PTS", done: false },
+                          { title: "Birthday Bonus", desc: "Receive birthday bonus once annually", points: "+5 PTS", done: false }
+                        ].map((act, i) => (
+                          <div key={i} className="flex items-start justify-between gap-3 p-3 bg-white border border-neutral-100 rounded-xl hover:border-sky-500/20 transition-all text-left">
+                            <div className="flex gap-2.5">
+                              <span className="mt-0.5 shrink-0">
+                                {act.done ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-50" />
+                                ) : (
+                                  <div className="w-4 h-4 rounded-full border border-neutral-300" />
+                                )}
+                              </span>
+                              <div>
+                                <div className={`text-xs font-black leading-tight ${act.done ? 'text-neutral-500 line-through' : 'text-neutral-800'}`}>
+                                  {act.title}
+                                </div>
+                                <div className="text-[9px] text-neutral-400 font-medium leading-tight mt-0.5">
+                                  {act.desc}
+                                </div>
+                              </div>
+                            </div>
+                            <span className={`text-[10px] font-black tracking-tight shrink-0 ${act.done ? 'text-neutral-400' : 'text-sky-600'}`}>
+                              {act.points}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        )}
 
         {/* ═══ CHECK-IN / VENUE DETAILS MODAL ═══ */}
         {checkInModalEvent && (

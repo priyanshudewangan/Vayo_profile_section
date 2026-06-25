@@ -1,5 +1,5 @@
 import React from "react";
-import { X, AlertCircle, Sparkles, Users, CheckCircle2, MapPin, Clock } from "lucide-react";
+import { X, AlertCircle, Sparkles, Users, CheckCircle2 } from "lucide-react";
 import { getAvatarGradient, getEmailInitials } from "../lib/utils";
 
 export const SandboxModal = ({ email, setSandboxModalEmail, handleSimulateSend }) => {
@@ -88,56 +88,29 @@ export const AttendeeModal = ({
                   <div className="w-12 h-12 rounded-full bg-vayo-alice border border-vayo-sky flex items-center justify-center text-slate-500 mb-2">
                     <Users className="w-5 h-5" />
                   </div>
-                  <p className="text-xs text-slate-500 font-medium">No registrations yet for this event.</p>
+                  <p className="text-xs text-slate-500 font-medium">No registrations yet for this mixer.</p>
                 </div>
               );
             }
 
-            const attendedCount = eventRSVPs.filter(r => r.attendance_status).length;
             return (
               <div className="grid grid-cols-1 gap-3">
-                {/* Summary bar */}
-                <div className="flex items-center gap-3 px-1 mb-1">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{eventRSVPs.length} RSVPs</span>
-                  {attendedCount > 0 && (
-                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-700 text-[10px] font-black">
-                      <CheckCircle2 className="w-3 h-3" /> {attendedCount} Attended
-                    </span>
-                  )}
-                </div>
-
                 {eventRSVPs.map((rsvp) => {
                   const isUpdating = updatingRSVPMap[`${rsvp.user_email}-${rsvp.event_id}`];
                   const status = rsvp.status?.toLowerCase() || "registered";
-                  const attended = rsvp.attendance_status === true;
-                  const checkinTime = rsvp.checkin_timestamp
-                    ? new Date(rsvp.checkin_timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
-                    : null;
-
                   return (
-                    <div key={`${rsvp.user_email}-${rsvp.event_id}`} className={`border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group transition-colors ${attended ? 'bg-teal-50/60 border-teal-200' : 'bg-vayo-alice/40 border-vayo-sky'}`}>
+                    <div key={`${rsvp.user_email}-${rsvp.event_id}`} className="bg-vayo-alice/40 border border-vayo-sky rounded-2xl p-4 flex items-center justify-between gap-4 group">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${getAvatarGradient(rsvp.user_email)} flex items-center justify-center text-white text-[10px] font-black shadow-lg shrink-0`}>
+                        <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${getAvatarGradient(rsvp.user_email)} flex items-center justify-center text-white text-[10px] font-black shadow-lg`}>
                           {getEmailInitials(rsvp.user_email)}
                         </div>
                         <div className="min-w-0 leading-tight">
                           <h4 className="text-xs font-bold text-slate-800 truncate">{rsvp.user_email}</h4>
-                          {attended && checkinTime ? (
-                            <span className="flex items-center gap-1 text-[8.5px] font-bold text-teal-600 mt-0.5">
-                              <MapPin className="w-2.5 h-2.5" /> GPS check-in · {checkinTime}
-                            </span>
-                          ) : (
-                            <span className="text-[8.5px] font-mono text-slate-400 uppercase tracking-tighter">ID: {rsvp.id?.slice(0, 8)}</span>
-                          )}
+                          <span className="text-[8.5px] font-mono text-slate-500 uppercase tracking-tighter">ID: {rsvp.id.slice(0, 8)}</span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                        {attended && (
-                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-100 border border-teal-300 text-teal-700 text-[9px] font-black">
-                            <CheckCircle2 className="w-3 h-3" /> Attended
-                          </span>
-                        )}
+                      <div className="flex gap-1.5 shrink-0">
                         {['registered', 'processing', 'confirmed'].map((s) => (
                           <button
                             key={s}

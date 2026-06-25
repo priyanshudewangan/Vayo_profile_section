@@ -319,3 +319,213 @@
   from { transform: translateY(0); }
   to { transform: translateY(-4px); }
 }
+
+/* ==========================================
+   Liquid Glass Card Effect - Apple macOS / iOS Style
+   ========================================== */
+.liquid-glass-card {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.03) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  backdrop-filter: blur(35px) saturate(210%);
+  -webkit-backdrop-filter: blur(35px) saturate(210%);
+  
+  /* Double specular highlights and dark shadows for depth */
+  box-shadow:
+    /* Outer border highlight */
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    /* Inner top specular glint */
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.5),
+    /* Secondary inner edge soft white ring */
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.12),
+    /* Inner bottom soft reflection */
+    inset 0 -1.5px 2px 0 rgba(255, 255, 255, 0.2),
+    /* Ambient inner lighting (top light source) */
+    inset 0 24px 48px -12px rgba(255, 255, 255, 0.1),
+    /* Ambient inner shading (bottom depth) */
+    inset 0 -24px 48px -12px rgba(0, 0, 0, 0.25),
+    /* Sharp close-up drop shadow */
+    0 2px 8px -1px rgba(0, 0, 0, 0.15),
+    /* Soft medium-distance drop shadow */
+    0 16px 36px -8px rgba(0, 0, 0, 0.3),
+    /* Deep background ambient shadow */
+    0 40px 80px -16px rgba(0, 0, 0, 0.55);
+    
+  border: none !important;
+  overflow: hidden;
+}
+
+/* Shiny Liquid Highlights / Specular Glare */
+.liquid-glass-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255, 255, 255, 0.14) 45%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.14) 55%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  z-index: 1;
+  transition: background-position 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-card:hover .liquid-glass-sheen {
+  background-position: -50% 0;
+}
+
+/* Continuous slow shine reflection for ambient feeling */
+.liquid-glass-ambient-sheen {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% -20%,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0) 50%
+  );
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Fluid refraction background styling for input fields */
+.liquid-glass-input {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    /* Top edge inner glint */
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+    /* Soft bottom shadow inside input */
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-input:focus {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 0 0 3px rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+/* Glass buttons (vibe selection/navigation) */
+.liquid-glass-button {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.1),
+    0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-button:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+    0 4px 12px -2px rgba(0, 0, 0, 0.1);
+}
+
+.liquid-glass-button-selected {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0px 0 rgba(0, 0, 0, 0.1),
+    0 8px 20px -4px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Visibility Text Shadow Utility */
+.liquid-glass-text {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.15);
+}
+
+/* ==========================================
+   Mobile 3D Parallax & Kinetic Transitions
+   ========================================== */
+@keyframes ambient-tilt {
+  0%, 100% {
+    transform: perspective(1000px) rotateX(-1.5deg) rotateY(-2deg) translateZ(0);
+  }
+  50% {
+    transform: perspective(1000px) rotateX(1.5deg) rotateY(2deg) translateZ(6px);
+  }
+}
+
+.liquid-glass-card-ambient {
+  transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0);
+  transform-style: preserve-3d;
+}
+
+@keyframes step-next {
+  0% {
+    transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: perspective(1000px) rotateX(4deg) rotateY(-12deg) translateZ(-60px) scale(0.96);
+    opacity: 0.6;
+  }
+  100% {
+    transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes step-prev {
+  0% {
+    transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: perspective(1000px) rotateX(-4deg) rotateY(12deg) translateZ(-60px) scale(0.96);
+    opacity: 0.6;
+  }
+  100% {
+    transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-card-next {
+  animation: step-next 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.animate-card-prev {
+  animation: step-prev 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+/* Bulletproof Carousel Card Overrides - Clean white transparent border and no shadows */
+.carousel-card-clean {
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.carousel-card-footer-clean {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}

@@ -24,7 +24,4 @@ export const IMAGE_PRESETS = [
   { value: "custom", label: "Custom Image URL..." },
 ];
 
-import { BACKEND_URL } from "@/lib/constants";
-
-export { BACKEND_URL };
-
+export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";

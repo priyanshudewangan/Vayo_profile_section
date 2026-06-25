@@ -2,14 +2,24 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Flame } from "lucide-react";
 import EventShowcase from "@/components/EventShowcase";
 
 export default function Home() {
   const [email, setEmail] = useState("");
   const [bottomEmail, setBottomEmail] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const emailFromUrl = params.get("email");
+    if (emailFromUrl) {
+      setEmail(emailFromUrl);
+      checkWaitlistStatus(emailFromUrl);
+    }
+  }, []);
 
   // Navigation loading feedback state
   const [isNavigating, setIsNavigating] = useState(false);
@@ -25,6 +35,24 @@ export default function Home() {
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [resetMessage, setResetMessage] = useState("");
+
+  const [sessionEmail, setSessionEmail] = useState("");
+  const [sessionKarma, setSessionKarma] = useState(null);
+
+  useEffect(() => {
+    const localEmail = localStorage.getItem("vayo_user_email");
+    if (localEmail && localEmail.includes("@")) {
+      setSessionEmail(localEmail);
+      fetch(`/api/karma?email=${encodeURIComponent(localEmail)}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.total !== undefined) {
+            setSessionKarma(data.total);
+          }
+        })
+        .catch(err => console.warn("Failed to fetch karma on home mount:", err));
+    }
+  }, []);
 
   const checkWaitlistStatus = async (targetEmail) => {
     if (!targetEmail) return;
@@ -190,7 +218,11 @@ export default function Home() {
     e.preventDefault();
     if (isNavigating) return;
     setIsNavigating(true);
-    router.push("/join");
+    if (sessionEmail) {
+      router.push("/profile");
+    } else {
+      router.push("/join");
+    }
   };
 
   const handleScrollToFeatures = () => {
@@ -206,8 +238,19 @@ export default function Home() {
         <Link href="/" className="flex items-center decoration-none px-3.5 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/8 shadow-lg hover:bg-white/10 hover:border-white/20 transition-all duration-300 group">
           <Image src="/assets/vayo-logo.png" alt="VAYO Logo" width={90} height={24} className="h-5 md:h-6 w-auto group-hover:scale-105 group-hover:brightness-110 transition-all duration-300" priority />
         </Link>
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
+          {sessionEmail && (
+            <Link 
+              href="/karma" 
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 rounded-full text-sky-400 hover:text-sky-300 transition-all shadow-sm cursor-pointer shrink-0 hover:scale-105 active:scale-95 animate-fade-in"
+              title="View Karma Reputation Page"
+            >
+              <Flame className="w-3.5 h-3.5 fill-sky-500/40 animate-pulse text-sky-500" />
+              <span className="text-[10px] font-black uppercase tracking-wider">{sessionKarma !== null ? sessionKarma : 350} PTS</span>
+            </Link>
+          )}
           <button
+            suppressHydrationWarning
             onClick={handleNavJoinClick}
             disabled={isNavigating}
             className="flex items-center justify-center decoration-none px-4 md:px-5 py-2 md:py-2.5 rounded-full bg-white text-slate-950 text-xs md:text-sm font-bold hover:bg-slate-100 hover:-translate-y-0.5 transition-all duration-300 whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
@@ -217,6 +260,8 @@ export default function Home() {
                 <span className="w-3.5 h-3.5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></span>
                 Loading...
               </span>
+            ) : sessionEmail ? (
+              "Go to Dashboard \u2197"
             ) : (
               "Join Our Community \u2197"
             )}
@@ -244,7 +289,7 @@ export default function Home() {
           </p>
 
           <form onSubmit={handleEmailSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full max-w-[480px] bg-white/5 backdrop-blur-3xl border border-white/10 rounded-2xl sm:rounded-full p-2 sm:p-1 pl-4 sm:pl-5 shadow-[0_16px_40px_rgba(0,0,0,0.4)] transition-all duration-300 focus-within:border-indigo-500/40 focus-within:shadow-[0_16px_40px_rgba(0,0,0,0.4),0_0_20px_rgba(99,102,241,0.15)] mt-4">
-            <input
+            <input suppressHydrationWarning
               type="email"
               placeholder="Enter your email address"
               className="flex-1 bg-transparent border-0 outline-0 text-sm font-normal text-white py-2.5 sm:py-2 w-full placeholder:text-violet-200/40"
@@ -353,7 +398,7 @@ export default function Home() {
         {/* Static Background Image (Dimmed for quality mask, with a smooth blend gradient at the top edge) */}
         <div className="absolute inset-0 z-0 pointer-events-none bg-[#050508]">
           <Image
-            src="/assets/bg-footer.png"
+            src="/assets/bg-footer.jpg"
             alt="Footer Background"
             fill
             className="object-cover opacity-[.72]"
@@ -530,6 +575,7 @@ export default function Home() {
 
               {/* Close Button */}
               <button
+                suppressHydrationWarning
                 onClick={() => setShowPendingModal(false)}
                 className="w-full bg-white hover:bg-neutral-100 text-slate-950 font-bold text-xs py-2.5 px-4 rounded-xl shadow-sm transition-all duration-200 cursor-pointer text-center"
               >
@@ -571,7 +617,7 @@ export default function Home() {
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-4">
                   <div className="space-y-1">
                     <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Create Password</label>
-                    <input
+                    <input suppressHydrationWarning
                       type="password"
                       placeholder="Min. 6 characters"
                       required
@@ -582,7 +628,7 @@ export default function Home() {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Confirm Password</label>
-                    <input
+                    <input suppressHydrationWarning
                       type="password"
                       placeholder="Repeat your password"
                       required
@@ -699,7 +745,7 @@ export default function Home() {
                 Enter your password
               </h3>
               <p className="text-[11px] text-slate-400 leading-relaxed font-normal mb-4">
-                Please verify your profile password to access your early access dashboard, event tickets, and connection lists.
+                Please verify your profile password to access your early access dashboard, mixer tickets, and connection lists.
               </p>
 
               {/* Form */}
@@ -718,7 +764,7 @@ export default function Home() {
                 {/* Input inside card */}
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-1">
                   <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Password</label>
-                  <input
+                  <input suppressHydrationWarning
                     type="password"
                     placeholder="Enter your password"
                     required

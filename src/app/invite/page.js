@@ -72,8 +72,15 @@ function InviteFormContent() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState(() => searchParams.get("email") || "");
   const [phone, setPhone] = useState("");
+  const [vayoId, setVayoId] = useState("");
   const [birthdate, setBirthdate] = useState("");
   const [instagram, setInstagram] = useState("");
+  const [profession, setProfession] = useState("");
+  const [selectedFood, setSelectedFood] = useState([]);
+  const [selectedWeekend, setSelectedWeekend] = useState([]);
+
+  const foodOptions = ["Vegetarian", "Non-Vegetarian", "Vegan", "Jain", "Gluten-Free", "No Preference"];
+  const weekendOptions = ["Hiking & Trekking", "Cafe Hopping", "Board Games", "Movies", "Sports", "Art & Culture", "Cooking", "Travel"];
   const interestParam = searchParams.get("interest") || "";
   const [selectedVibes, setSelectedVibes] = useState(() => 
     interestParam ? [interestParam] : []
@@ -82,6 +89,8 @@ function InviteFormContent() {
   const [selfiePreview, setSelfiePreview] = useState("");
   const [selfieUrl, setSelfieUrl] = useState("");
   const [uploadingSelfie, setUploadingSelfie] = useState(false);
+  const [faceStatus, setFaceStatus] = useState("idle"); // idle | checking | verified | failed
+  const faceApiLoaded = React.useRef(false);
 
   // Compute age from birthdate
   const getAge = (dobString) => {
@@ -135,10 +144,41 @@ function InviteFormContent() {
 
     setSelfieFile(file);
     setErrorMsg("");
+    setFaceStatus("checking");
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setSelfiePreview(reader.result);
+    reader.onloadend = async () => {
+      const dataUrl = reader.result;
+      setSelfiePreview(dataUrl);
+      try {
+        const faceapi = await import("face-api.js");
+        if (!faceApiLoaded.current) {
+          await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+          faceApiLoaded.current = true;
+        }
+        const img = new window.Image();
+        img.src = dataUrl;
+        await new Promise((res) => { img.onload = res; });
+        const detections = await faceapi.detectAllFaces(
+          img,
+          new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 })
+        );
+        if (detections.length > 0) {
+          setFaceStatus("verified");
+          setErrorMsg("");
+        } else {
+          setFaceStatus("failed");
+          setErrorMsg("No face detected. Please upload a clear selfie with your face visible.");
+          setSelfieFile(null);
+          setSelfiePreview("");
+        }
+      } catch (err) {
+        console.error("Face detection error:", err);
+        setFaceStatus("failed");
+        setErrorMsg("Could not run face check. Please try a different photo.");
+        setSelfieFile(null);
+        setSelfiePreview("");
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -151,7 +191,7 @@ function InviteFormContent() {
     );
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
     setErrorMsg("");
     if (step === 1) {
       if (!name || name.trim().length < 2) {
@@ -166,6 +206,29 @@ function InviteFormContent() {
         setErrorMsg("Please enter a valid phone number.");
         return;
       }
+      if (!vayoId || vayoId.trim().length < 3) {
+        setErrorMsg("Please enter a Vayo ID (min 3 characters).");
+        return;
+      }
+      if (!/^[a-z0-9_]+$/.test(vayoId.trim())) {
+        setErrorMsg("Vayo ID can only contain lowercase letters, numbers, and underscores.");
+        return;
+      }
+      // Check if email already exists
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/check-status?email=${encodeURIComponent(email)}`);
+        const data = await res.json();
+        if (res.ok && data.status && data.status !== "unregistered") {
+          if (data.status === "approved") {
+            router.push(`/?email=${encodeURIComponent(email)}`);
+          } else {
+            router.push(`/askvayo/vayo?email=${encodeURIComponent(email)}`);
+          }
+          return;
+        }
+      } catch (_) {}
+      finally { setLoading(false); }
     } else if (step === 2) {
       if (!birthdate) {
         setErrorMsg("Please select your birthdate.");
@@ -184,6 +247,10 @@ function InviteFormContent() {
         setErrorMsg("Please enter your Instagram handle.");
         return;
       }
+      if (!profession || profession.trim().length < 2) {
+        setErrorMsg("Please enter your profession.");
+        return;
+      }
     } else if (step === 3) {
       if (selectedVibes.length === 0) {
         setErrorMsg("Please select at least one vibe/interest.");
@@ -192,6 +259,14 @@ function InviteFormContent() {
     } else if (step === 4) {
       if (!selfieFile && !selfieUrl) {
         setErrorMsg("Please upload a selfie image for verification.");
+        return;
+      }
+      if (faceStatus === "checking") {
+        setErrorMsg("Still verifying your face, please wait…");
+        return;
+      }
+      if (faceStatus === "failed") {
+        setErrorMsg("No face detected. Please upload a clear selfie with your face visible.");
         return;
       }
     }
@@ -248,8 +323,12 @@ function InviteFormContent() {
           name,
           email,
           phone,
+          vayo_id: vayoId.trim().toLowerCase(),
           birthdate,
           instagram: instagram.startsWith("@") ? instagram : `@${instagram}`,
+          profession,
+          food_preferences: selectedFood,
+          weekend_activities: selectedWeekend,
           interests: selectedVibes,
           selfie_url: finalSelfieUrl,
         }),
@@ -314,6 +393,7 @@ function InviteFormContent() {
                 <div className="relative flex items-center">
                   <User className="absolute left-4 w-4 h-4 text-[#E2EFF6]/40" />
                   <input
+                    suppressHydrationWarning
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -328,6 +408,7 @@ function InviteFormContent() {
                 <div className="relative flex items-center">
                   <Mail className="absolute left-4 w-4 h-4 text-[#E2EFF6]/40" />
                   <input
+                    suppressHydrationWarning
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -342,6 +423,7 @@ function InviteFormContent() {
                 <div className="relative flex items-center">
                   <Phone className="absolute left-4 w-4 h-4 text-[#E2EFF6]/40" />
                   <input
+                    suppressHydrationWarning
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -349,6 +431,25 @@ function InviteFormContent() {
                     className="w-full bg-white/5 border border-white/15 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-[#E2EFF6] placeholder-[#E2EFF6]/40 focus:outline-none focus:border-white/45 focus:ring-1 focus:ring-white/20 focus:bg-white/10 transition-all"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-[#E2EFF6]/80 font-bold tracking-wider block pl-1">
+                  Vayo ID <span className="text-[#E2EFF6]/40 font-normal">· your unique handle on VAYO</span>
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-4 text-[#E2EFF6]/40 text-sm font-bold">@</span>
+                  <input
+                    suppressHydrationWarning
+                    type="text"
+                    value={vayoId}
+                    onChange={(e) => setVayoId(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                    placeholder="your_id"
+                    maxLength={24}
+                    className="w-full bg-white/5 border border-white/15 rounded-2xl pl-9 pr-4 py-3.5 text-sm text-[#E2EFF6] placeholder-[#E2EFF6]/40 focus:outline-none focus:border-white/45 focus:ring-1 focus:ring-white/20 focus:bg-white/10 transition-all font-mono"
+                  />
+                </div>
+                <span className="text-[10px] text-[#E2EFF6]/40 pl-1">Lowercase, numbers & underscores only. Can&apos;t be changed later.</span>
               </div>
             </div>
           )}
@@ -361,6 +462,7 @@ function InviteFormContent() {
                 <div className="relative flex items-center">
                   <Calendar className="absolute left-4 w-4 h-4 text-[#E2EFF6]/40" />
                   <input
+                    suppressHydrationWarning
                     type="date"
                     value={birthdate}
                     onChange={(e) => setBirthdate(e.target.value)}
@@ -379,12 +481,54 @@ function InviteFormContent() {
                 <div className="relative flex items-center">
                   <Instagram className="absolute left-4 w-4 h-4 text-[#E2EFF6]/40" />
                   <input
+                    suppressHydrationWarning
                     type="text"
                     value={instagram}
                     onChange={(e) => setInstagram(e.target.value)}
                     placeholder="@username"
                     className="w-full bg-white/5 border border-white/15 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-[#E2EFF6] placeholder-[#E2EFF6]/40 focus:outline-none focus:border-white/45 focus:ring-1 focus:ring-white/20 focus:bg-white/10 transition-all"
                   />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-[#E2EFF6]/80 font-bold tracking-wider block pl-1">Profession</label>
+                <div className="relative flex items-center">
+                  <Sparkles className="absolute left-4 w-4 h-4 text-[#E2EFF6]/40" />
+                  <input
+                    suppressHydrationWarning
+                    type="text"
+                    value={profession}
+                    onChange={(e) => setProfession(e.target.value)}
+                    placeholder="e.g. Software Engineer, Designer…"
+                    className="w-full bg-white/5 border border-white/15 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-[#E2EFF6] placeholder-[#E2EFF6]/40 focus:outline-none focus:border-white/45 focus:ring-1 focus:ring-white/20 focus:bg-white/10 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-[#E2EFF6]/80 font-bold tracking-wider block pl-1">Food Preferences</label>
+                <div className="flex flex-wrap gap-2">
+                  {foodOptions.map((f) => (
+                    <button key={f} type="button"
+                      onClick={() => setSelectedFood(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f])}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-all ${selectedFood.includes(f) ? "bg-white/20 border-white/40 text-white" : "bg-white/5 border-white/10 text-[#E2EFF6]/60 hover:bg-white/10"}`}>
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-[#E2EFF6]/80 font-bold tracking-wider block pl-1">Weekend Activities</label>
+                <div className="flex flex-wrap gap-2">
+                  {weekendOptions.map((w) => (
+                    <button key={w} type="button"
+                      onClick={() => setSelectedWeekend(prev => prev.includes(w) ? prev.filter(x => x !== w) : [...prev, w])}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-all ${selectedWeekend.includes(w) ? "bg-white/20 border-white/40 text-white" : "bg-white/5 border-white/10 text-[#E2EFF6]/60 hover:bg-white/10"}`}>
+                      {w}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -441,13 +585,37 @@ function InviteFormContent() {
                         alt="Selfie Preview"
                         className="w-full h-full object-cover"
                       />
+                      {faceStatus === "checking" && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                        </div>
+                      )}
                     </div>
+
+                    {faceStatus === "checking" && (
+                      <p className="mt-2 text-[11px] font-bold text-white/70 animate-pulse">Scanning for face…</p>
+                    )}
+                    {faceStatus === "verified" && (
+                      <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 border border-emerald-400/30 rounded-full">
+                        <Check className="w-3 h-3 text-emerald-400"/>
+                        <span className="text-[11px] font-bold text-emerald-300">Face verified ✓</span>
+                      </div>
+                    )}
+                    {faceStatus === "failed" && (
+                      <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-rose-500/20 border border-rose-400/30 rounded-full">
+                        <AlertCircle className="w-3 h-3 text-rose-400"/>
+                        <span className="text-[11px] font-bold text-rose-300">No face detected</span>
+                      </div>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => {
                         setSelfieFile(null);
                         setSelfiePreview("");
                         setSelfieUrl("");
+                        setFaceStatus("idle");
+                        setErrorMsg("");
                       }}
                       className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-300 text-[10px] font-bold uppercase tracking-wider rounded-full hover:bg-rose-500/20 transition-all cursor-pointer"
                     >

@@ -27,7 +27,7 @@ function ThankYouContent() {
       {/* Background Image */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Image
-          src="/assets/bg_img_thankyou.png"
+          src="/assets/bg_img_thankyou.jpg"
           alt="Thank You Background"
           fill
           className="object-cover opacity-80"
@@ -70,7 +70,7 @@ function ThankYouContent() {
 
         {/* Signature */}
         <p className="text-[10px] md:text-xs text-white/40 font-bold tracking-[2.5px] uppercase mb-8">
-          – THE TEAM VAYO
+          – TEAM VAYO
         </p>
 
         {/* Registered Email (if any) */}

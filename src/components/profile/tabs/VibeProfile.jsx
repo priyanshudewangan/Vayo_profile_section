@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone, Mail, MapPin, CheckCircle2, Zap, Calendar, ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Phone, Mail, MapPin, CheckCircle2, Zap, Calendar, ArrowLeft, ArrowRight, ShieldCheck, Flame } from 'lucide-react';
 
 export default function VibeProfile({
   currentPersona,
@@ -20,7 +20,9 @@ export default function VibeProfile({
   setActiveSidebarTab,
   triggerToast,
   handleMomentDelete,
-  setLightboxMoment
+  setLightboxMoment,
+  karmaData,
+  isKarmaLoading
 }) {
   
   const handlePrev = () => {
@@ -372,6 +374,190 @@ export default function VibeProfile({
                 </div>
               </div>
             </div>
+          </div>
+        );
+      })()}
+
+      <hr className="border-neutral-100" />
+
+      {/* ── KARMA SECTION ── */}
+      {(() => {
+        const isRealUser = currentPersona.id === 'user-profile';
+        const karma = isRealUser ? karmaData : {
+          total: currentPersona.karmaBalance,
+          tier: currentPersona.karmaTier,
+          tierIcon: { Explorer: '🔭', Pathfinder: '🧭', Voyager: '🚀', Conqueror: '🌟' }[currentPersona.karmaTier] ?? '🌟',
+          nextTier: currentPersona.karmaTier === 'Explorer' ? 'Pathfinder' : currentPersona.karmaTier === 'Pathfinder' ? 'Voyager' : currentPersona.karmaTier === 'Voyager' ? 'Conqueror' : null,
+          nextTierMin: currentPersona.karmaTier === 'Explorer' ? 85 : currentPersona.karmaTier === 'Pathfinder' ? 251 : currentPersona.karmaTier === 'Voyager' ? 421 : null,
+          tierMin: currentPersona.karmaTier === 'Explorer' ? 0 : currentPersona.karmaTier === 'Pathfinder' ? 85 : currentPersona.karmaTier === 'Voyager' ? 251 : 421,
+          progressToNext: currentPersona.karmaPercentage,
+          breakdown: {
+            profileSetup: { points: currentPersona.karmaBreakdown?.hostSupport ?? 0, max: 5, items: [] },
+            eventRsvps: { points: currentPersona.karmaBreakdown?.attendedMixers ?? 0, count: Math.round((currentPersona.karmaBreakdown?.attendedMixers ?? 0) / 0.5) },
+            gpsCheckins: { points: currentPersona.karmaBreakdown?.vibeLeader ?? 0 },
+            community: { points: currentPersona.karmaBreakdown?.momentContributor ?? 0 },
+          },
+        };
+
+        const tierMeta = {
+          Explorer:   { gradient: 'from-sky-400 to-blue-500',       glow: 'shadow-sky-200',    bar: '#38bdf8',  pill: 'bg-sky-100 text-sky-700 border-sky-200' },
+          Pathfinder: { gradient: 'from-amber-400 to-orange-500',   glow: 'shadow-amber-200',  bar: '#fbbf24',  pill: 'bg-amber-100 text-amber-700 border-amber-200' },
+          Voyager:    { gradient: 'from-violet-500 to-purple-600',  glow: 'shadow-violet-200', bar: '#a78bfa',  pill: 'bg-violet-100 text-violet-700 border-violet-200' },
+          Conqueror:  { gradient: 'from-emerald-400 to-teal-500',   glow: 'shadow-emerald-200',bar: '#34d399',  pill: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+        };
+        const tm = tierMeta[karma?.tier] || tierMeta.Explorer;
+        const pct = Math.min(100, karma?.progressToNext ?? 0);
+        const ptsToNext = karma?.nextTierMin ? Math.max(0, karma.nextTierMin - (karma?.total ?? 0)) : 0;
+
+        return (
+          <div className="space-y-4">
+            <h5 className={`text-[11px] font-extrabold uppercase tracking-widest bg-gradient-to-r ${tm.gradient} bg-clip-text text-transparent`}>Karma Points</h5>
+
+            {isRealUser && isKarmaLoading ? (
+              <div className="h-28 rounded-2xl bg-neutral-50/60 border border-neutral-100 flex items-center justify-center gap-2.5">
+                <div className="w-4 h-4 border-2 border-neutral-200 border-t-sky-400 rounded-full animate-spin" />
+                <span className="text-[10px] font-bold uppercase tracking-[2px] text-neutral-400">Computing karma…</span>
+              </div>
+            ) : (
+              <>
+                {/* Hero card */}
+                <div className={`relative rounded-2xl overflow-hidden shadow-lg ${tm.glow}`}>
+                  <div className={`absolute inset-0 bg-gradient-to-br ${tm.gradient} opacity-90`} />
+                  <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")' }} />
+
+                  <div className="relative px-5 py-4 flex items-center gap-4">
+                    <div className="text-5xl drop-shadow-md select-none shrink-0">{karma?.tierIcon}</div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-4xl font-black text-white tracking-tight drop-shadow">{karma?.total ?? 0}</span>
+                        <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">/ 500</span>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest border ${tm.pill} bg-white/80 backdrop-blur-sm`}>
+                        {karma?.tier} Tier
+                      </span>
+                    </div>
+
+                    <div className="shrink-0 relative w-12 h-12">
+                      <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+                        <circle cx="24" cy="24" r="19" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="4" />
+                        <circle cx="24" cy="24" r="19" fill="none" stroke="white" strokeWidth="4"
+                          strokeDasharray={`${2 * Math.PI * 19}`}
+                          strokeDashoffset={`${2 * Math.PI * 19 * (1 - Math.min(1, (karma?.total ?? 0) / 84))}`}
+                          strokeLinecap="round" className="transition-colors duration-700" />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-[8px] font-extrabold text-white leading-none">{Math.min(84, Math.round(karma?.total ?? 0))}</span>
+                        <span className="text-[6px] text-white/60 font-bold">/84</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {karma?.nextTier && (
+                    <div className="relative px-5 pb-4 space-y-1">
+                      <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
+                        <div className="h-full bg-white rounded-full transition-colors duration-700" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[8.5px] font-bold text-white/60">
+                        <span>{karma.tier}</span>
+                        <span className="text-white/90">{ptsToNext} pts → {karma.nextTier}</span>
+                      </div>
+                    </div>
+                  )}
+                  {!karma?.nextTier && (
+                    <div className="relative px-5 pb-3 text-[9px] font-bold text-white/80">Maximum tier reached 🎉</div>
+                  )}
+                </div>
+
+                {/* Profile completeness nudge — real users only */}
+                {isRealUser && !isKarmaLoading && (() => {
+                  const missing = (karma?.breakdown?.profileSetup?.items ?? []).filter(i => !i.done);
+                  if (!missing.length) return null;
+                  return (
+                    <div className="flex items-start gap-3 rounded-xl border border-sky-100 bg-sky-50/60 px-3.5 py-3">
+                      <span className="text-base shrink-0 mt-0.5">💡</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] font-extrabold text-sky-700 mb-2">Complete your profile for more karma</div>
+                        <div className="space-y-1.5">
+                          {missing.map((item, i) => (
+                            <div key={i} className="flex items-center justify-between gap-2">
+                              <span className="text-[9.5px] text-sky-600/80 font-medium leading-tight">{item.label}</span>
+                              <span className="text-[9px] font-extrabold text-emerald-500 shrink-0">+{item.max} pt{item.max > 1 ? 's' : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Locked feature teaser */}
+                {(() => {
+                  const UNLOCK_AT = 251;
+                  const ptsNeeded = Math.max(0, UNLOCK_AT - (karma?.total ?? 0));
+                  const alreadyUnlocked = (karma?.total ?? 0) >= UNLOCK_AT;
+                  return (
+                    <details className="group">
+                      <summary className="list-none cursor-pointer select-none">
+                        <div className={`flex items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-3 transition-colors duration-200
+                          ${alreadyUnlocked
+                            ? 'border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50'
+                            : 'border-neutral-200 bg-neutral-50/60 hover:border-sky-200 hover:bg-sky-50/40'
+                          }`}>
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg transition-colors
+                            ${alreadyUnlocked ? 'bg-emerald-100' : 'bg-neutral-100 group-hover:bg-sky-100'}`}>
+                            {alreadyUnlocked ? '🎉' : '🔒'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[11px] font-extrabold text-neutral-800 leading-tight">Host an Event</div>
+                            <div className={`text-[9px] font-semibold mt-0.5 ${alreadyUnlocked ? 'text-emerald-500' : 'text-neutral-400'}`}>
+                              {alreadyUnlocked ? 'Feature unlocked · Voyager tier' : 'Tap to see how to unlock'}
+                            </div>
+                          </div>
+                          {!alreadyUnlocked && (
+                            <svg className="w-3.5 h-3.5 text-neutral-300 group-open:rotate-180 transition-transform duration-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                          )}
+                        </div>
+                      </summary>
+
+                      {!alreadyUnlocked && (
+                        <div className="mt-2 px-1 space-y-2.5">
+                          {/* Points needed */}
+                          <div className="flex items-center justify-between bg-white rounded-xl border border-neutral-100 px-3.5 py-3">
+                            <div>
+                              <div className="text-[10.5px] font-extrabold text-neutral-700">Points required</div>
+                              <div className="text-[9px] text-neutral-400 font-medium mt-0.5">Reach Voyager tier to host</div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-[18px] font-black text-neutral-800 leading-none">{UNLOCK_AT}</div>
+                              <div className="text-[8px] font-bold text-neutral-300 uppercase tracking-wider">pts needed</div>
+                            </div>
+                          </div>
+
+                          {/* Progress toward unlock */}
+                          <div className="space-y-1.5 px-0.5">
+                            <div className="flex justify-between text-[8.5px] font-bold">
+                              <span className="text-neutral-400">Your karma</span>
+                              <span className="text-sky-500">{ptsNeeded} pts to go</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-sky-400 to-violet-500 rounded-full transition-colors duration-700"
+                                style={{ width: `${Math.min(100, ((karma?.total ?? 0) / UNLOCK_AT) * 100)}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-[7.5px] text-neutral-300 font-medium">
+                              <span>{karma?.total ?? 0} pts</span>
+                              <span>{UNLOCK_AT} pts</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </details>
+                  );
+                })()}
+              </>
+            )}
           </div>
         );
       })()}

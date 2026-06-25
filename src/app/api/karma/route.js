@@ -2,23 +2,7 @@ export const runtime = 'edge';
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase";
-
-// Ported from VAYO-version-0/karma_models.py
-const KARMA_RULES = {
-  SIGNUP_EMAIL_VERIFY: 10,
-  SIGNUP_PROFILE_PHOTO: 10,
-  SIGNUP_VIBE_QUESTIONS: 20,
-  SIGNUP_CLAIM_ID: 10,
-  EVENT_RSVP: 10,
-  GPS_CHECKIN: 20,
-  EVENT_PHOTO_POST: 15,
-  EVENT_HIGH_RATING: 15,
-  PEER_ENDORSEMENT: 25,
-  HOST_EVENT: 50,
-  NO_SHOW_PENALTY: -20,
-  HOST_CANCEL_PENALTY: -30,
-  NEGATIVE_REVIEW_PENALTY: -15,
-};
+import { KARMA_RULES } from "@/lib/karma";
 
 // Aligned with frontend tiers (src/app/profile/page.js)
 const TIER_CONFIG = {
@@ -84,7 +68,7 @@ export async function GET(request) {
     let gpsCheckinPoints = 0;
     let communityPoints = 0;
 
-    const profileSetupActions = ["SIGNUP_EMAIL_VERIFY", "SIGNUP_PROFILE_PHOTO", "SIGNUP_VIBE_QUESTIONS", "SIGNUP_CLAIM_ID"];
+    const profileSetupActions = ["SIGNUP_EMAIL_VERIFY", "SIGNUP_PROFILE_PHOTO", "SIGNUP_PHONE_VERIFY", "SIGNUP_CLAIM_ID"];
 
     if (ledger) {
       ledger.forEach(item => {
@@ -96,13 +80,25 @@ export async function GET(request) {
         } else if (action === "EVENT_RSVP") {
           eventRsvpPoints += delta;
           eventRsvpCount += 1;
-        } else if (action === "GPS_CHECKIN") {
+        } else if (action === "MEETUP_GPS_CHECKIN" || action === "EVENT_GPS_CHECKIN" || action === "TRIP_GPS_CHECKIN" || action === "GPS_CHECKIN") {
           gpsCheckinPoints += delta;
         } else {
           communityPoints += delta;
         }
       });
     }
+
+    const hasPhoto = ledger ? ledger.some(item => item.action_type === "SIGNUP_PROFILE_PHOTO") : false;
+    const hasEmail = ledger ? ledger.some(item => item.action_type === "SIGNUP_EMAIL_VERIFY") : false;
+    const hasPhone = ledger ? ledger.some(item => item.action_type === "SIGNUP_PHONE_VERIFY") : false;
+    const hasId = ledger ? ledger.some(item => item.action_type === "SIGNUP_CLAIM_ID") : false;
+
+    const setupItems = [
+      { label: "Upload Profile Photo", done: hasPhoto, max: 1 },
+      { label: "Verify Email Address", done: hasEmail, max: 1 },
+      { label: "Verify Phone Number", done: hasPhone, max: 1 },
+      { label: "Create Unique User ID", done: hasId, max: 2 }
+    ];
 
     const response = {
       email,
@@ -114,7 +110,7 @@ export async function GET(request) {
       tierMin: tierInfo.min,
       progressToNext,
       breakdown: {
-        profileSetup: { points: profileSetupPoints, max: 50, items: [] },
+        profileSetup: { points: profileSetupPoints, max: 5, items: setupItems },
         eventRsvps: { points: eventRsvpPoints, count: eventRsvpCount },
         gpsCheckins: { points: gpsCheckinPoints },
         community: { points: communityPoints }

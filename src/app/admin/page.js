@@ -63,25 +63,20 @@ export default function AdminDashboard() {
     attendeeModalEvent, setAttendeeModalEvent
   } = useAdminUI();
 
-  // Load initial data when authenticated
+  // Load initial data when authenticated + silent auto-refresh every 10s
   useEffect(() => {
     if (isAuthenticated) {
       fetchEmails(password);
       fetchEvents();
       fetchRSVPs(password);
+      const id = setInterval(() => {
+        fetchEvents(true);
+        fetchRSVPs(password, true);
+        fetchEmails(password, true);
+      }, 10000);
+      return () => clearInterval(id);
     }
   }, [isAuthenticated]);
-
-  // Auto-refresh events + RSVPs every 10s when on those sections (picks up live check-ins)
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (currentSection !== "events" && currentSection !== "rsvps") return;
-    const id = setInterval(() => {
-      fetchEvents();
-      fetchRSVPs(password);
-    }, 10000);
-    return () => clearInterval(id);
-  }, [isAuthenticated, currentSection]);
 
   // Handle viewing attendees
   const handleViewAttendees = (evt) => {

@@ -1,9 +1,7 @@
-export const runtime = 'edge';
-
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { supabaseAdmin as supabase } from "@/lib/supabase";
-import { sha256 } from "@/lib/crypto";
+import { supabase } from "@/lib/supabase";
+import crypto from "crypto";
 
 export async function POST(request) {
   try {
@@ -39,7 +37,7 @@ export async function POST(request) {
 
     // Generate a temporary password
     const tempPassword = `Vayo-${Math.floor(1000 + Math.random() * 9000)}`;
-    const hashedPassword = await sha256(tempPassword);
+    const hashedPassword = crypto.createHash("sha256").update(tempPassword).digest("hex");
 
     // Initialize Resend
     const resendApiKey = process.env.RESEND_API_KEY || "";

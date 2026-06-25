@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { email, name, phone, birthdate, instagram, interests, selfie_url } = body;
+    const { email, name, phone, birthdate, instagram, interests, selfie_url, vayo_id, profession, food_preferences, weekend_activities } = body;
 
     // Simple backend email format validation
     if (!email || typeof email !== "string" || !email.includes("@")) {
@@ -14,30 +14,33 @@ export async function POST(request) {
       );
     }
 
-    // Insert details into the waitlist table
-    const { data, error } = await supabase
-      .from("waitlist")
-      .insert([
-        {
-          email,
-          name: name || null,
-          phone: phone || null,
-          birthdate: birthdate || null,
-          instagram: instagram || null,
-          interests: interests || [],
-          selfie_url: selfie_url || null,
-          status: "Pending"
-        }
-      ])
-      .select();
+    // Insert details into the waitlist table (try with extended fields first)
+    const fullPayload = {
+      email,
+      name: name || null,
+      phone: phone || null,
+      birthdate: birthdate || null,
+      instagram: instagram || null,
+      interests: interests || [],
+      selfie_url: selfie_url || null,
+      vayo_id: vayo_id || null,
+      profession: profession || null,
+      food_preferences: food_preferences || [],
+      weekend_activities: weekend_activities || [],
+      status: "Pending"
+    };
+
+    let { data, error } = await supabase.from("waitlist").insert([fullPayload]).select();
+
+    // If new columns don't exist yet (42703 = undefined_column), retry with base fields only
+    if (error && (error.code === "42703" || error.message?.includes("column") || error.message?.includes("does not exist"))) {
+      const basePayload = { email, name: name || null, phone: phone || null, birthdate: birthdate || null, instagram: instagram || null, interests: interests || [], selfie_url: selfie_url || null, status: "Pending" };
+      ({ data, error } = await supabase.from("waitlist").insert([basePayload]).select());
+    }
 
     if (error) {
-      // Handle Postgres unique constraint violation error code (23505)
       if (error.code === "23505") {
-        return NextResponse.json(
-          { error: "This email is already on the waitlist!" },
-          { status: 409 }
-        );
+        return NextResponse.json({ error: "This email is already on the waitlist!" }, { status: 409 });
       }
       throw error;
     }
@@ -62,9 +65,9 @@ export async function POST(request) {
 
     return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (error) {
-    console.error("Supabase Database API error:", error);
+    console.error("Supabase Database API error:", JSON.stringify(error, null, 2));
     return NextResponse.json(
-      { error: "Error joining waitlist. Please try again." },
+      { error: error?.message || "Error joining waitlist. Please try again." },
       { status: 500 }
     );
   }

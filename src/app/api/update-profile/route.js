@@ -1,7 +1,5 @@
-export const runtime = 'edge';
-
 import { NextResponse } from "next/server";
-import { supabaseAdmin as supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export async function POST(request) {
   try {

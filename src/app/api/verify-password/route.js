@@ -1,9 +1,7 @@
-export const runtime = 'edge';
-
 import { NextResponse } from "next/server";
-import { supabaseAdmin as supabase } from "@/lib/supabase";
-import { sha256 } from "@/lib/crypto";
-import * as jose from "jose";
+import { supabase } from "@/lib/supabase";
+import crypto from "crypto";
+import jwt from "jsonwebtoken";
 
 export async function POST(request) {
   try {
@@ -50,7 +48,7 @@ export async function POST(request) {
     }
 
     // Hash the input password and compare
-    const hashedInput = await sha256(password);
+    const hashedInput = crypto.createHash("sha256").update(password).digest("hex");
 
     if (hashedInput !== user.password) {
       return NextResponse.json(
@@ -59,21 +57,17 @@ export async function POST(request) {
       );
     }
 
-    // Sign a lightweight JWT token using jose (Edge compatible)
-    const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET || "9d8f376f9202a0a256bd4dcf3c8808940428f6e2b10a2624ea3550e502c3886f"
+    // Sign a lightweight JWT token
+    const token = jwt.sign(
+      {
+        sub: user.user_id || user.email,
+        email: user.email,
+        username: user.name || user.email.split("@")[0],
+        role: "user"
+      },
+      process.env.JWT_SECRET || "9d8f376f9202a0a256bd4dcf3c8808940428f6e2b10a2624ea3550e502c3886f",
+      { expiresIn: "7d" }
     );
-    
-    const token = await new jose.SignJWT({
-      sub: user.user_id || user.email,
-      email: user.email,
-      username: user.name || user.email.split("@")[0],
-      role: "user"
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("7d")
-      .sign(secret);
 
     return NextResponse.json({ success: true, user, token }, { status: 200 });
   } catch (error) {

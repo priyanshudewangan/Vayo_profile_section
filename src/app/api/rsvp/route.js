@@ -1,7 +1,5 @@
-export const runtime = 'edge';
-
 import { NextResponse } from "next/server";
-import { supabaseAdmin as supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export async function POST(request) {
   try {
@@ -70,7 +68,7 @@ export async function GET(request) {
       try {
         const { data: eventsData, error: eventsError } = await supabase
           .from("events")
-          .select("event_id, lat, lng, latitude, longitude, venue, status, cover_image_url, event_date")
+          .select("event_id, lat, lng, venue, status, cover_image_url, event_date")
           .in("event_id", eventIds);
           
         if (!eventsError) {
